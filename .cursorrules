@@ -1,0 +1,63 @@
+# Forge Layer 0 — dispatch + harm floor (all workspaces)
+
+This folder is attention space only. Agents are forge-kb peers. **Knowledge-hub is sole authority.** Forge is the programme name, not the Electron app. Never read `workflows/INDEX.json` whole. User words are class/trigger cues — not first-move Grep/Glob.
+
+Startup: `project_info.json` → `paths` → `C:\!Recovering\knowledge-hub\workflows\forge-agent-startup.md` (or `paths.forge_agent_startup`).
+
+## 1. Dispatch
+
+One class; announce it; read only `C:\!Recovering\knowledge-hub\workflows\routes\ROUTES-<CLASS>.tsv`. Jaccard keys; weak keys never resolve alone; top two within 15% → ask; irreversible wins. Never grep-fallback. Never inherit class authorization. JSON >8 KB: query, not whole-file.
+
+ORIENT what-is-Forge/where-is-KB/lost · STATUS continue/what's-next/where-are-we · IMPLEMENT create/implement/build/fix · PUBLISH publish/live-hire/clasp/live-enVivo · DESTRUCTIVE delete/cleanup/recycle · DOCUMENT summary/plan/docs · INFRA DNS/gateway/credentials/checkpoint · RETRIEVE lookup/ingest/file-drop/font · ANALYZE analysis/compare/audit
+
+Policy: `C:\!Recovering\knowledge-hub\collections\forge\policy\00-INDEX.json` (`oneLine` → floor or one shard). Do not load `GLOBAL_.cursorrules` whole.
+
+Skills (path-read): shadcn `~\.cursor\skills\shadcn\SKILL.md`; Templateclaw `~\.cursor\skills\templateclaw\SKILL.md` (+ `-landing` `-dashboard` `-ui`); ADB `~\.cursor\skills\android-adb-toolkit\SKILL.md`; ONN `~\.cursor\skills\onn-stick-lab\SKILL.md`; CoreUI `C:\!Recovering\enVivo\agent-skills\design\coreui-bootstrap\SKILL.md`; MVP `C:\!Recovering\enVivo\agent-skills\automation\envivo-mvp-scaffold\SKILL.md`.
+
+## 2. Harm invariants (T1 — restate before every irreversible op)
+
+- **IMPLEMENT:** `refactor-avoidance-preflight.md` path A–F; site-hub = path C; mobile product UI = `material-platform-greenfield.md` (no pf-mobile-shell).
+- **PUBLISH:** disk ≠ Done. Hire `sites/redux/`: same-turn `publish-redux-hire.mjs --hire-only` → `https://joshdwall.com/redux/`. enVivo `/enVivo/`: same-turn `publish-companion --site envivo` → `https://joshdwall.com/enVivo/…`. Localhost / `:8790` / `serve dist` never Done. Never “please publish” as Next. GAS: `Invoke-GasClaspPush.ps1 -ProjectId <id>` same turn; no new script link.
+- **DESTRUCTIVE:** analysis read-only; quarantine default. NEVER `Remove-Item`, `rm`, `del`, `rmdir`, `rd`, wildcards, or destructive Git (`reset --hard`, `clean -fd/-fx`, force push). Windows delete = Recycle Bin-aware .NET `Microsoft.VisualBasic.FileIO.FileSystem` `SendToRecycleBin` AFTER exact-path approval. “Clean it up” is not authorization. Procedure: `safe-file-cleanup.md`.
+- **INFRA:** Gateway **8765** — never `Stop-Process`/`kill`/`taskkill` the site-hub gateway; never a second `npm run dev` when 8765 is in use (in-use = UP). Verify HTTP GET. Never Grep/Glob secrets (token, API key, IP, zone ID). DNS = `cloudflare-dns-management.md` + vault.
+
+## 3. Floor (always-on GLOBAL extract)
+
+Operator is executive; agent runs verification; no manual homework unless asked.
+Scope guard: too granular for the phase goal → PAUSE and ask.
+Sanitize input; never store secrets in plaintext or client-accessible storage.
+Never log passwords, tokens, or PII.
+Hard limit 1500 lines per file; flag with a concrete split plan.
+
+## 4. Silent-failure product invariants (never glob-scope)
+
+- **Privacy:** UI rendering user data MUST use `usePrivacy().anonymize(value, type)` (project, module, path, phrase, section, date, app).
+- **Inspectable:** wrap new blocks/cards/key UI in `Inspectable` (`id`, `type`, `title`, optional `dataSource`, `cssInfo`, `params`).
+- **JSX:** files containing JSX MUST be `.jsx`/`.tsx`.
+- **Corners:** `border-radius: 0` unless a look/theme `radius` token or the operator says otherwise.
+- **Git:** never edit git config; no force-push to main; commit only when asked.
+- **Literal paths:** `Test-Path -LiteralPath` / `Get-ChildItem -LiteralPath -Force` before broader search.
+- **Binaries:** `C:\!Recovering\tool-suite\external-tools\`. Brag books: `brag-presentation/public/books` only (never `dist/books`).
+
+## 5. Reply (default — do not hop contracts)
+
+```text
+**Verdict:** <1–2 sentences — answer first>
+**Result:**
+- <what is now true — max 5 bullets>
+**Watch:** <risks / stale backup — or `—` if clean>
+**Next:** <one step OR one question>
+```
+
+Watch always; no mode labels; plan path only on plan/implement turns.
+**Published:** `sites/redux/` → `publish-redux-hire.mjs --hire-only` same turn.
+**Published:** `/enVivo/` → `publish-companion --site envivo` same turn; `:8790` never Done.
+Exec-summary / handoff-card: those contracts. Handoff only for genuine blocker.
+
+## 6. Size gate
+
+Never read a file over ~40 KB whole — slice, grep, or query.
+
+## Domain — this node
+
+Archive or attention-only folder. Product work goes to the live Recovering node + hub policy. Do not revive this tree unless the operator names it.

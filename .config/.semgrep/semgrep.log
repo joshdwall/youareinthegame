@@ -1,0 +1,94 @@
+2025-06-30 15:16:19,982 - semgrep.notifications - WARNING - METRICS: Using configs from the Registry (like --config=p/ci) reports pseudonymous rule metrics to semgrep.dev.
+To disable Registry rule metrics, use "--metrics=off".
+Using configs only from local files (like --config=xyz.yml) does not enable metrics.
+
+More information: https://semgrep.dev/docs/metrics
+
+2025-06-30 15:16:19,983 - semgrep.run_scan - DEBUG - semgrep version 1.4.0
+2025-06-30 15:16:19,987 - semgrep.git - DEBUG - Failed to get project url from 'git ls-remote': Command failed with exit code: 128
+-----
+Command failed with output:
+fatal: No remote configured to list refs from.
+
+
+Failed to run 'git ls-remote --get-url'. Possible reasons:
+
+- the git binary is not available
+- the current working directory is not a git repository
+- the baseline commit is not a parent of the current commit
+    (if you are running through semgrep-app, check if you are setting `SEMGREP_BRANCH` or `SEMGREP_BASELINE_COMMIT` properly)
+- the current working directory is not marked as safe
+    (fix with `git config --global --add safe.directory $(pwd)`)
+
+Try running the command yourself to debug the issue.
+2025-06-30 15:16:19,988 - semgrep.config_resolver - DEBUG - Loading local config from /home/runner/workspace/.config/.semgrep/semgrep_rules.json
+2025-06-30 15:16:19,989 - semgrep.config_resolver - DEBUG - Done loading local config from /home/runner/workspace/.config/.semgrep/semgrep_rules.json
+2025-06-30 15:16:19,992 - semgrep.config_resolver - DEBUG - Saving rules to /tmp/semgrep-wml_15w7.rules
+2025-06-30 15:16:20,604 - semgrep.rule_lang - DEBUG - semgrep-core validation response: valid=True
+2025-06-30 15:16:20,604 - semgrep.rule_lang - DEBUG - semgrep-core validation succeeded
+2025-06-30 15:16:20,605 - semgrep.rule_lang - DEBUG - RPC validation succeeded
+2025-06-30 15:16:20,605 - semgrep.config_resolver - DEBUG - loaded 1 configs in 0.6175491809844971
+2025-06-30 15:16:20,676 - semgrep.run_scan - VERBOSE - running 715 rules from 1 config /home/runner/workspace/.config/.semgrep/semgrep_rules.json_0
+2025-06-30 15:16:20,676 - semgrep.run_scan - VERBOSE - No .semgrepignore found. Using default .semgrepignore rules. See the docs for the list of default ignores: https://semgrep.dev/docs/cli-usage/#ignore-files
+2025-06-30 15:16:20,678 - semgrep.run_scan - VERBOSE - Rules:
+2025-06-30 15:16:20,678 - semgrep.run_scan - VERBOSE - <SKIPPED DATA (too many entries; use --max-log-list-entries)>
+2025-06-30 15:16:20,757 - semgrep.core_runner - DEBUG - Passing whole rules directly to semgrep_core
+2025-06-30 15:16:20,823 - semgrep.core_runner - DEBUG - Running Semgrep engine with command:
+2025-06-30 15:16:20,824 - semgrep.core_runner - DEBUG - /tmp/_MEI1eWfRx/semgrep/bin/opengrep-core -json -rules /tmp/tmp8sq5oa0q.json -j 8 -targets /tmp/tmp4bagm2b_ -timeout 5 -timeout_threshold 3 -max_memory 0 -fast
+2025-06-30 15:16:21,553 - semgrep.core_runner - DEBUG - --- semgrep-core stderr ---
+[00.07][[34mINFO[0m]: Executed as: /tmp/_MEI1eWfRx/semgrep/bin/opengrep-core -json -rules /tmp/tmp8sq5oa0q.json -j 8 -targets /tmp/tmp4bagm2b_ -timeout 5 -timeout_threshold 3 -max_memory 0 -fast
+[00.07][[34mINFO[0m]: Version: 1.4.0
+[00.07][[34mINFO[0m]: Parsing rules in /tmp/tmp8sq5oa0q.json
+[00.50][[34mINFO[0m]: scan: processing 12 files (skipping 0), with 445 rules (skipping 0 )
+--- end semgrep-core stderr ---
+2025-06-30 15:16:21,561 - semgrep.core_runner - DEBUG - semgrep ran in 0:00:00.804491 on 5 files
+2025-06-30 15:16:21,563 - semgrep.core_runner - DEBUG - findings summary: 0 warning, 0 error, 0 info
+2025-06-30 15:16:21,566 - semgrep.app.auth - DEBUG - Getting API token from settings file
+2025-06-30 15:16:21,566 - semgrep.app.auth - DEBUG - No API token found in settings file
+2025-06-30 15:16:21,689 - semgrep.output - VERBOSE - 
+========================================
+Files skipped:
+========================================
+
+  Always skipped by Opengrep:
+
+   • <none>
+
+  Skipped by .gitignore:
+  (Disable by passing --no-git-ignore)
+
+   • <all files not listed by `git ls-files` were skipped>
+
+  Skipped by .semgrepignore:
+  - https://semgrep.dev/docs/ignoring-files-folders-code/#understand-semgrep-defaults
+
+   • <none>
+
+  Skipped by --include patterns:
+
+   • <none>
+
+  Skipped by --exclude patterns:
+
+   • <none>
+
+  Files skipped due to insufficient read permissions:
+
+   • <none>
+
+  Skipped by limiting to files smaller than 1000000 bytes:
+  (Adjust with the --max-target-bytes flag)
+
+   • <none>
+
+  Partially analyzed due to parsing or internal Opengrep errors
+
+   • <none>
+
+2025-06-30 15:16:21,690 - semgrep.output - INFO - Some files were skipped or only partially analyzed.
+  Scan was limited to files tracked by git.
+
+Ran 425 rules on 5 files: 0 findings.
+2025-06-30 15:16:21,690 - semgrep.app.version - DEBUG - Version cache does not exist
+2025-06-30 15:16:21,691 - semgrep.app.version - DEBUG - Version cache does not exist
+2025-06-30 15:16:21,703 - semgrep.metrics - VERBOSE - Not sending pseudonymous metrics since metrics are configured to OFF and registry usage is False

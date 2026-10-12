@@ -1,0 +1,24 @@
+/**
+ * Ghost Finale Styles
+ * Styles specific to the ghost effect finale (firework spores)
+ */
+
+/**
+ * Firework spore styles
+ */
+.firework-spore {
+  position: absolute;
+  pointer-events: none;
+  z-index: 6;
+  transition: opacity 0.3s ease;
+  /* Prevent dragging */
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+  draggable: false;
+  /* Add motion blur effect */
+  filter: blur(0.5px);
+  will-change: transform, left, top;
+}
