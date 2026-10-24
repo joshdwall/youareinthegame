@@ -5,7 +5,7 @@ import {
   weightedPickFromPool,
   rollNewAssignment,
   buildOverrideAssignment
-} from '../functions/_shared/session-roll.js';
+} from './shared/session-roll.js';
 
 export { weightedPickFromPool, rollNewAssignment };
 
