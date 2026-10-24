@@ -1,13 +1,14 @@
-# Cloudflare Pages — youareinthegame MVP (static + session API)
-name = "youareinthegame-mvp"
-compatibility_date = "2024-09-01"
+# Cloudflare Pages project: youareinthegame (direct upload; apex + www attached).
+# Deploy only via `npm run preview` (scripts/pages-deploy.mjs). Production promote needs explicit sign-off.
+name = "youareinthegame"
 pages_build_output_dir = "dist"
-
-# Optional — create via: wrangler kv namespace create YAITG_SESSION_KV
-# [[kv_namespaces]]
-# binding = "YAITG_SESSION_KV"
-# id = "REPLACE_WITH_KV_NAMESPACE_ID"
+compatibility_date = "2024-09-23"
 
 [vars]
 YAITG_RATE_MAX = "12"
 YAITG_RATE_WINDOW_SEC = "3600"
+
+# YAITG_SESSION_SECRET is a Pages secret (Infisical /sites/youareinthegame), never in git.
+[[kv_namespaces]]
+binding = "YAITG_SESSION_KV"
+id = "384434fdf4f241be872e33e6c5fcbff3"
