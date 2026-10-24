@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "siteId": "youareinthegame",
+  "description": "Mirrored static site — no pf-kit assembly",
+  "kitDependency": null,
+  "components": [],
+  "themePackageId": null,
+  "assemble": {
+    "includeThemeResolved": false,
+    "publishRoot": "."
+  }
+}

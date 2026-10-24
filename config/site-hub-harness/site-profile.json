@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "siteId": "youareinthegame",
+  "label": "You Are In The Game",
+  "kind": "site",
+  "stackType": "static",
+  "app": {
+    "name": "youareinthegame",
+    "label": "You Are In The Game",
+    "description": "Mushroom Platypus splash — mirrored from youareinthegame.com for site-hub publish.",
+    "version": "1.0.0",
+    "lifecycle": "active",
+    "owner": "recovering-wide",
+    "repoRoot": "https://github.com/joshdwall/youareinthegame",
+    "readme": "readme/README.md",
+    "plans": [
+      "knowledge-hub/plans/site-hub/YouAreInTheGame-Site-Master-Plan.md",
+      "knowledge-hub/plans/site-hub/YouAreInTheGame-Character-Vignette-MVP-Plan.md"
+    ],
+    "tags": [
+      "static",
+      "site-hub",
+      "youareinthegame",
+      "mushroom-platypus",
+      "mirror",
+      "cloudflare-pages"
+    ]
+  },
+  "dependencies": {
+    "manifestFiles": [
+      "config/site-bundle.json",
+      "config/harness/authoring-manifest.json",
+      "config/site-connectors.json",
+      "config/mirror-sources.json"
+    ],
+    "connectors": [
+      "cloudflare-pages",
+      "pf-json-file",
+      "pf-local-files",
+      "replit-http-mirror"
+    ],
+    "npmPackage": null
+  },
+  "gateway": {
+    "mountPath": "/youareinthegame/",
+    "index": "index.html",
+    "harnessSiteId": "youareinthegame",
+    "isolation": "integrated"
+  },
+  "publish": {
+    "enabled": true,
+    "requiresBuild": false,
+    "publishRoot": ".",
+    "mode": "cloudflare-pages",
+    "publicUrl": "https://youareinthegame.com/",
+    "mvpUrl": "https://youareinthegame-mvp.pages.dev/",
+    "pagesDevUrl": "https://youareinthegame-mvp.pages.dev/",
+    "cloudflareProject": "youareinthegame-mvp",
+    "productionCloudflareProject": "youareinthegame",
+    "notes": "MVP publishes to youareinthegame-mvp only — no apex DNS change until operator sign-off. Production config: config/deploy-production.json"
+  },
+  "theme": {
+    "themeAdapterId": "static-html",
+    "defaultPackageId": null,
+    "notes": "Site-local CSS/JS mirror — no RTP pack"
+  },
+  "conversion": {
+    "canConvertToDynamic": false,
+    "notes": "Mirrored static HTML/CSS/ES modules from production Replit host"
+  },
+  "data": {
+    "connectorId": "pf-json-file",
+    "appId": "youareinthegame",
+    "localRoot": "content",
+    "envelopeMode": "mapped",
+    "exportOnPublish": false
+  },
+  "harness": {
+    "authoringManifest": "config/harness/authoring-manifest.json",
+    "visualEditSupported": true,
+    "domains": [
+      "content",
+      "characters",
+      "vignettes"
+    ]
+  },
+  "components": {
+    "bundleFile": "config/site-bundle.json"
+  },
+  "sharedComponents": [
+    {
+      "id": "pf-data-handler",
+      "role": "handler",
+      "path": "shared/data-handler"
+    },
+    {
+      "id": "pf-json-file",
+      "role": "connector",
+      "path": "shared/connectors/pf-json-file",
+      "scope": "content"
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "siteId": "youareinthegame",
+  "defaultVignetteId": "spores",
+  "vignettes": [
+    {
+      "id": "spores",
+      "label": "Spores",
+      "module": "./vignettes/spores/effect.js",
+      "category": "projectile",
+      "weight": 10,
+      "isSiteDefault": true,
+      "visibleInPool": true,
+      "projectile": {
+        "sprite": "effects/spore/mushroom-platypus-spores.png",
+        "behavior": "radial-burst"
+      },
+      "transitions": {
+        "pool": ["lightning", "feather-poof"],
+        "weights": { "lightning": 8, "feather-poof": 2 }
+      },
+      "rareRoll": { "enabled": false },
+      "meta": {
+        "description": "Classic radial spore burst on click."
+      }
+    },
+    {
+      "id": "cannons",
+      "label": "Cannons",
+      "module": "./vignettes/cannons/effect.js",
+      "category": "projectile",
+      "weight": 5,
+      "isSiteDefault": false,
+      "visibleInPool": true,
+      "projectile": {
+        "sprite": "assets/vignettes/cannons/pirate-spore.png",
+        "behavior": "cannon-volley-outward"
+      },
+      "props": {
+        "cannonSprite": "assets/vignettes/cannons/cannon.png",
+        "maxCannons": 6,
+        "initialCannons": 4,
+        "previewCannons": 6,
+        "ringRadiusPx": 130,
+        "ringPaddingPx": 40,
+        "cannonWidthPx": 96,
+        "cannonZIndex": 2,
+        "projectileWidthPx": 48,
+        "projectileSpeedMin": 200,
+        "projectileSpeedMax": 320,
+        "fireMode": "outward",
+        "spawnChanceOnClick": 0.25,
+        "volleyChanceOnClick": 0.85
+      },
+      "transitions": {
+        "pool": ["feather-poof", "lightning"],
+        "weights": { "feather-poof": 6, "lightning": 4 }
+      },
+      "rareRoll": {
+        "enabled": true,
+        "chance": 0.08,
+        "label": "broadside"
+      },
+      "meta": {
+        "description": "Cannons ring behind the character and fire pirate-spores outward from center. Placeholder art — replace assets anytime.",
+        "assetNotes": "cannon.png + pirate-spore.png are generated MVP silhouettes; swap files in assets/vignettes/cannons/ without code changes."
+      }
+    },
+    {
+      "id": "ghost-storm",
+      "label": "Ghost Storm",
+      "module": "./vignettes/ghost-storm/effect.js",
+      "category": "storm",
+      "weight": 2,
+      "isSiteDefault": false,
+      "visibleInPool": true,
+      "projectile": {
+        "sprite": "effects/spore/ghost/img/mushroom-platypus-ghost-spores.png",
+        "behavior": "storm"
+      },
+      "transitions": {
+        "pool": ["lightning"],
+        "weights": { "lightning": 10 }
+      },
+      "rareRoll": { "enabled": false },
+      "meta": {
+        "description": "Legacy ghost storm with progressive lightning (optional pool entry)."
+      }
+    }
+  ]
+}

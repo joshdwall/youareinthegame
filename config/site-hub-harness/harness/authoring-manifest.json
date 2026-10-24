@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "siteId": "youareinthegame",
+  "dataDependencies": {
+    "handler": "pf-data-handler",
+    "runtime": "harness-api",
+    "logicalKeys": [
+      "siteConfig",
+      "charactersRegistry",
+      "vignettesRegistry",
+      "globalEffectsRegistry",
+      "sessionPolicy",
+      "operatorSettings"
+    ]
+  },
+  "contentPaths": {
+    "siteConfig": "content/site-config.json",
+    "charactersRegistry": "content/characters-registry.json",
+    "vignettesRegistry": "content/vignettes-registry.json",
+    "globalEffectsRegistry": "content/global-effects-registry.json",
+    "sessionPolicy": "content/session-policy.json",
+    "mirrorManifest": "content/mirror-manifest.json",
+    "operatorSettings": "content/sites/youareinthegame/operator-settings.json"
+  },
+  "entityTypes": ["siteConfig", "characters", "vignettes"],
+  "git": {
+    "commitOnSave": false
+  }
+}

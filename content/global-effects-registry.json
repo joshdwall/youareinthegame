@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "siteId": "youareinthegame",
+  "defaultEffectId": "lightning",
+  "effects": [
+    {
+      "id": "lightning",
+      "label": "Lightning",
+      "module": "./global-effects/lightning/effect.js",
+      "weight": 8,
+      "meta": {
+        "description": "Ghost-lineage lightning flash sequence (GHOST_CONFIG + effect.css).",
+        "preview": { "flashCount": 4, "includeFinal": true }
+      }
+    },
+    {
+      "id": "feather-poof",
+      "label": "Feather Poof",
+      "module": "./global-effects/feather-poof/effect.js",
+      "weight": 4,
+      "meta": {
+        "description": "Upward drifting spore particles on vignette transition.",
+        "sprite": "effects/spore/mushroom-platypus-spores.png",
+        "particleCount": 20
+      }
+    }
+  ]
+}

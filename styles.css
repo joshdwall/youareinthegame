@@ -148,6 +148,22 @@ img {
 }
 
 /**
+ * Cannons vignette — props sit behind creature (z &lt; .creature), shots above.
+ */
+.cannon-prop {
+  position: absolute;
+  pointer-events: none;
+  z-index: 2;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
+.cannon-projectile {
+  z-index: 12 !important;
+}
+
+/**
  * Spore explosion animation
  */
 @keyframes explode {
@@ -243,5 +259,35 @@ img {
     height: 70px;
     bottom: calc(50% - 125px + 50px);
     right: calc(50% - 125px - 10px);
+  }
+}
+
+/**
+ * Character accessories (hat, etc.)
+ */
+.character-accessory {
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+}
+
+.cannon-prop {
+  opacity: 0.92;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.35));
+}
+
+.cannon-projectile {
+  z-index: 4;
+}
+
+@keyframes featherPoof {
+  0% {
+    opacity: 0.95;
+    transform: translate(0, 0) scale(0.6) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--drift-x, 0), var(--drift-y, -120px)) scale(1.1)
+      rotate(25deg);
   }
 }

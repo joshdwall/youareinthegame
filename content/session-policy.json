@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "siteId": "youareinthegame",
+  "sessionTtlHours": 6,
+  "storageKey": "yaitg_session_v1",
+  "allowUrlOverride": true,
+  "urlOverrideHosts": ["127.0.0.1", "localhost"],
+  "urlOverrideStagingHosts": ["youareinthegame-mvp.pages.dev"],
+  "characterSelection": {
+    "mode": "weighted",
+    "respectVisibleOnSite": true
+  },
+  "vignetteSelection": {
+    "mode": "weighted",
+    "respectAllowedVignetteIds": true,
+    "respectVisibleInPool": true
+  },
+  "transitionSelection": {
+    "mode": "weighted-from-vignette"
+  },
+  "workerPhase2": {
+    "enabled": true,
+    "endpoint": "/api/session-assignment",
+    "localGatewayEndpoint": "/api/yaitg/session-assignment",
+    "notes": "Signed HttpOnly cookie + IP rate limit. KV optional — see config/SESSION-WORKER-SETUP.md"
+  }
+}

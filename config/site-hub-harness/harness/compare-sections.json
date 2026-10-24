@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "siteProfileKey": "youareinthegame",
+  "sections": [
+    {
+      "id": "splash",
+      "label": "Splash",
+      "path": "/youareinthegame/",
+      "notes": "Mushroom Platypus canvas — character + vignette runtime"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "name": "youareinthegame",
+  "private": true,
+  "type": "module",
+  "description": "youareinthegame.com: Mushroom Platypus character/vignette site (Cloudflare Pages + Functions)",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "verify": "node tests/verify-yaitg-session-roll.mjs && node tests/verify-yaitg-animation-preview.mjs",
+    "test": "npm run verify",
+    "dev": "npm run build && npx wrangler pages dev dist",
+    "preview": "npm run build && npx wrangler pages deploy dist --project-name youareinthegame --branch preview",
+    "compare:staging": "node scripts/compare-staging.mjs"
+  }
+}
