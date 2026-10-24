@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "siteId": "youareinthegame",
+  "defaultCharacterId": "mushroom",
+  "characters": [
+    {
+      "id": "mushroom",
+      "label": "Mushroom",
+      "slug": "mushroom",
+      "visibleOnSite": true,
+      "sortOrder": 0,
+      "isSiteDefault": true,
+      "weight": 10,
+      "assets": {
+        "baseSprite": "img/mushroom-platypus.png",
+        "sticker": "img/Now With Spores Large Image Circular Blue Orange.png"
+      },
+      "defaultVignetteId": "spores",
+      "allowedVignetteIds": ["spores", "ghost-storm", "cannons"],
+      "accessories": [],
+      "meta": {
+        "description": "Original Mushroom Platypus — site default character."
+      }
+    },
+    {
+      "id": "pirate-mushroom",
+      "label": "Pirate Mushroom",
+      "slug": "pirate-mushroom",
+      "visibleOnSite": true,
+      "sortOrder": 10,
+      "isSiteDefault": false,
+      "weight": 5,
+      "assets": {
+        "baseSprite": "img/mushroom-platypus.png",
+        "sticker": "img/Now With Spores Large Image Circular Blue Orange.png"
+      },
+      "defaultVignetteId": "cannons",
+      "allowedVignetteIds": ["cannons", "spores"],
+      "accessories": [
+        {
+          "id": "hat",
+          "anchor": "head",
+          "src": "assets/characters/pirate-mushroom/hat.png",
+          "offsetX": 0,
+          "offsetY": -42,
+          "width": 120
+        }
+      ],
+      "meta": {
+        "description": "Mushroom with pirate hat — default Cannons vignette.",
+        "assetNotes": "hat.png is MVP placeholder; replace via harness or generate-character-asset CLI."
+      }
+    }
+  ]
+}

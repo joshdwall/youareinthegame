@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "siteProfileKey": "youareinthegame",
+  "modes": {
+    "editing": {
+      "insertAfter": "site-themes",
+      "tabs": [
+        {
+          "id": "characters-authoring",
+          "label": "Animations",
+          "title": "All animations + characters (site-specific)",
+          "tabModule": "./tabs/tab-characters-authoring.js",
+          "mountName": "mountCharactersAuthoringTab",
+          "scope": "site"
+        }
+      ]
+    },
+    "qa": {
+      "insertAfter": "qa",
+      "tabs": [
+        {
+          "id": "characters-authoring-qa",
+          "label": "Animations",
+          "title": "All animations + characters (site-specific)",
+          "tabModule": "./tabs/tab-characters-authoring.js",
+          "mountName": "mountCharactersAuthoringTab",
+          "scope": "site"
+        }
+      ]
+    }
+  }
+}

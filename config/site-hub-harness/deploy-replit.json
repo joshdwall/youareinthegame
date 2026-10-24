@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "siteId": "youareinthegame",
+  "enabled": false,
+  "description": "Legacy Replit host — mirror/sync only; publish disabled. Primary tenant is cloudflare-pages.",
+  "tenantId": "replit",
+  "backoffProfile": "replit",
+  "secretsRef": {
+    "replit": {
+      "connectSid": "secret://site.youareinthegame.replit.connect_sid",
+      "replSlug": "secret://site.youareinthegame.replit.repl_slug"
+    }
+  },
+  "replit": {
+    "replSlug": "youareinthegame",
+    "deployUrl": "https://youareinthegame.replit.app"
+  },
+  "preflight": {
+    "requireAssemble": false,
+    "requireResolvedTheme": false,
+    "requireCleanGit": false
+  }
+}

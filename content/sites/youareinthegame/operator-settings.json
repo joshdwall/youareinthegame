@@ -1,0 +1,7 @@
+{
+  "siteId": "youareinthegame",
+  "mvpPublishUrl": "https://youareinthegame-mvp.pages.dev/",
+  "productionUrl": "https://youareinthegame.com/",
+  "dnsCutover": false,
+  "notes": "Publish via deploy.json (MVP project). Restore deploy-production.json only after MVP verification."
+}

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "siteId": "youareinthegame",
+  "primaryUrl": "https://youareinthegame.com",
+  "legacyUrls": [
+    "https://youareinthegame.replit.app"
+  ],
+  "seeds": [
+    "effects/manifest.js"
+  ],
+  "notes": "HTTP mirror SSOT — dynamic import() targets must be listed in seeds."
+}

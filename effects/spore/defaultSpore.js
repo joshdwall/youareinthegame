@@ -10,7 +10,8 @@
 const DEFAULT_SPORE_CONFIG = {
     SPORE_COUNT: 16,
     BURST_LAYERS: 2,
-    SPORE_IMAGE: '/effects/spore/mushroom-platypus-spores.png',
+    // Site-relative (not gateway-root) so mount /youareinthegame/ resolves correctly
+    SPORE_IMAGE: 'effects/spore/mushroom-platypus-spores.png',
     SPRITE_WIDTH: 76,
     SPRITE_HEIGHT: 50,
     BASE_RADIUS: 60,
@@ -29,9 +30,11 @@ const DEFAULT_SPORE_CONFIG = {
  * @param {number} x - X coordinate relative to container
  * @param {number} y - Y coordinate relative to container
  * @param {HTMLElement} container - Container element to append spores to
+ * @param {Partial<typeof DEFAULT_SPORE_CONFIG>} [overrides] - registry-driven (e.g. projectile.sprite)
  */
-export function createDefaultSporeExplosion(x, y, container) {
-    const config = DEFAULT_SPORE_CONFIG;
+export function createDefaultSporeExplosion(x, y, container, overrides = {}) {
+    const config = { ...DEFAULT_SPORE_CONFIG, ...overrides };
+    if (overrides.SPORE_IMAGE) config.SPORE_IMAGE = overrides.SPORE_IMAGE;
 
     for (let layer = 0; layer < config.BURST_LAYERS; layer++) {
         const layerSporeCount = config.SPORE_COUNT / config.BURST_LAYERS;

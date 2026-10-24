@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "siteId": "youareinthegame",
+  "connectors": [
+    {
+      "id": "content-json",
+      "type": "pf-json-file",
+      "label": "Site content (JSON)",
+      "enabled": true,
+      "localRoot": "content",
+      "envelopeMode": "mapped",
+      "status": "active"
+    },
+    {
+      "id": "assets-local",
+      "type": "pf-local-files",
+      "label": "Static assets",
+      "enabled": true,
+      "localRoot": ".",
+      "includePaths": ["img", "effects"],
+      "status": "active"
+    },
+    {
+      "id": "cloudflare",
+      "type": "cloudflare-pages",
+      "label": "Cloudflare Pages (MVP staging)",
+      "enabled": true,
+      "ref": "config/deploy.json",
+      "customDomains": [],
+      "pagesDevUrl": "https://youareinthegame-mvp.pages.dev/",
+      "projectName": "youareinthegame-mvp",
+      "status": "mvp-staging",
+      "notes": "Production domains deferred — see deploy-production.json"
+    },
+    {
+      "id": "replit-legacy",
+      "type": "replit-http-mirror",
+      "label": "Replit (legacy sync)",
+      "enabled": true,
+      "ref": "config/deploy-replit.json",
+      "mirrorConfig": "config/mirror-sources.json",
+      "syncTool": "tools/sync-site-mirror.mjs",
+      "replSlug": "youareinthegame",
+      "legacyHost": "youareinthegame.replit.app",
+      "vaultKeys": {
+        "connectSid": "site.youareinthegame.replit.connect_sid",
+        "replSlug": "site.youareinthegame.replit.repl_slug"
+      },
+      "status": "legacy-maintain"
+    }
+  ],
+  "updatedAt": "2026-07-08T00:00:00.000Z"
+}

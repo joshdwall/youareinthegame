@@ -89,7 +89,7 @@ export const GHOST_CONFIG = {
         PHYSICS_UPDATE_RATE: 60,      // Physics updates per second
 
         // Asset
-        SPORE_IMAGE: '/effects/spore/ghost/img/mushroom-platypus-ghost-spores.png'
+        SPORE_IMAGE: 'effects/spore/ghost/img/mushroom-platypus-ghost-spores.png'
     },
 
     // Animation Timings (milliseconds)
@@ -111,14 +111,14 @@ export const GHOST_CONFIG = {
 
     // Asset Paths
     ASSETS: {
-        SPORE_IMAGE: '/effects/spore/ghost/img/mushroom-platypus-ghost-spores.png',
-        OVERLAY_IMAGE: '/effects/spore/ghost/img/ghost-platypus.png'
+        SPORE_IMAGE: 'effects/spore/ghost/img/mushroom-platypus-ghost-spores.png',
+        OVERLAY_IMAGE: 'effects/spore/ghost/img/ghost-platypus.png'
     },
 
     // Stylesheet Paths
     STYLESHEETS: {
-        EFFECT: '/effects/spore/ghost/effect.css',
-        FINALE: '/effects/spore/finale.css'
+        EFFECT: 'effects/spore/ghost/effect.css',
+        FINALE: 'effects/spore/finale.css'
     },
 
     // Effect-specific metadata

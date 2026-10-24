@@ -1,0 +1,13 @@
+# Cloudflare Pages — youareinthegame MVP (static + session API)
+name = "youareinthegame-mvp"
+compatibility_date = "2024-09-01"
+pages_build_output_dir = "dist"
+
+# Optional — create via: wrangler kv namespace create YAITG_SESSION_KV
+# [[kv_namespaces]]
+# binding = "YAITG_SESSION_KV"
+# id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[vars]
+YAITG_RATE_MAX = "12"
+YAITG_RATE_WINDOW_SEC = "3600"

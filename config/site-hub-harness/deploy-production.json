@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "siteId": "youareinthegame",
+  "enabled": true,
+  "description": "PRODUCTION Cloudflare Pages — youareinthegame.com. Use only after MVP sign-off. Do not publish until DNS cutover is intentional.",
+  "tenantId": "cloudflare-pages",
+  "backoffProfile": "cloudflare-pages",
+  "secretsRef": {
+    "cloudflare": {
+      "accountId": "secret://site.youareinthegame.cloudflare.account_id",
+      "apiToken": "secret://site.youareinthegame.cloudflare.api_token"
+    }
+  },
+  "cloudflare": {
+    "projectName": "youareinthegame",
+    "accountId": "${CLOUDFLARE_ACCOUNT_ID}",
+    "branch": "main"
+  },
+  "publishRoot": ".pages-deploy",
+  "preflight": {
+    "requireAssemble": false,
+    "requireResolvedTheme": false,
+    "requireCleanGit": false
+  }
+}
