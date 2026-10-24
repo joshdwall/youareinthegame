@@ -26,3 +26,10 @@ Deploy and promote follow knowledge-hub `plans/site-hub/YouAreInTheGame-CF-Nativ
 - `config/site-hub-harness/`: legacy site-hub harness metadata (not used by the build)
 - `reference/site-hub/`: the old local-gateway session handler, kept for reference only (superseded by `npm run dev`)
 - `docs/SESSION-WORKER-SETUP.md`: KV/secret setup notes
+
+
+## Deploy (Cloudflare git build, zero GitHub Actions minutes)
+- Pages project `youareinthegame-web` is connected to this repo. Every push to `main` is built by Cloudflare (`npm run build` → `dist`) and goes **straight to production** (youareinthegame.com, www). Branch previews are off.
+- Verify after a deploy: `bash scripts/verify-site.sh https://youareinthegame.com` (needs `npm run build` locally for the asset list and `npx playwright install chromium` for the click gate).
+- Rollback: in the Cloudflare dashboard, open Pages → youareinthegame-web → Deployments → Rollback (or the API `POST .../deployments/<id>/rollback`).
+- Bindings live on the Pages project and in `wrangler.toml` (KV id, rate vars). `YAITG_SESSION_SECRET` is a Pages secret whose source of truth is Infisical `/sites/youareinthegame`.

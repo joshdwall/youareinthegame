@@ -1,6 +1,6 @@
-# Cloudflare Pages project: youareinthegame (direct upload; apex + www attached).
-# Deploy only via `npm run preview` (scripts/pages-deploy.mjs). Production promote needs explicit sign-off.
-name = "youareinthegame"
+# Cloudflare Pages project: youareinthegame-web (git-connected; Cloudflare builds main = PRODUCTION; previews off).
+# Deploy = merge to main. No GitHub Actions. Rollback = Pages "Rollback" to a prior deployment.
+name = "youareinthegame-web"
 pages_build_output_dir = "dist"
 compatibility_date = "2024-09-23"
 
