@@ -10,15 +10,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SITE_DIR = path.resolve(__dirname, '..');
 const OUT_DIR = path.join(SITE_DIR, 'dist');
 
-const FILES = ['index.html', 'styles.css', 'script.js', 'mainConfig.js'];
+const FILES = ['_headers', 'index.html', 'styles.css', 'script.js', 'mainConfig.js'];
 const DIRS = [
   'effects',
   'img',
-  'content',
-  'assets',
-  'runtime',
-  'vignettes',
-  'global-effects'
+  'content'
 ];
 
 function rmrf(dir) {
