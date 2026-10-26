@@ -40,5 +40,27 @@ for (const c of CASES) {
   console.log(`${ok ? 'PASS' : 'FAIL'} ${c.character}/${c.vignette}${c.transition ? '+' + c.transition : ''} clicks=${c.clicks} effectNodes=${clickDelta}${c.transition ? ` after100th=${lastDelta}` : ''} classes=${r.classes.slice(0, 8).join(',')}${errors.length ? ' errors=' + errors.slice(0, 2).join(' | ') : ''}`);
   await page.close();
 }
+// Character click: own action (react class + ring), NOT the background spore; no text selection/caret.
+{
+  const page = await browser.newPage({ viewport: { width: 1000, height: 800 } });
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto(`${U}/`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(1500);
+  const pt = await page.evaluate(() => { const r = document.getElementById('mainCreature').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+  await page.evaluate(() => { window.__n = []; new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) window.__n.push(String(n.className)); }).observe(document.body, { childList: true, subtree: true }); });
+  await page.mouse.click(pt.x, pt.y);
+  await page.waitForTimeout(120);
+  const ch = await page.evaluate(() => ({ react: document.getElementById('mainCreature').classList.contains('creature--react'), nodes: window.__n.slice() }));
+  await page.mouse.click(40, 40, { clickCount: 3 });
+  await page.mouse.move(40, 40); await page.mouse.down(); await page.mouse.move(900, 700); await page.mouse.up();
+  const sel = await page.evaluate(() => ({ text: getSelection().toString(), us: getComputedStyle(document.body).userSelect, caret: getComputedStyle(document.body).caretColor, active: document.activeElement?.tagName }));
+  const ok = errors.length === 0 && ch.react && ch.nodes.includes('creature-react-ring') && sel.text === '' && sel.us === 'none' && sel.active === 'BODY';
+  if (!ok) fail++;
+  console.log(`${ok ? 'PASS' : 'FAIL'} character-click+no-select react=${ch.react} nodes=${[...new Set(ch.nodes)].join(',')} selection=${JSON.stringify(sel.text)} userSelect=${sel.us} caret=${sel.caret} active=${sel.active}${errors.length ? ' errors=' + errors[0] : ''}`);
+  if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT });
+  await page.close();
+
+}
 await browser.close();
 process.exit(fail ? 1 : 0);

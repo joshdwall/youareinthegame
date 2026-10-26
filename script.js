@@ -129,7 +129,23 @@ class MushroomPlatypusApp {
   }
 
   setupEventListeners() {
-    this.creature.addEventListener('click', (e) => this.handleCreatureClick(e));
+    this.creature.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Transparent pixels of the sprite count as background, not the character
+      if (!this.isOpaqueAt(e)) {
+        this.handleContainerClick(e);
+        return;
+      }
+      this.handleCreatureClick(e);
+    });
+    // Block selection/caret on mouse-down anywhere except real inputs
+    const blockSelect = (e) => {
+      if (e.target.closest && e.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+      e.preventDefault();
+    };
+    document.addEventListener('mousedown', blockSelect);
+    document.addEventListener('selectstart', blockSelect);
+    document.addEventListener('dblclick', blockSelect);
     if (this.sporeSticker) {
       this.sporeSticker.addEventListener('click', (e) => this.handleStickerClick(e));
     }
@@ -154,11 +170,52 @@ class MushroomPlatypusApp {
     }
 
     this.pulseCreature();
+    this.playCharacterAction(x, y);
     this.checkConsoleMessages();
 
     if (this.clickCount % 100 === 0) {
       this.considerVignetteTransition();
     }
+  }
+
+  /** Alpha hit-test of the sprite at the pointer (true on error so clicks never get lost). */
+  isOpaqueAt(e) {
+    try {
+      const img = this.creature;
+      if (!img.naturalWidth) return true;
+      if (!this._hitCanvas || this._hitSrc !== img.currentSrc) {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const ctx = c.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0);
+        this._hitCanvas = ctx; this._hitSrc = img.currentSrc;
+      }
+      const r = img.getBoundingClientRect();
+      const px = Math.floor(((e.clientX - r.left) / r.width) * img.naturalWidth);
+      const py = Math.floor(((e.clientY - r.top) / r.height) * img.naturalHeight);
+      // check a small neighbourhood so edges stay generous
+      const d = this._hitCanvas.getImageData(Math.max(0, px - 6), Math.max(0, py - 6), 13, 13).data;
+      for (let i = 3; i < d.length; i += 4) if (d[i] > 24) return true;
+      return false;
+    } catch {
+      return true;
+    }
+  }
+
+  /** Character's own click action: hop/squash animation + shock ring at the tap point. */
+  playCharacterAction(x, y) {
+    const el = this.creature;
+    el.classList.remove('creature--react');
+    void el.offsetWidth; // restart animation
+    el.classList.add('creature--react');
+    clearTimeout(this._reactTimer);
+    this._reactTimer = setTimeout(() => el.classList.remove('creature--react'), 650);
+    const ring = document.createElement('div');
+    ring.className = 'creature-react-ring';
+    ring.style.left = `${x}px`;
+    ring.style.top = `${y}px`;
+    this.container.appendChild(ring);
+    setTimeout(() => ring.remove(), 700);
   }
 
   handleStickerClick(e) {
