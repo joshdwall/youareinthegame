@@ -10,3 +10,5 @@
 | Pistol R | `revolver-r.webp` | Six-shooter, barrel up-right (outward for right hand) |
 
 Replaced 2026-10-30 (America/Chicago). Previous Delapouite / game-icons.net CC BY 3.0 SVG placeholders (`hat.svg`, `mustache.svg`, `revolver.svg`) removed.
+
+**Orientation note (2026-10-30):** Source hat pixels were stored crown-right / brim-vertical (no EXIF). Asset was rotated −90° CCW so the wearable orientation is crown-up / brim horizontal (`hat.webp` landscape).

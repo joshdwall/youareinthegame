@@ -2,49 +2,74 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <title>Cambio — You Are In The Game (admin)</title>
-  <link rel="stylesheet" href="/styles.css" />
-  <link rel="stylesheet" href="/cambio/cambio.css" />
+  <!-- Real public site styles = background stage (float, sage, creature) -->
+  <link rel="stylesheet" href="/styles.css?v=cowboy-connectors-1" />
+  <link rel="stylesheet" href="/cambio/cambio.css?v=cowboy-connectors-1" />
   <link rel="stylesheet" href="/effects/spore/ghost/effect.css" />
 </head>
 <body class="cambio-body">
-  <div id="cambioApp">
-    <aside class="cambio-panel" id="cambioPanel">
-      <header class="cambio-header">
-        <h1>Cambio</h1>
-        <p class="cambio-sub">Admin · Access-gated · public site unchanged</p>
-      </header>
-      <section>
-        <h2>Animations</h2>
-        <ul id="animList" class="cambio-list"></ul>
-      </section>
-      <section id="editSection" class="hidden">
-        <h2>Edit · <span id="editTitle"></span></h2>
-        <label class="cambio-field">Transition
-          <select id="transitionSelect"></select>
-        </label>
-        <ul id="elementList" class="cambio-list"></ul>
-        <div class="cambio-actions">
-          <button type="button" id="btnSave" class="btn primary">Save placements</button>
-          <button type="button" id="btnExitEdit" class="btn">Done</button>
-        </div>
-        <p id="saveStatus" class="cambio-status" aria-live="polite"></p>
-      </section>
-      <footer class="cambio-foot">
-        <a href="https://youareinthegame.com" target="_blank" rel="noopener">Open public site</a>
-      </footer>
-    </aside>
-    <main class="cambio-stage-wrap">
-      <div class="container cambio-stage" id="stage">
-        <img id="mainCreature" class="creature" src="/img/mushroom-platypus.png" alt="Mushroom Platypus" draggable="false" />
-        <img id="sporeSticker" class="sticker" src="/img/Now%20With%20Spores%20Large%20Image%20Circular%20Blue%20Orange.png" alt="" draggable="false" />
-        <div id="overlayLayer" class="cambio-overlay"></div>
-        <div id="lightningFlash" class="lightning-flash" hidden></div>
-      </div>
-      <p id="stageHint" class="stage-hint">Select Play or Edit from the list</p>
-    </main>
+  <!-- Real site stage (same markup shape as apex index.html) -->
+  <div class="container" id="siteStage">
+    <div class="creature-rig" id="creatureRig">
+      <img id="mainCreature" class="creature" src="/img/mushroom-platypus.png" alt="Mushroom Platypus" draggable="false" />
+      <div id="overlayLayer" class="cambio-overlay" aria-hidden="true"></div>
+      <div id="markerLayer" class="cambio-markers" aria-hidden="true"></div>
+    </div>
+    <img id="sporeSticker" class="spore-sticker" src="/img/Now%20With%20Spores%20Large%20Image%20Circular%20Blue%20Orange.png" alt="" draggable="false" />
+    <div id="lightningFlash" class="lightning-flash" hidden></div>
   </div>
-  <script type="module" src="/cambio/cambio.js"></script>
+
+  <!-- Harness overlays — far left / far right; character stays clear -->
+  <aside class="cambio-rail cambio-rail-left" id="cambioPanel">
+    <header class="cambio-header">
+      <h1>Cambio</h1>
+      <p class="cambio-sub">Admin · Access-gated · public site unchanged</p>
+    </header>
+    <section>
+      <h2>Animations</h2>
+      <ul id="animList" class="cambio-list"></ul>
+    </section>
+    <p id="stageHint" class="stage-hint-rail">Select Play or Edit</p>
+    <footer class="cambio-foot">
+      <a href="https://youareinthegame.com" target="_blank" rel="noopener">Open public site</a>
+    </footer>
+  </aside>
+
+  <aside class="cambio-rail cambio-rail-right hidden" id="editSection">
+    <h2>Edit · <span id="editTitle"></span></h2>
+    <label class="cambio-field">Transition
+      <select id="transitionSelect"></select>
+    </label>
+    <ul id="elementList" class="cambio-list"></ul>
+
+    <div id="selectedControls" class="selected-controls hidden">
+      <h3 id="selectedLabel">Object</h3>
+      <label class="cambio-field">Rotation
+        <div class="rot-row">
+          <input type="range" id="rotationSlider" min="-180" max="180" step="1" value="0" />
+          <input type="number" id="rotationNum" min="-180" max="180" step="1" value="0" />
+          <span>°</span>
+        </div>
+      </label>
+      <label class="cambio-field">Scale (width frac)
+        <input type="range" id="scaleSlider" min="0.08" max="1.2" step="0.01" value="0.4" />
+      </label>
+      <div class="connector-actions">
+        <button type="button" id="btnSetConnectors" class="btn primary">Set connectors</button>
+        <button type="button" id="btnResetConnectors" class="btn">Reset connectors</button>
+      </div>
+      <p id="connectorHint" class="cambio-status">Select an object, then Set connectors.</p>
+    </div>
+
+    <div class="cambio-actions">
+      <button type="button" id="btnSave" class="btn primary">Save placements</button>
+      <button type="button" id="btnExitEdit" class="btn">Done</button>
+    </div>
+    <p id="saveStatus" class="cambio-status" aria-live="polite"></p>
+  </aside>
+
+  <script type="module" src="/cambio/cambio.js?v=cowboy-connectors-1"></script>
 </body>
 </html>

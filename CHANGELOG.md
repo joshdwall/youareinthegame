@@ -8,6 +8,9 @@ SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.co
 ## 2026-10-30
 
 ### Changed
+- **Cambio connector-point attach + rotation + overlay harness** (`cowboy-connectors-1`): hat asset rotated −90° CCW (was stored crown-right / brim-vertical; no EXIF) so brim is horizontal; placement schema v2 `{objectAnchor, characterAnchor, rotation, scale, transition}` with migrate from v1 x/y; edit-mode rotation slider/numeric + rotate handle; two-click connectors (object then character) with markers + reset; props parented on `.creature-rig` float (bob with character); layout = real public site stage with left anim rail / right Edit rail overlays (character stays clear). MVP flag `preloadedAccessories` on animations (cowboy false). Apex remains ghost-only; no pages.dev.
+
+### Changed
 - **Final cowboy art** replaces Delapouite/game-icons SVG placeholders in `assets/animations/cowboy/` (`hat.webp`, `mustache.webp`, `revolver-l.webp`, `revolver-r.webp`). Operator-owned art; CC-BY attribution removed. Transparent WebP; manifest `?v=cowboy-final-1` cache-bust. Dedicated L/R revolvers (barrel outward); seed `flipX` false; Cambio prefers manifest flipX so saved KV placements keep positions/sizes without double-flipping. Public apex remains ghost-only.
 
 ### Added
