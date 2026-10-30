@@ -6,6 +6,12 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
 ## 2026-10-30
+### Added
+- **Character-overlay activation engine** (`effects/activation/`): shared Play/threshold sequence — transition + overlay flash + spore replicas + reset. Ghost profile uses apex assets/timings (`GHOST_CONFIG` + FireworkManager). Composite profile builds a CharacterComposite for flash and mini spores.
+
+### Fixed
+- **Cambio ghost Play** was a stub (dim + static sprites). Play now runs the activation engine so flash/spores/reset match the public apex threshold animation. Root cause: `playGhostSample()` never loaded GhostEffect/SporeBaseEffect.
+
 ### Checkpoint
 - **Cowboy placements SSOT** (`checkpoint-2026-10-30-cowboy-placed`): git tag + bundle; KV dump `data/cambio-placements.checkpoint.json`; KV backup key `cambio:placements:backup:2026-10-30-cowboy-placed`; seed `content/cambio-placements.json` synced to operator-approved placements. Activation Play plan phases A–D start from this checkpoint.
 

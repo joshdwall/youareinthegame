@@ -1,0 +1,14 @@
+.activation-composite {
+  pointer-events: none;
+}
+.activation-composite-base,
+.activation-composite-el {
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.activation-flash-layer.effect-overlay {
+  /* ghost img overlay uses effect.css; composite flash uses this shell */
+}
+.activation-spore {
+  will-change: transform, opacity;
+}

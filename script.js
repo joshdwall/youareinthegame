@@ -344,11 +344,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     const app = new MushroomPlatypusApp();
     await app.init();
 
-    // Expose app to global scope for debugging
+    // Always expose for harness/Playwright (no visual change). Verbose log only in debug.
+    window.mushroomPlatypusApp = app;
+    window.effectLoader = effectLoader;
     if (CONFIG.DEV_MODE || CONFIG.APP.DEBUG_MODE) {
-        window.mushroomPlatypusApp = app;
-        window.effectLoader = effectLoader;
-
         console.log('Debug mode enabled. Access app via window.mushroomPlatypusApp');
     }
 });

@@ -1,3 +1,4 @@
+import { runActivation } from '/effects/activation/ActivationEngine.js';
 /**
  * Cambio admin — Play / Edit with modal pencil editors (enVivo ✎/✓/✕).
  * Modes write only their own fields; Cancel restores a deep snapshot.
@@ -741,77 +742,85 @@ function exitEdit() {
   $('stageHint').textContent = 'Select Play or Edit';
 }
 
-async function playLightning() {
-  flash.hidden = false;
-  for (let i = 0; i < 5; i++) {
-    flash.classList.add('on');
-    await wait(40 + Math.random() * 80);
-    flash.classList.remove('on');
-    await wait(60 + Math.random() * 120);
-  }
-  flash.hidden = true;
-}
-
 function wait(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+/** Build composite element list from manifest + saved placements. */
+function compositeElementsFor(animId) {
+  const anim = state.manifest.animations.find((a) => a.id === animId);
+  if (!anim?.elements?.length) return [];
+  const place = ensureAnimPlacement(animId);
+  return anim.elements.map((el) => {
+    let st = place.elements[el.id];
+    if (!st) st = defaultElementState(anim, el);
+    else st = migrateElement(st);
+    return {
+      id: el.id,
+      src: el.src.startsWith('/') ? el.src : '/' + el.src.replace(/^\//, ''),
+      placement: st
+    };
+  });
+}
+
+/**
+ * Play = activate. Ghost uses image-overlay + firework spores (apex parity).
+ * Cowboy (and future overlays) use composite flash + mini composite spores.
+ */
 async function playAnimation(animId) {
   const anim = state.manifest.animations.find((a) => a.id === animId);
   if (!anim) return;
+  if (state._activationBusy) {
+    $('stageHint').textContent = 'Activation already playing…';
+    return;
+  }
   state.selectedAnim = anim;
   [...animList.children].forEach((li) => li.classList.toggle('active', li.dataset.id === animId));
+  // Clear edit overlays for a clean activate pass
   overlay.innerHTML = '';
   markerLayer.innerHTML = '';
   $('stageHint').textContent = `Playing ${anim.label}…`;
+  state._activationBusy = true;
 
-  if (anim.playMode === 'legacy-ghost') {
-    await playGhostSample();
-    $('stageHint').textContent = 'Ghost play finished';
-    return;
-  }
-
-  const place = ensureAnimPlacement(animId);
-  const transition = place.transitionId || 'lightning';
-  if (transition === 'lightning') await playLightning();
-  mountProps(animId, { interactive: false, visible: true });
-  overlay.style.opacity = '0';
-  overlay.style.transition = 'opacity 180ms ease-out';
-  requestAnimationFrame(() => { overlay.style.opacity = '1'; });
-  await wait(2200);
-  if (!state.editMode) {
-    if (!anim.preloadedAccessories) {
-      overlay.innerHTML = '';
-      markerLayer.innerHTML = '';
+  const container = $('siteStage');
+  try {
+    if (anim.playMode === 'legacy-ghost' || anim.id === 'ghost') {
+      await runActivation({
+        container,
+        creature,
+        creatureRig,
+        sporeHost: container,
+        profile: 'ghost'
+      });
+      $('stageHint').textContent = 'Ghost play finished';
+      return;
     }
-    overlay.style.transition = '';
-    overlay.style.opacity = '1';
-  } else {
-    mountProps(animId, { interactive: true });
-  }
-  $('stageHint').textContent = `${anim.label} play finished`;
-}
 
-async function playGhostSample() {
-  const stage = $('siteStage');
-  stage.style.filter = 'brightness(0.55)';
-  await playLightning();
-  const box = creatureBoxInRig();
-  const layer = document.createElement('div');
-  layer.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:6;';
-  for (let i = 0; i < 12; i++) {
-    const img = document.createElement('img');
-    img.src = '/effects/spore/ghost/img/ghost-platypus.png';
-    img.alt = '';
-    const ang = (Math.PI * 2 * i) / 12;
-    const dist = 40 + Math.random() * 90;
-    img.style.cssText = `position:absolute;width:48px;left:${box.left + box.width / 2 + Math.cos(ang) * dist}px;top:${box.top + box.height / 2 + Math.sin(ang) * dist}px;transform:translate(-50%,-50%);opacity:0.85;`;
-    layer.appendChild(img);
+    // Character-overlay activation (cowboy + future)
+    const elements = compositeElementsFor(animId);
+    await runActivation({
+      container,
+      creature,
+      creatureRig,
+      sporeHost: container,
+      profile: 'composite',
+      composite: {
+        baseSrc: creature.getAttribute('src') || '/img/mushroom-platypus.png',
+        elements
+      },
+      spore: { count: 8, scale: 0.32, durationMs: 1800, spreadPx: 140 }
+    });
+
+    if (state.editMode) {
+      mountProps(animId, { interactive: true });
+    }
+    $('stageHint').textContent = `${anim.label} play finished`;
+  } catch (err) {
+    console.error('activation failed', err);
+    $('stageHint').textContent = `Play failed: ${err.message || err}`;
+  } finally {
+    state._activationBusy = false;
   }
-  overlay.appendChild(layer);
-  await wait(1600);
-  overlay.innerHTML = '';
-  stage.style.filter = '';
 }
 
 async function savePlacements() {
@@ -842,6 +851,9 @@ async function savePlacements() {
 
 /** Test helpers exposed for Playwright */
 window.__cambioTest = {
+  runActivationPlay: (id) => playAnimation(id),
+  compositeElementsFor,
+
   getState: () => state,
   mountProps,
   creatureBoxInRig,
