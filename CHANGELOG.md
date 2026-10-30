@@ -6,6 +6,9 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
 ## 2026-10-30
+### Changed
+- **Cowboy Play** uses the shared activation engine with saved placements (KV/seed SSOT): lightning + composite flash (hat, mustache, left/right pistols) + mini cowboy spore replicas + reset. Manifest `playMode: character-overlay`. Public apex still ghost-only.
+
 ### Added
 - **Character-overlay activation engine** (`effects/activation/`): shared Play/threshold sequence — transition + overlay flash + spore replicas + reset. Ghost profile uses apex assets/timings (`GHOST_CONFIG` + FireworkManager). Composite profile builds a CharacterComposite for flash and mini spores.
 

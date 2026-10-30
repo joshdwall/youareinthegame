@@ -10,13 +10,15 @@
       "elements": [],
       "transitionsAvailable": [
         "lightning"
-      ]
+      ],
+      "type": "character-overlay-activation",
+      "overlayFlashMode": "image"
     },
     {
       "id": "cowboy",
       "label": "Cowboy",
       "editable": true,
-      "playMode": "success-appear",
+      "playMode": "character-overlay",
       "elements": [
         {
           "id": "hat",
@@ -49,7 +51,9 @@
         "lightning",
         "none"
       ],
-      "preloadedAccessories": false
+      "preloadedAccessories": false,
+      "type": "character-overlay-activation",
+      "overlayFlashMode": "composite"
     }
   ]
 }
