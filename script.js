@@ -9,6 +9,7 @@ import { CONFIG } from './mainConfig.js';
 // Import modular systems
 import effectLoader from './effects/EffectLoader.js';
 import { createDefaultSporeExplosion } from './effects/spore/defaultSpore.js';
+import { installThresholdLootHook } from './runtime/public/thresholdActivation.js';
 
 /**
  * Main application controller
@@ -78,6 +79,7 @@ class MushroomPlatypusApp {
             throw new Error('No effects available');
         }
 
+        installThresholdLootHook(this.currentEffect);
         console.log('Loaded initial effect:', this.currentEffect.constructor.name);
 
         // Preload next effect if enabled

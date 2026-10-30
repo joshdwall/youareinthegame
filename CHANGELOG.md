@@ -7,6 +7,10 @@ SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.co
 
 ## 2026-10-30
 
+### Added
+- **Loot table + IMMEDIATE live CRUD.** Weighted pick on public click threshold (`chance = weight / sum`); launch cowboy **3** / ghost **1** → **75/25**. Runtime config in KV `cambio:runtime-config` (git seed fallback). Public `GET /api/animations` (~15s cache). Access CRUD: `/api/cambio/runtime-config`, `/api/cambio/animations`, `/api/cambio/animations/:id`, `/api/cambio/assets` (R2 `youareinthegame-assets`, quota warn 60% / block 80%), `/api/cambio/export-to-repo`. Cambio: searchable list, Live checkbox (immediate), tier/weight/live %, Create / Archive; ghost placement locked. Public apex runs ActivationEngine for cowboy (parity with Cambio); ghost climax unchanged. Checkpoint `checkpoint-2026-10-30-pre-loot-table` @ `b533e72`. Tests: `tests/loot-table-weights.test.mjs` (400 sims ±5%), `tests/loot-public-activation-test.mjs`.
+
+
 ### Fixed
 - **Cowboy Play mini spores invisible** during activation. Root cause: composite profile launched spores via a short radial fade from `boxInContainer`/`flashParent` coordinates (creature-rig space) with z-index 8 under `.creature-rig` (10), so replicas were either off the fixed `#siteStage` origin, clipped, or stacked behind the character — not the FireworkManager/SporeBaseEffect path ghost uses (viewport center + `LAUNCH_OFFSET_Y`). Fix: same FireworkManager launch + ghost spawn origin; mini cowboy composites sized near ghost spore sprites; z-index 25; image preload before scale. Playwright asserts cowboy spores in viewport, opacity > 0.5, size ≥ 24px, top-most via `elementFromPoint`, and spawn origin within ~10px of ghost @ 1920×1080 & 1366×768. Side-by-side frames: `capture/yaitg-activation/spore-side-by-side-*.png`.
 

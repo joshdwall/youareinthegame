@@ -16,7 +16,8 @@ const DIRS = [
   'img',
   'content',
   'cambio',
-  'assets'
+  'assets',
+  'runtime'
 ];
 
 function rmrf(dir) {

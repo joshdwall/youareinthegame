@@ -12,7 +12,13 @@
         "lightning"
       ],
       "type": "character-overlay-activation",
-      "overlayFlashMode": "image"
+      "overlayFlashMode": "image",
+      "live": true,
+      "archived": false,
+      "placementEditable": false,
+      "tier": "legendary",
+      "multiplier": 1,
+      "weight": 1
     },
     {
       "id": "cowboy",
@@ -53,7 +59,14 @@
       ],
       "preloadedAccessories": false,
       "type": "character-overlay-activation",
-      "overlayFlashMode": "composite"
+      "overlayFlashMode": "composite",
+      "live": true,
+      "archived": false,
+      "placementEditable": true,
+      "tier": "legendary",
+      "multiplier": 3,
+      "weight": 3
     }
-  ]
+  ],
+  "updatedAt": "2026-10-30T23:45:00.000Z"
 }

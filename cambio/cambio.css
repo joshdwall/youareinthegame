@@ -270,3 +270,77 @@
   border-color: #f0c14b;
   background: rgba(240, 193, 75, 0.12);
 }
+
+.cambio-search {
+  width: 100%;
+  margin: 0.35rem 0 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,.2);
+  background: rgba(0,0,0,.25);
+  color: inherit;
+}
+.cambio-create-row {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+.cambio-list li {
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.cambio-list .loot-meta {
+  flex: 1 1 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  opacity: 0.9;
+}
+.cambio-list .loot-meta label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+}
+.cambio-list .loot-meta input[type="number"] {
+  width: 3.2rem;
+  padding: 0.15rem;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,.2);
+  background: rgba(0,0,0,.3);
+  color: inherit;
+}
+.cambio-list .pct {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+.cambio-list li.archived {
+  opacity: 0.45;
+}
+.cambio-dialog {
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 10px;
+  padding: 1rem 1.2rem;
+  background: #1a2228;
+  color: #e8eef2;
+  max-width: 360px;
+}
+.cambio-dialog::backdrop { background: rgba(0,0,0,.55); }
+.cambio-dialog label {
+  display: block;
+  margin: 0.5rem 0;
+  font-size: 0.85rem;
+}
+.cambio-dialog input, .cambio-dialog select {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.35rem;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,.2);
+  background: rgba(0,0,0,.35);
+  color: inherit;
+}
+.cambio-dialog input[type="checkbox"] { width: auto; display: inline; }

@@ -1,0 +1,163 @@
+export const RUNTIME_KV_KEY = 'cambio:runtime-config';
+export const PLACEMENTS_KV_KEY = 'cambio:placements';
+export const R2_QUOTA_KV_KEY = 'cambio:r2-quota';
+
+/** Free-tier R2 caps (bytes / ops per month). Warn 60% / block 80%. */
+export const R2_FREE = {
+  storageBytes: 10_000_000_000,
+  classAOpsPerMonth: 1_000_000,
+  classBOpsPerMonth: 10_000_000,
+  warnAt: 0.6,
+  blockAt: 0.8,
+  maxObjectBytes: 8_000_000
+};
+
+/** Built-in seed (mirrors content/runtime-config.json). Used when KV empty and fetch of static fails. */
+export const BUILTIN_SEED = {
+  schemaVersion: 1,
+  tiers: {
+    common: { label: 'Common', weight: 100 },
+    uncommon: { label: 'Uncommon', weight: 40 },
+    rare: { label: 'Rare', weight: 10 },
+    legendary: { label: 'Legendary', weight: 1 }
+  },
+  flags: { noRepeatTwice: false },
+  seasons: [],
+  animations: [
+    {
+      id: 'ghost',
+      label: 'Ghost',
+      editable: false,
+      placementEditable: false,
+      live: true,
+      archived: false,
+      module: './effects/spore/ghost/effect.js',
+      playMode: 'legacy-ghost',
+      elements: [],
+      transitionsAvailable: ['lightning'],
+      type: 'character-overlay-activation',
+      overlayFlashMode: 'image',
+      tier: 'legendary',
+      multiplier: 1,
+      weight: 1
+    },
+    {
+      id: 'cowboy',
+      label: 'Cowboy',
+      editable: true,
+      placementEditable: true,
+      live: true,
+      archived: false,
+      playMode: 'character-overlay',
+      elements: [
+        { id: 'hat', anchor: 'head', src: 'assets/animations/cowboy/hat.webp?v=cowboy-connectors-1', defaultWidthFrac: 0.55 },
+        { id: 'mustache', anchor: 'bill', src: 'assets/animations/cowboy/mustache.webp?v=cowboy-connectors-1', defaultWidthFrac: 0.38 },
+        { id: 'pistolL', anchor: 'handL', src: 'assets/animations/cowboy/revolver-l.webp?v=cowboy-connectors-1', defaultWidthFrac: 0.28, flipX: false },
+        { id: 'pistolR', anchor: 'handR', src: 'assets/animations/cowboy/revolver-r.webp?v=cowboy-connectors-1', defaultWidthFrac: 0.28, flipX: false }
+      ],
+      transitionsAvailable: ['lightning', 'none'],
+      preloadedAccessories: false,
+      type: 'character-overlay-activation',
+      overlayFlashMode: 'composite',
+      tier: 'legendary',
+      multiplier: 3,
+      weight: 3
+    }
+  ]
+};
+
+export function normalizeConfig(raw) {
+  const base = raw && typeof raw === 'object' ? raw : {};
+  const seed = BUILTIN_SEED;
+  return {
+    schemaVersion: base.schemaVersion || 1,
+    updatedAt: base.updatedAt || new Date().toISOString(),
+    tiers: base.tiers || seed.tiers,
+    flags: { noRepeatTwice: false, ...(base.flags || {}) },
+    seasons: Array.isArray(base.seasons) ? base.seasons : [],
+    animations: Array.isArray(base.animations) && base.animations.length
+      ? base.animations
+      : seed.animations
+  };
+}
+
+export async function readRuntimeConfig(env) {
+  if (env?.YAITG_SESSION_KV) {
+    try {
+      const raw = await env.YAITG_SESSION_KV.get(RUNTIME_KV_KEY, 'json');
+      if (raw) return { config: normalizeConfig(raw), source: 'kv' };
+    } catch (_) { /* fall through */ }
+  }
+  return { config: normalizeConfig(BUILTIN_SEED), source: 'seed' };
+}
+
+export async function writeRuntimeConfig(env, config) {
+  if (!env?.YAITG_SESSION_KV) throw new Error('kv_missing');
+  const normalized = normalizeConfig({
+    ...config,
+    updatedAt: new Date().toISOString()
+  });
+  await env.YAITG_SESSION_KV.put(RUNTIME_KV_KEY, JSON.stringify(normalized));
+  return normalized;
+}
+
+export function publicView(config) {
+  const live = (config.animations || []).filter((a) => a.live && !a.archived);
+  return {
+    schemaVersion: config.schemaVersion,
+    updatedAt: config.updatedAt,
+    tiers: config.tiers,
+    flags: config.flags,
+    seasons: config.seasons,
+    animations: live
+  };
+}
+
+export function monthKey(d = new Date()) {
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+export async function readR2Quota(env) {
+  const key = monthKey();
+  let row = null;
+  try {
+    row = await env.YAITG_SESSION_KV?.get(R2_QUOTA_KV_KEY, 'json');
+  } catch (_) {}
+  if (!row || row.month !== key) {
+    row = { month: key, storageBytes: 0, classA: 0, classB: 0 };
+  }
+  return row;
+}
+
+export async function writeR2Quota(env, row) {
+  await env.YAITG_SESSION_KV.put(R2_QUOTA_KV_KEY, JSON.stringify(row));
+}
+
+/**
+ * @param {'classA'|'classB'} kind
+ * @param {number} [bytesDelta] storage change for puts/deletes
+ */
+export function r2Allowed(quota, kind, bytesDelta = 0) {
+  const f = R2_FREE;
+  const nextStorage = quota.storageBytes + bytesDelta;
+  const nextA = quota.classA + (kind === 'classA' ? 1 : 0);
+  const nextB = quota.classB + (kind === 'classB' ? 1 : 0);
+  const ratios = {
+    storage: nextStorage / f.storageBytes,
+    classA: nextA / f.classAOpsPerMonth,
+    classB: nextB / f.classBOpsPerMonth
+  };
+  const maxRatio = Math.max(ratios.storage, ratios.classA, ratios.classB);
+  if (bytesDelta > f.maxObjectBytes) {
+    return { ok: false, error: 'r2_object_too_large', maxRatio, ratios };
+  }
+  if (maxRatio >= f.blockAt) {
+    return { ok: false, error: 'r2_quota_block', maxRatio, ratios };
+  }
+  return {
+    ok: true,
+    warn: maxRatio >= f.warnAt,
+    maxRatio,
+    ratios
+  };
+}

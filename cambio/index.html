@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <title>Cambio — You Are In The Game (admin)</title>
   <!-- Real public site styles = background stage (float, sage, creature) -->
-  <link rel="stylesheet" href="/styles.css?v=activation-1" />
-  <link rel="stylesheet" href="/cambio/cambio.css?v=activation-1" />
+  <link rel="stylesheet" href="/styles.css?v=loot-1" />
+  <link rel="stylesheet" href="/cambio/cambio.css?v=loot-1" />
   <link rel="stylesheet" href="/effects/spore/ghost/effect.css" />
   <link rel="stylesheet" href="/effects/spore/finale.css" />
-  <link rel="stylesheet" href="/effects/activation/activation.css?v=activation-1" />
+  <link rel="stylesheet" href="/effects/activation/activation.css?v=loot-1" />
 </head>
 <body class="cambio-body">
   <!-- Real site stage (same markup shape as apex index.html) -->
@@ -31,8 +31,43 @@
     </header>
     <section>
       <h2>Animations</h2>
+      <input type="search" id="animSearch" class="cambio-search" placeholder="Search animations…" autocomplete="off" />
+      <div class="cambio-create-row">
+        <button type="button" class="btn" id="btnCreateAnim">+ Create</button>
+        <button type="button" class="btn" id="btnExportRepo" title="Snapshot KV → git">Export→git</button>
+      </div>
       <ul id="animList" class="cambio-list"></ul>
+      <p id="poolHint" class="cambio-status" style="font-size:.75rem"></p>
     </section>
+    <dialog id="createDialog" class="cambio-dialog">
+      <form method="dialog" id="createForm">
+        <h3>Create animation</h3>
+        <label>Name <input name="label" required maxlength="48" /></label>
+        <label>Type
+          <select name="type">
+            <option value="character-overlay-activation" selected>character-overlay activation</option>
+          </select>
+        </label>
+        <label>Tier
+          <select name="tier">
+            <option value="common">Common (100)</option>
+            <option value="uncommon">Uncommon (40)</option>
+            <option value="rare">Rare (10)</option>
+            <option value="legendary" selected>Legendary (1)</option>
+          </select>
+        </label>
+        <label>Multiplier <input name="multiplier" type="number" min="0" step="0.1" value="1" /></label>
+        <label>Live <input name="live" type="checkbox" checked /></label>
+        <label>Element assets (webp/png)
+          <input name="files" type="file" accept="image/webp,image/png,image/jpeg" multiple />
+        </label>
+        <div class="ie-actions">
+          <button value="cancel" class="btn">Cancel</button>
+          <button value="ok" class="btn primary" id="btnCreateSubmit">Create</button>
+        </div>
+        <p id="createStatus" class="cambio-status"></p>
+      </form>
+    </dialog>
     <p id="stageHint" class="stage-hint-rail">Select Play or Edit</p>
     <footer class="cambio-foot">
       <a href="https://youareinthegame.com" target="_blank" rel="noopener">Open public site</a>
@@ -151,6 +186,6 @@
     <p id="saveStatus" class="cambio-status" aria-live="polite"></p>
   </aside>
 
-  <script type="module" src="/cambio/cambio.js?v=activation-1"></script>
+  <script type="module" src="/cambio/cambio.js?v=loot-1"></script>
 </body>
 </html>

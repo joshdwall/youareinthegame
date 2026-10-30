@@ -12,3 +12,7 @@ YAITG_RATE_WINDOW_SEC = "3600"
 [[kv_namespaces]]
 binding = "YAITG_SESSION_KV"
 id = "384434fdf4f241be872e33e6c5fcbff3"
+
+[[r2_buckets]]
+binding = "YAITG_ASSETS_R2"
+bucket_name = "youareinthegame-assets"

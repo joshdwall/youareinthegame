@@ -6,12 +6,17 @@ import { runActivation } from '/effects/activation/ActivationEngine.js';
  */
 const state = {
   manifest: null,
+  runtimeConfig: null,
+  tiers: null,
+  flags: null,
+  seasons: null,
   anchors: null,
   placements: null,
   selectedAnim: null,
   editMode: false,
   selectedElementId: null,
   dirty: false,
+  animFilter: '',
   /** null | 'connector' | 'rotation' | 'move' | 'size' | 'transition' */
   activeMode: null,
   /** Deep clone of element (or transitionId) when mode opened */
@@ -57,6 +62,90 @@ function selectedLabel() {
 function deepClone(v) {
   return JSON.parse(JSON.stringify(v));
 }
+
+function slugify(label) {
+  return String(label || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 40) || `anim-${Date.now()}`;
+}
+
+function effectiveWeight(anim) {
+  if (anim.weight != null && Number.isFinite(+anim.weight)) return Math.max(0, +anim.weight);
+  const tierW = state.tiers?.[anim.tier]?.weight ?? 1;
+  const mult = Number.isFinite(+anim.multiplier) ? +anim.multiplier : 1;
+  return Math.max(0, tierW * mult);
+}
+
+function livePercents() {
+  const live = (state.runtimeConfig?.animations || []).filter((a) => a.live && !a.archived);
+  const sum = live.reduce((s, a) => s + effectiveWeight(a), 0);
+  const map = {};
+  for (const a of live) {
+    map[a.id] = sum > 0 ? (effectiveWeight(a) / sum) * 100 : 0;
+  }
+  return map;
+}
+
+function syncManifestFromRuntime() {
+  if (!state.runtimeConfig) return;
+  state.manifest = {
+    schemaVersion: state.runtimeConfig.schemaVersion || 1,
+    updatedAt: state.runtimeConfig.updatedAt,
+    animations: (state.runtimeConfig.animations || []).filter((a) => !a.archived)
+  };
+  state.tiers = state.runtimeConfig.tiers;
+  state.flags = state.runtimeConfig.flags;
+  state.seasons = state.runtimeConfig.seasons || [];
+}
+
+async function apiJson(url, opts = {}) {
+  const r = await fetch(url, {
+    credentials: 'include',
+    cache: 'no-store',
+    headers: { 'content-type': 'application/json', ...(opts.headers || {}) },
+    ...opts
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok || data.ok === false) {
+    throw new Error(data.error || `${url} ${r.status}`);
+  }
+  return data;
+}
+
+async function persistRuntime(patchReason) {
+  const body = {
+    ...state.runtimeConfig,
+    updatedAt: new Date().toISOString(),
+    reason: patchReason || 'cambio-ui'
+  };
+  const data = await apiJson('/api/cambio/runtime-config', {
+    method: 'PUT',
+    body: JSON.stringify(body)
+  });
+  state.runtimeConfig = data.config || body;
+  syncManifestFromRuntime();
+  renderAnimList();
+  return data;
+}
+
+async function patchAnimation(id, patch) {
+  const data = await apiJson(`/api/cambio/animations/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch)
+  });
+  if (data.config) {
+    state.runtimeConfig = data.config;
+  } else {
+    const idx = state.runtimeConfig.animations.findIndex((a) => a.id === id);
+    if (idx >= 0) state.runtimeConfig.animations[idx] = { ...state.runtimeConfig.animations[idx], ...patch };
+  }
+  syncManifestFromRuntime();
+  renderAnimList();
+  return data;
+}
+
 
 async function loadJson(url) {
   const r = await fetch(url, { cache: 'no-store' });
@@ -107,14 +196,36 @@ function migratePlacements(data) {
 }
 
 async function boot() {
-  const [manifest, anchors, seed] = await Promise.all([
+  const [manifestSeed, anchors, seed, runtimeSeed] = await Promise.all([
     loadJson('/content/animations-manifest.json'),
     loadJson('/content/character-anchors.json'),
-    loadJson('/content/cambio-placements.json')
+    loadJson('/content/cambio-placements.json'),
+    loadJson('/content/runtime-config.json').catch(() => null)
   ]);
-  state.manifest = manifest;
   state.anchors = anchors;
   state.placements = migratePlacements(seed);
+  state.runtimeConfig = runtimeSeed;
+  try {
+    const rc = await apiJson('/api/cambio/runtime-config');
+    if (rc?.config) state.runtimeConfig = rc.config;
+  } catch (_) { /* seed */ }
+  if (!state.runtimeConfig) {
+    state.runtimeConfig = {
+      schemaVersion: 1,
+      tiers: { common: { label: 'Common', weight: 100 }, uncommon: { label: 'Uncommon', weight: 40 }, rare: { label: 'Rare', weight: 10 }, legendary: { label: 'Legendary', weight: 1 } },
+      flags: { noRepeatTwice: false },
+      seasons: [],
+      animations: (manifestSeed.animations || []).map((a) => ({
+        ...a,
+        live: a.id === 'ghost' || a.id === 'cowboy',
+        archived: false,
+        tier: 'legendary',
+        multiplier: a.id === 'cowboy' ? 3 : 1,
+        weight: a.id === 'cowboy' ? 3 : 1
+      }))
+    };
+  }
+  syncManifestFromRuntime();
   try {
     const r = await fetch('/api/cambio/placements', { credentials: 'include', cache: 'no-store' });
     if (r.ok) {
@@ -133,6 +244,24 @@ async function boot() {
   }
 
   renderAnimList();
+  $('animSearch')?.addEventListener('input', (e) => {
+    state.animFilter = e.target.value || '';
+    renderAnimList();
+  });
+  $('btnCreateAnim')?.addEventListener('click', () => {
+    const d = $('createDialog');
+    if (d) { $('createStatus').textContent = ''; d.showModal(); }
+  });
+  $('createForm')?.addEventListener('submit', onCreateSubmit);
+  $('btnExportRepo')?.addEventListener('click', async () => {
+    try {
+      saveStatus.textContent = 'Exporting…';
+      const data = await apiJson('/api/cambio/export-to-repo', { method: 'POST', body: '{}' });
+      saveStatus.textContent = data.message || (data.ok ? 'Exported' : 'Export unavailable');
+    } catch (err) {
+      saveStatus.textContent = `Export: ${err.message}`;
+    }
+  });
   $('btnSave').addEventListener('click', savePlacements);
   $('btnExitEdit').addEventListener('click', () => exitEdit());
 
@@ -360,9 +489,18 @@ function resetConnectorsInMode() {
 
 function renderAnimList() {
   animList.innerHTML = '';
-  for (const anim of state.manifest.animations) {
+  const pcts = livePercents();
+  const q = (state.animFilter || '').trim().toLowerCase();
+  const all = state.runtimeConfig?.animations || state.manifest.animations || [];
+  const visible = all.filter((a) => {
+    if (a.archived && !q) return false;
+    if (!q) return true;
+    return `${a.id} ${a.label} ${a.tier || ''}`.toLowerCase().includes(q);
+  });
+  for (const anim of visible) {
     const li = document.createElement('li');
     li.dataset.id = anim.id;
+    if (anim.archived) li.classList.add('archived');
     li.innerHTML = `<span class="label">${anim.label}</span>`;
     const play = document.createElement('button');
     play.type = 'button';
@@ -370,23 +508,182 @@ function renderAnimList() {
     play.textContent = 'Play';
     play.addEventListener('click', () => playAnimation(anim.id));
     li.appendChild(play);
-    if (anim.editable) {
+    const canEditPlacement = anim.editable !== false && anim.placementEditable !== false && anim.id !== 'ghost';
+    if (canEditPlacement) {
       const edit = document.createElement('button');
       edit.type = 'button';
       edit.className = 'btn';
       edit.textContent = 'Edit';
       edit.addEventListener('click', () => enterEdit(anim.id));
       li.appendChild(edit);
-    } else {
+    } else if (anim.id === 'ghost') {
       const note = document.createElement('span');
       note.style.fontSize = '.7rem';
       note.style.opacity = '.65';
-      note.textContent = 'play-only';
+      note.textContent = 'placement locked';
       li.appendChild(note);
     }
+    if (anim.editable !== false && anim.id !== 'ghost') {
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'btn';
+      del.textContent = anim.archived ? 'Restore' : 'Archive';
+      del.addEventListener('click', async () => {
+        if (!anim.archived && !confirm(`Archive "${anim.label}"? It will leave the live pool.`)) return;
+        try {
+          if (anim.archived) {
+            await patchAnimation(anim.id, { archived: false });
+          } else {
+            await apiJson(`/api/cambio/animations/${encodeURIComponent(anim.id)}`, { method: 'DELETE' });
+            const r = await apiJson('/api/cambio/runtime-config');
+            state.runtimeConfig = r.config;
+            syncManifestFromRuntime();
+            renderAnimList();
+          }
+          saveStatus.textContent = anim.archived ? 'Restored' : 'Archived (soft-delete)';
+        } catch (err) {
+          saveStatus.textContent = err.message;
+        }
+      });
+      li.appendChild(del);
+    }
+    const meta = document.createElement('div');
+    meta.className = 'loot-meta';
+    const liveLab = document.createElement('label');
+    const liveCb = document.createElement('input');
+    liveCb.type = 'checkbox';
+    liveCb.checked = !!anim.live && !anim.archived;
+    liveCb.disabled = !!anim.archived;
+    liveCb.addEventListener('change', async () => {
+      try {
+        await patchAnimation(anim.id, { live: liveCb.checked });
+        saveStatus.textContent = `${anim.label} live=${liveCb.checked} (immediate)`;
+      } catch (err) {
+        liveCb.checked = !liveCb.checked;
+        saveStatus.textContent = err.message;
+      }
+    });
+    liveLab.appendChild(liveCb);
+    liveLab.appendChild(document.createTextNode(' Live'));
+    meta.appendChild(liveLab);
+
+    const tierSel = document.createElement('select');
+    for (const [tid, tdef] of Object.entries(state.tiers || {})) {
+      const opt = document.createElement('option');
+      opt.value = tid;
+      opt.textContent = `${tdef.label} (${tdef.weight})`;
+      if ((anim.tier || 'legendary') === tid) opt.selected = true;
+      tierSel.appendChild(opt);
+    }
+    tierSel.addEventListener('change', async () => {
+      try {
+        await patchAnimation(anim.id, { tier: tierSel.value });
+        saveStatus.textContent = `${anim.label} tier=${tierSel.value}`;
+      } catch (err) {
+        saveStatus.textContent = err.message;
+        renderAnimList();
+      }
+    });
+    meta.appendChild(tierSel);
+
+    const wLab = document.createElement('label');
+    wLab.appendChild(document.createTextNode('w '));
+    const wIn = document.createElement('input');
+    wIn.type = 'number';
+    wIn.min = '0';
+    wIn.step = '0.1';
+    wIn.value = anim.weight != null ? anim.weight : effectiveWeight(anim);
+    wIn.title = 'Direct weight (overrides tier×multiplier when set)';
+    wIn.addEventListener('change', async () => {
+      const w = Math.max(0, +wIn.value || 0);
+      try {
+        await patchAnimation(anim.id, { weight: w, multiplier: w });
+        saveStatus.textContent = `${anim.label} weight=${w}`;
+      } catch (err) {
+        saveStatus.textContent = err.message;
+      }
+    });
+    wLab.appendChild(wIn);
+    meta.appendChild(wLab);
+
+    const pct = document.createElement('span');
+    pct.className = 'pct';
+    pct.textContent = anim.live && !anim.archived
+      ? `${(pcts[anim.id] || 0).toFixed(1)}%`
+      : '—';
+    meta.appendChild(pct);
+    li.appendChild(meta);
     animList.appendChild(li);
   }
+  const hint = $('poolHint');
+  if (hint) {
+    const parts = Object.entries(pcts).map(([id, p]) => `${id} ${p.toFixed(0)}%`);
+    hint.textContent = parts.length ? `Live pool: ${parts.join(' · ')}` : 'No live animations';
+  }
 }
+
+async function onCreateSubmit(ev) {
+  const form = ev.target;
+  const submitter = ev.submitter;
+  if (submitter && submitter.value === 'cancel') return;
+  ev.preventDefault();
+  const fd = new FormData(form);
+  const label = String(fd.get('label') || '').trim();
+  if (!label) return;
+  const status = $('createStatus');
+  status.textContent = 'Creating…';
+  try {
+    const id = slugify(label);
+    const files = fd.getAll('files').filter((f) => f && f.size);
+    const elements = [];
+    for (const file of files) {
+      const up = new FormData();
+      up.append('file', file);
+      up.append('animationId', id);
+      const ur = await fetch('/api/cambio/assets', { method: 'POST', credentials: 'include', body: up });
+      const ud = await ur.json();
+      if (!ur.ok || ud.ok === false) throw new Error(ud.error || `upload ${ur.status}`);
+      const elId = slugify(file.name.replace(/\.[^.]+$/, '')) || `el-${elements.length}`;
+      elements.push({
+        id: elId,
+        anchor: 'head',
+        src: ud.url || ud.key,
+        defaultWidthFrac: 0.35
+      });
+    }
+    const mult = Math.max(0, +fd.get('multiplier') || 1);
+    const body = {
+      id,
+      label,
+      type: fd.get('type') || 'character-overlay-activation',
+      tier: fd.get('tier') || 'legendary',
+      multiplier: mult,
+      weight: mult,
+      live: !!fd.get('live'),
+      archived: false,
+      editable: true,
+      placementEditable: true,
+      playMode: 'character-overlay',
+      overlayFlashMode: 'composite',
+      elements,
+      transitionsAvailable: ['lightning', 'none']
+    };
+    const data = await apiJson('/api/cambio/animations', { method: 'POST', body: JSON.stringify(body) });
+    if (data.config) state.runtimeConfig = data.config;
+    else {
+      state.runtimeConfig.animations.push(body);
+    }
+    syncManifestFromRuntime();
+    renderAnimList();
+    status.textContent = 'Created — open Edit to place elements';
+    $('createDialog')?.close();
+    if (elements.length) enterEdit(id);
+    saveStatus.textContent = `Created ${label} (immediate)`;
+  } catch (err) {
+    status.textContent = err.message;
+  }
+}
+
 
 function creatureBoxInRig() {
   const rig = creatureRig.getBoundingClientRect();

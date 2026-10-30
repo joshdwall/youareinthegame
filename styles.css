@@ -256,3 +256,33 @@ html, body, .container, .container * {
 body, .container { cursor: default; }
 .creature { cursor: pointer; }
 input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-select: text; caret-color: auto; cursor: text; }
+
+/* Public loot-table overlays: float on the rig so accessories bob with the creature */
+.creature-rig {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+.creature-rig > .creature {
+  display: block;
+  position: relative;
+  z-index: 2;
+}
+.public-overlay,
+#overlayLayer.public-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  overflow: visible;
+}
+.public-overlay .activation-prop,
+.activation-prop {
+  position: absolute;
+  max-width: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.activation-flash-host {
+  /* flickered by ActivationEngine */
+}
