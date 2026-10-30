@@ -80,6 +80,7 @@ class MushroomPlatypusApp {
         }
 
         installThresholdLootHook(this.currentEffect);
+        window.__yaitgEffect = this.currentEffect;
         console.log('Loaded initial effect:', this.currentEffect.constructor.name);
 
         // Preload next effect if enabled
