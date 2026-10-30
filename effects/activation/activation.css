@@ -9,6 +9,15 @@
 .activation-flash-layer.effect-overlay {
   /* ghost img overlay uses effect.css; composite flash uses this shell */
 }
+/* Mini cowboy (composite) spores — ride FireworkManager; must sit above creature-rig (z:10) */
+.activation-spore.firework-spore,
+.firework-spore.activation-spore {
+  position: absolute;
+  pointer-events: none;
+  z-index: 25;
+  overflow: visible;
+  will-change: transform, left, top, opacity;
+}
 .activation-spore {
-  will-change: transform, opacity;
+  will-change: transform, opacity, left, top;
 }

@@ -58,27 +58,39 @@ class FireworkSpore {
      * @param {HTMLElement} container - Container to append spore to
      */
     createElement(container) {
-        this.element = document.createElement('img');
-        this.element.src = this.config.SPORE_IMAGE;
-        this.element.className = 'firework-spore';
-        this.element.draggable = false;
+        const w = this.config.BASE_WIDTH * this.size;
+        const h = this.config.BASE_HEIGHT * this.size;
 
-        // Set initial size
-        this.element.style.width = `${this.config.BASE_WIDTH * this.size}px`;
-        this.element.style.height = `${this.config.BASE_HEIGHT * this.size}px`;
+        // Optional factory (e.g. cowboy mini composites) — same physics/launch path
+        if (typeof this.config.createSporeElement === 'function') {
+            this.element = this.config.createSporeElement(this, { width: w, height: h });
+            if (!this.element) throw new Error('FireworkSpore: createSporeElement returned nothing');
+            this.element.classList.add('firework-spore');
+            this.element.draggable = false;
+        } else {
+            this.element = document.createElement('img');
+            this.element.src = this.config.SPORE_IMAGE;
+            this.element.className = 'firework-spore';
+            this.element.draggable = false;
+            this.element.style.width = `${w}px`;
+            this.element.style.height = `${h}px`;
+        }
 
-        // Position element
+        // Prefer explicit style size from factory; fall back to ghost BASE dims
+        this.elW = parseFloat(this.element.style.width) || w;
+        this.elH = parseFloat(this.element.style.height) || h;
+
         this.element.style.position = 'absolute';
-        this.element.style.left = `${this.x - (this.config.BASE_WIDTH * this.size) / 2}px`;
-        this.element.style.top = `${this.y - (this.config.BASE_HEIGHT * this.size) / 2}px`;
-
-        // Set transform origin to bottom center (where the "rocket" base is)
+        this.element.style.left = `${this.x - this.elW / 2}px`;
+        this.element.style.top = `${this.y - this.elH / 2}px`;
         this.element.style.transformOrigin = 'center bottom';
+        this.element.style.pointerEvents = 'none';
+        if (!this.element.style.zIndex) this.element.style.zIndex = '25';
+        // Physics spawn (viewport coords) — stable for tests; getBoundingClientRect shifts with rotation
+        this.element.dataset.spawnX = String(this.x);
+        this.element.dataset.spawnY = String(this.y);
 
-        // Initial rotation
         this.updateRotation();
-
-        // Append to container
         container.appendChild(this.element);
     }
 
@@ -173,9 +185,10 @@ class FireworkSpore {
      */
     render() {
         if (!this.element || !this.isAlive) return;
-
-        this.element.style.left = `${this.x - (this.config.BASE_WIDTH * this.size) / 2}px`;
-        this.element.style.top = `${this.y - (this.config.BASE_HEIGHT * this.size) / 2}px`;
+        const w = this.elW ?? (this.config.BASE_WIDTH * this.size);
+        const h = this.elH ?? (this.config.BASE_HEIGHT * this.size);
+        this.element.style.left = `${this.x - w / 2}px`;
+        this.element.style.top = `${this.y - h / 2}px`;
     }
 
     /**

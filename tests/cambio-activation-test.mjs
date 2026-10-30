@@ -2,6 +2,8 @@
  * Character-overlay activation: ghost Play ≈ apex threshold; cowboy flash+spores+reset.
  * Cowboy: accessories flash ON the live #mainCreature (no duplicate full-size base);
  * accessory bboxes match edit-mode placement within 2px while floating.
+ * Spores: cowboy uses same FireworkManager origin/timing as ghost; visible (viewport,
+ * opacity>0.5, size≥24, elementFromPoint); spawn origin within ~10px of ghost.
  * Viewports: 1920×1080 and 1366×768.
  */
 import { chromium } from 'playwright';
@@ -57,6 +59,67 @@ async function relativePropBoxes(page) {
   });
 }
 
+
+/** Sample visible firework/activation spores (pointer-events briefly enabled for elementFromPoint). */
+async function sampleSporeVisibility(page) {
+  return page.evaluate(() => {
+    const expectedOrigin = {
+      x: window.innerWidth / 2 + 0,
+      y: window.innerHeight / 2 + 50 // GHOST_CONFIG.FIREWORKS.LAUNCH_OFFSET_Y
+    };
+    const spores = [...document.querySelectorAll('.firework-spore, .activation-spore')];
+    const restored = [];
+    for (const el of spores) {
+      restored.push([el, el.style.pointerEvents]);
+      el.style.pointerEvents = 'auto';
+    }
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const samples = spores.map((el) => {
+      const r = el.getBoundingClientRect();
+      const op = parseFloat(getComputedStyle(el).opacity || '0');
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      const inView = r.width > 0 && r.height > 0 && r.right > 0 && r.bottom > 0 && r.left < vw && r.top < vh;
+      let topMost = false;
+      try {
+        const hit = document.elementFromPoint(Math.min(vw - 1, Math.max(0, cx)), Math.min(vh - 1, Math.max(0, cy)));
+        topMost = !!(hit && (hit === el || el.contains(hit)));
+      } catch (_) { topMost = false; }
+      return {
+        w: r.width,
+        h: r.height,
+        op,
+        cx,
+        cy,
+        inView,
+        topMost,
+        visible: inView && op > 0.5 && Math.min(r.width, r.height) >= 24 && topMost,
+        className: el.className
+      };
+    });
+    for (const [el, pe] of restored) el.style.pointerEvents = pe;
+    // Origin from FireworkSpore physics spawn attrs (stable; bbox center moves with rotation)
+    let origin = null;
+    for (const el of spores) {
+      if (el.dataset.spawnX != null && el.dataset.spawnY != null) {
+        origin = { x: parseFloat(el.dataset.spawnX), y: parseFloat(el.dataset.spawnY) };
+        break;
+      }
+    }
+    return {
+      count: samples.length,
+      visibleCount: samples.filter((s) => s.visible).length,
+      anyVisible: samples.some((s) => s.visible),
+      maxMinDim: samples.reduce((m, s) => Math.max(m, Math.min(s.w, s.h)), 0),
+      maxOp: samples.reduce((m, s) => Math.max(m, s.op), 0),
+      origin,
+      expectedOrigin,
+      samples: samples.slice(0, 4)
+    };
+  });
+}
+
 async function sampleActivation(page, labelPrefix) {
   const frames = [];
   for (let i = 0; i < 12; i++) {
@@ -105,13 +168,17 @@ async function sampleActivation(page, labelPrefix) {
         })()
       };
     });
-    frames.push({ i, shot, ...counts });
+    const sporeVis = (counts.fireworkSpores > 0 || counts.compositeSpores > 0)
+      ? await sampleSporeVisibility(page)
+      : null;
+    frames.push({ i, shot, ...counts, sporeVis });
     console.log(`    frame ${i}`, {
       flashBody: counts.flashBody,
       fullSizeBases: counts.fullSizeBases,
       props: counts.cambioPropIds.length,
       spores: counts.compositeSpores || counts.fireworkSpores,
-      opacity: counts.overlayOpacity
+      opacity: counts.overlayOpacity,
+      sporeVis: sporeVis ? { n: sporeVis.count, vis: sporeVis.visibleCount, origin: sporeVis.origin } : null
     });
   }
   return frames;
@@ -240,6 +307,35 @@ async function runViewport(browser, vp) {
   ok(allSingleBase, `${vp.name}: exactly 1 full-size base during flash (no duplicate character)`);
   ok(cowSpores, `${vp.name}: cowboy mini composite spores`);
   ok(sporeAccessories, `${vp.name}: spores carried accessories (composite-el present while spores live)`);
+
+  // Cowboy spore visibility + origin parity with ghost FireworkManager launch
+  const cowSporeFrames = cowFrames.filter((f) => f.sporeVis && f.sporeVis.count > 0);
+  const cowVisible = cowSporeFrames.some((f) => f.sporeVis.anyVisible);
+  const cowBest = cowSporeFrames.reduce((best, f) => {
+    if (!best) return f.sporeVis;
+    return (f.sporeVis.visibleCount > best.visibleCount) ? f.sporeVis : best;
+  }, null);
+  ok(cowVisible, `${vp.name}: cowboy spores visible (in viewport, opacity>0.5, size≥24, elementFromPoint)`);
+  if (cowBest) {
+    console.log(`    cowboy spore best`, { visibleCount: cowBest.visibleCount, origin: cowBest.origin, expected: cowBest.expectedOrigin, maxMinDim: cowBest.maxMinDim, maxOp: cowBest.maxOp });
+  }
+
+  const ghostSporeFrames = ghostFrames.filter((f) => f.sporeVis && f.sporeVis.count > 0);
+  const ghostOrigin = ghostSporeFrames.map((f) => f.sporeVis.origin).find(Boolean);
+  const cowOrigin = cowSporeFrames.map((f) => f.sporeVis.origin).find(Boolean);
+  const originDelta = (ghostOrigin && cowOrigin)
+    ? Math.hypot(ghostOrigin.x - cowOrigin.x, ghostOrigin.y - cowOrigin.y)
+    : Infinity;
+  ok(
+    originDelta <= 10,
+    `${vp.name}: cowboy spore spawn origin matches ghost within ~10px (Δ=${originDelta === Infinity ? 'n/a' : originDelta.toFixed(1)}px)`
+  );
+
+  // Side-by-side spore frame screenshots
+  const gShot = ghostSporeFrames.find((f) => f.sporeVis?.anyVisible)?.shot || ghostSporeFrames[0]?.shot;
+  const cShot = cowSporeFrames.find((f) => f.sporeVis?.anyVisible)?.shot || cowSporeFrames[0]?.shot;
+  if (gShot) fs.copyFileSync(gShot, path.join(OUT, `ghost-spore-frame-${vp.name}.png`));
+  if (cShot) fs.copyFileSync(cShot, path.join(OUT, `cowboy-spore-frame-${vp.name}.png`));
 
   // Bbox parity: flash relative boxes vs edit-mode within 2px over several float samples
   let worst = 0;

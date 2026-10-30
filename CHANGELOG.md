@@ -6,6 +6,10 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
 ## 2026-10-30
+
+### Fixed
+- **Cowboy Play mini spores invisible** during activation. Root cause: composite profile launched spores via a short radial fade from `boxInContainer`/`flashParent` coordinates (creature-rig space) with z-index 8 under `.creature-rig` (10), so replicas were either off the fixed `#siteStage` origin, clipped, or stacked behind the character — not the FireworkManager/SporeBaseEffect path ghost uses (viewport center + `LAUNCH_OFFSET_Y`). Fix: same FireworkManager launch + ghost spawn origin; mini cowboy composites sized near ghost spore sprites; z-index 25; image preload before scale. Playwright asserts cowboy spores in viewport, opacity > 0.5, size ≥ 24px, top-most via `elementFromPoint`, and spawn origin within ~10px of ghost @ 1920×1080 & 1366×768. Side-by-side frames: `capture/yaitg-activation/spore-side-by-side-*.png`.
+
 ### Fixed
 - **Cowboy Play duplicated the base character** during activation flash. Root cause: ActivationEngine composite profile built a full-size `CharacterComposite` (base + accessories) beside live `#mainCreature`, so two platypuses appeared. Fix: flash flickers accessories mounted on the live character via the same `mountProps` / objectAnchor→characterAnchor path as edit mode (`flashHost: #overlayLayer`); mini spores stay small base+overlay composites; reset clears overlays and leaves the character untouched. Playwright @ 1920×1080 & 1366×768 asserts exactly 1 full-size base and accessory bbox ≤2px vs edit-mode while floating.
 

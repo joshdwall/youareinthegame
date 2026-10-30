@@ -71,6 +71,7 @@ export async function runActivation(opts) {
 
   await ensureStylesheet(GHOST_CONFIG.STYLESHEETS.EFFECT);
   await ensureStylesheet(GHOST_CONFIG.STYLESHEETS.FINALE);
+  await ensureStylesheet('/effects/activation/activation.css');
 
   const timers = new Set();
   const track = (id) => { timers.add(id); return id; };
@@ -207,48 +208,59 @@ export async function runActivation(opts) {
     return { ok: false, aborted: true };
   }
 
-  // Spores
+  // Preload composite assets so mini spores aren't 0×0 / blank on first paint
+  if (profile === 'composite' && composite) {
+    const urls = [composite.baseSrc, ...(composite.elements || []).map((e) => e.src)].filter(Boolean);
+    await Promise.all(urls.map((src) => new Promise((resolve) => {
+      const img = new Image();
+      img.onload = img.onerror = () => resolve();
+      img.src = src;
+    })));
+  }
+
+  // Spores — same spawn origin + FireworkManager launch path for ghost and composite
+  const fw = GHOST_CONFIG.FIREWORKS;
+  const launchX = window.innerWidth / 2 + fw.LAUNCH_OFFSET_X;
+  const launchY = window.innerHeight / 2 + fw.LAUNCH_OFFSET_Y;
+
   const sporeDone = new Promise((resolve) => {
     if (profile === 'ghost') {
-      fireworkManager = new FireworkManager(GHOST_CONFIG.FIREWORKS);
-      const launchX = window.innerWidth / 2 + GHOST_CONFIG.FIREWORKS.LAUNCH_OFFSET_X;
-      const launchY = window.innerHeight / 2 + GHOST_CONFIG.FIREWORKS.LAUNCH_OFFSET_Y;
+      fireworkManager = new FireworkManager(fw);
       fireworkManager.launch(launchX, launchY, sporeHost, () => resolve());
-      // Safety timeout if callback never fires
       track(setTimeout(resolve, 6000));
-    } else {
-      // Composite replicas — radial burst of mini composites
-      const count = spore.count ?? 8;
-      const miniScale = spore.scale ?? 0.32;
-      const durationMs = spore.durationMs ?? 1800;
-      const spread = spore.spreadPx ?? 140;
-      const cx = boxInContainer.left + boxInContainer.width / 2;
-      const cy = boxInContainer.top + boxInContainer.height / 2;
-      for (let i = 0; i < count; i++) {
-        const ang = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.35;
-        const dist = spread * (0.55 + Math.random() * 0.55);
+      return;
+    }
+
+    // Cowboy (composite): mini replicas via the SAME FireworkManager origin/timing/physics.
+    // Prior path used character-local coords on the page container (wrong space), z-index under
+    // the creature-rig, and a short radial fade — spores launched but were effectively invisible.
+    const charBox = { width: boxInContainer.width, height: boxInContainer.height };
+    const fwComposite = {
+      ...fw,
+      SPORE_COUNT: spore.count ?? fw.SPORE_COUNT,
+      createSporeElement(sporeInst, dims) {
+        // Size similar to ghost spore sprites (BASE_WIDTH × character aspect)
+        const targetW = dims?.width ?? (fw.BASE_WIDTH * sporeInst.size);
+        const scale = targetW / Math.max(1, charBox.width);
         const node = buildCharacterComposite({
           baseSrc: composite.baseSrc,
           elements: composite.elements,
-          box: { width: boxInContainer.width, height: boxInContainer.height },
-          scale: miniScale * (0.85 + Math.random() * 0.3)
+          box: charBox,
+          scale
         });
         node.classList.add('activation-spore');
-        const w = parseFloat(node.style.width);
-        const h = parseFloat(node.style.height);
-        node.style.left = `${cx - w / 2}px`;
-        node.style.top = `${cy - h / 2}px`;
-        node.style.opacity = '0.95';
-        node.style.zIndex = '8';
-        node.style.transition = `transform ${durationMs}ms ease-out, opacity ${durationMs}ms ease-out`;
-        sporeHost.appendChild(node);
-        requestAnimationFrame(() => {
-          node.style.transform = `translate(${Math.cos(ang) * dist}px, ${Math.sin(ang) * dist - 40}px) rotate(${(Math.random() - 0.5) * 40}deg)`;
-          node.style.opacity = '0';
-        });
+        node.style.position = 'absolute';
+        node.style.width = `${charBox.width * scale}px`;
+        node.style.height = `${charBox.height * scale}px`;
+        node.style.zIndex = '25';
+        node.style.opacity = '1';
+        node.style.overflow = 'visible';
+        return node;
       }
-      track(setTimeout(resolve, durationMs + 80));
-    }
+    };
+    fireworkManager = new FireworkManager(fwComposite);
+    fireworkManager.launch(launchX, launchY, sporeHost, () => resolve());
+    track(setTimeout(resolve, 6000));
   });
 
   // Final flash (apex parity)
@@ -265,6 +277,8 @@ export async function runActivation(opts) {
 
   // Reset — remove owned flash layers; leave live character + flashHost structure untouched
   clearTimers();
+  try { fireworkManager?.destroy?.(); } catch (_) { /* ignore */ }
+  fireworkManager = null;
   cleanupFlashLayer();
   sporeHost.querySelectorAll('.activation-spore, .firework-spore').forEach((n) => n.remove());
   flashParent.querySelectorAll('.activation-flash-layer, #effectOverlay').forEach((n) => n.remove());
