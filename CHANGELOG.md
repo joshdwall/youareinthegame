@@ -7,6 +7,9 @@ SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.co
 
 ## 2026-10-30
 
+### Changed
+- **Final cowboy art** replaces Delapouite/game-icons SVG placeholders in `assets/animations/cowboy/` (`hat.webp`, `mustache.webp`, `revolver-l.webp`, `revolver-r.webp`). Operator-owned art; CC-BY attribution removed. Transparent WebP; manifest `?v=cowboy-final-1` cache-bust. Dedicated L/R revolvers (barrel outward); seed `flipX` false; Cambio prefers manifest flipX so saved KV placements keep positions/sizes without double-flipping. Public apex remains ghost-only.
+
 ### Added
 - **Cambio admin** at `https://app.youareinthegame.com/cambio` — seasonal animation harness, cowboy Delapouite placeholders, KV `cambio:placements` on `YAITG_SESSION_KV`, Access on `app.` ([`27b9c91`](https://github.com/joshdwall/youareinthegame/commit/27b9c9193166cec64bab99a32a9dfa709582886a)). Public apex remains ghost-only.
 - Plan: knowledge-hub `plans/site-hub/YouAreInTheGame-Random-Seasonal-Animations-Cambio-Plan.md` (`337dff5a`, marked implemented `4b356b6e`).
@@ -18,7 +21,8 @@ SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.co
 
 ### Open (PM)
 - Operator Save round-trip check on Cambio placements.
-- Promote cowboy into the public pool; final art; seasonal pools.
+- Promote cowboy into the public pool; seasonal pools.
+- ~~Final cowboy art~~ (shipped this day).
 - Old Pages/Replit resource cleanup — waiting on operator okay.
 
 ## 2026-10-27

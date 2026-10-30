@@ -149,6 +149,8 @@ function mountProps(animId, { interactive = false, visible = true } = {}) {
   const place = ensureAnimPlacement(animId);
   for (const el of anim.elements) {
     const st = place.elements[el.id] || (place.elements[el.id] = defaultElementState(anim, el));
+    // Dedicated L/R assets: always honor manifest flipX (avoids double-flip from placeholder-era KV).
+    if (Object.prototype.hasOwnProperty.call(el, 'flipX')) st.flipX = !!el.flipX;
     const img = document.createElement('img');
     img.src = '/' + el.src.replace(/^\//, '');
     img.alt = el.id;

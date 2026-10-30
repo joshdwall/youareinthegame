@@ -29,7 +29,7 @@
           "y": 0.72,
           "widthFrac": 0.28,
           "rotationDeg": 20,
-          "flipX": true
+          "flipX": false
         }
       }
     }

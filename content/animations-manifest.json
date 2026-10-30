@@ -21,28 +21,28 @@
         {
           "id": "hat",
           "anchor": "head",
-          "src": "assets/animations/cowboy/hat.svg",
+          "src": "assets/animations/cowboy/hat.webp?v=cowboy-final-1",
           "defaultWidthFrac": 0.55
         },
         {
           "id": "mustache",
           "anchor": "bill",
-          "src": "assets/animations/cowboy/mustache.svg",
-          "defaultWidthFrac": 0.35
+          "src": "assets/animations/cowboy/mustache.webp?v=cowboy-final-1",
+          "defaultWidthFrac": 0.38
         },
         {
           "id": "pistolL",
           "anchor": "handL",
-          "src": "assets/animations/cowboy/revolver.svg",
+          "src": "assets/animations/cowboy/revolver-l.webp?v=cowboy-final-1",
           "defaultWidthFrac": 0.28,
           "flipX": false
         },
         {
           "id": "pistolR",
           "anchor": "handR",
-          "src": "assets/animations/cowboy/revolver.svg",
+          "src": "assets/animations/cowboy/revolver-r.webp?v=cowboy-final-1",
           "defaultWidthFrac": 0.28,
-          "flipX": true
+          "flipX": false
         }
       ],
       "transitionsAvailable": [
