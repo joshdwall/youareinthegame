@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cambio — You Are In The Game (admin)</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/cambio/cambio.css" />
+  <link rel="stylesheet" href="/effects/spore/ghost/effect.css" />
+</head>
+<body class="cambio-body">
+  <div id="cambioApp">
+    <aside class="cambio-panel" id="cambioPanel">
+      <header class="cambio-header">
+        <h1>Cambio</h1>
+        <p class="cambio-sub">Admin · Access-gated · public site unchanged</p>
+      </header>
+      <section>
+        <h2>Animations</h2>
+        <ul id="animList" class="cambio-list"></ul>
+      </section>
+      <section id="editSection" class="hidden">
+        <h2>Edit · <span id="editTitle"></span></h2>
+        <label class="cambio-field">Transition
+          <select id="transitionSelect"></select>
+        </label>
+        <ul id="elementList" class="cambio-list"></ul>
+        <div class="cambio-actions">
+          <button type="button" id="btnSave" class="btn primary">Save placements</button>
+          <button type="button" id="btnExitEdit" class="btn">Done</button>
+        </div>
+        <p id="saveStatus" class="cambio-status" aria-live="polite"></p>
+      </section>
+      <footer class="cambio-foot">
+        <a href="https://youareinthegame.com" target="_blank" rel="noopener">Open public site</a>
+      </footer>
+    </aside>
+    <main class="cambio-stage-wrap">
+      <div class="container cambio-stage" id="stage">
+        <img id="mainCreature" class="creature" src="/img/mushroom-platypus.png" alt="Mushroom Platypus" draggable="false" />
+        <img id="sporeSticker" class="sticker" src="/img/Now%20With%20Spores%20Large%20Image%20Circular%20Blue%20Orange.png" alt="" draggable="false" />
+        <div id="overlayLayer" class="cambio-overlay"></div>
+        <div id="lightningFlash" class="lightning-flash" hidden></div>
+      </div>
+      <p id="stageHint" class="stage-hint">Select Play or Edit from the list</p>
+    </main>
+  </div>
+  <script type="module" src="/cambio/cambio.js"></script>
+</body>
+</html>

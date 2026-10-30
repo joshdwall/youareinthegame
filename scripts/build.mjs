@@ -14,7 +14,9 @@ const FILES = ['_headers', 'index.html', 'styles.css', 'script.js', 'mainConfig.
 const DIRS = [
   'effects',
   'img',
-  'content'
+  'content',
+  'cambio',
+  'assets'
 ];
 
 function rmrf(dir) {

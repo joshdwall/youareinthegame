@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "animations": [
+    {
+      "id": "ghost",
+      "label": "Ghost",
+      "editable": false,
+      "module": "./effects/spore/ghost/effect.js",
+      "playMode": "legacy-ghost",
+      "elements": [],
+      "transitionsAvailable": [
+        "lightning"
+      ]
+    },
+    {
+      "id": "cowboy",
+      "label": "Cowboy",
+      "editable": true,
+      "playMode": "success-appear",
+      "elements": [
+        {
+          "id": "hat",
+          "anchor": "head",
+          "src": "assets/animations/cowboy/hat.svg",
+          "defaultWidthFrac": 0.55
+        },
+        {
+          "id": "mustache",
+          "anchor": "bill",
+          "src": "assets/animations/cowboy/mustache.svg",
+          "defaultWidthFrac": 0.35
+        },
+        {
+          "id": "pistolL",
+          "anchor": "handL",
+          "src": "assets/animations/cowboy/revolver.svg",
+          "defaultWidthFrac": 0.28,
+          "flipX": false
+        },
+        {
+          "id": "pistolR",
+          "anchor": "handR",
+          "src": "assets/animations/cowboy/revolver.svg",
+          "defaultWidthFrac": 0.28,
+          "flipX": true
+        }
+      ],
+      "transitionsAvailable": [
+        "lightning",
+        "none"
+      ]
+    }
+  ]
+}

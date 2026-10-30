@@ -1,0 +1,35 @@
+.cambio-body { margin: 0; min-height: 100vh; background: #1a2430; color: #e8eef4; font-family: system-ui, sans-serif; }
+#cambioApp { display: flex; min-height: 100vh; }
+.cambio-panel { width: 320px; flex-shrink: 0; background: #243447; padding: 1rem 1rem 2rem; overflow-y: auto; box-shadow: 4px 0 24px rgba(0,0,0,.35); z-index: 20; }
+.cambio-header h1 { margin: 0; font-size: 1.4rem; letter-spacing: .04em; }
+.cambio-sub { margin: .25rem 0 1rem; opacity: .7; font-size: .8rem; }
+.cambio-panel h2 { font-size: .95rem; margin: 1.25rem 0 .5rem; text-transform: uppercase; letter-spacing: .06em; opacity: .85; }
+.cambio-list { list-style: none; margin: 0; padding: 0; }
+.cambio-list li { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; padding: .55rem .4rem; border-bottom: 1px solid rgba(255,255,255,.08); }
+.cambio-list li.active { background: rgba(122,181,160,.18); border-radius: 6px; }
+.cambio-list .label { flex: 1 1 100%; font-weight: 600; }
+.btn { appearance: none; border: 1px solid rgba(255,255,255,.25); background: #2f4258; color: #fff; border-radius: 6px; padding: .35rem .65rem; cursor: pointer; font-size: .8rem; }
+.btn:hover { background: #3a536e; }
+.btn.primary { background: #4a7c6a; border-color: #7ab5a0; }
+.btn.primary:hover { background: #5a927c; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.cambio-field { display: flex; flex-direction: column; gap: .35rem; font-size: .8rem; margin-bottom: .75rem; }
+.cambio-field select { padding: .4rem; border-radius: 6px; border: 1px solid #3d4f63; background: #1a2430; color: #fff; }
+.cambio-actions { display: flex; gap: .5rem; margin-top: .75rem; }
+.cambio-status { font-size: .75rem; min-height: 1.2em; opacity: .85; }
+.cambio-foot { margin-top: 2rem; font-size: .75rem; }
+.cambio-foot a { color: #7ab5a0; }
+.hidden { display: none !important; }
+.cambio-stage-wrap { flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #7ab5a0; overflow: hidden; }
+.cambio-stage { position: relative; width: min(720px, 92vw); height: min(720px, 80vh); display: flex; align-items: center; justify-content: center; }
+.cambio-stage .creature { max-width: 70%; max-height: 70%; z-index: 2; position: relative; user-select: none; -webkit-user-drag: none; }
+.cambio-stage .sticker { position: absolute; right: 4%; top: 12%; width: 28%; z-index: 3; pointer-events: none; }
+.cambio-overlay { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+.cambio-overlay.editing { pointer-events: auto; }
+.cambio-prop { position: absolute; transform: translate(-50%, -50%); cursor: grab; user-select: none; filter: drop-shadow(0 2px 4px rgba(0,0,0,.35)); pointer-events: auto; }
+.cambio-prop.selected { outline: 2px solid #f0c14b; outline-offset: 4px; }
+.cambio-prop.dragging { cursor: grabbing; opacity: .9; }
+.lightning-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 15; transition: opacity 50ms linear; }
+.lightning-flash.on { opacity: .85; }
+.stage-hint { position: absolute; bottom: 1rem; color: #1a2430; font-size: .85rem; opacity: .7; }
+.el-row.selected { background: rgba(240,193,75,.15); border-radius: 6px; }
