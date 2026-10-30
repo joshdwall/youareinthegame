@@ -150,8 +150,6 @@
 }
 .lightning-flash.on { opacity: 0.85; }
 
-/* Keep sticker above rails? No — sticker is site content; rails above */
-.cambio-body #sporeSticker { z-index: 15; }
 
 /* Connector pick mode: character accepts clicks */
 .cambio-body.picking-character .creature-rig > .creature {
@@ -162,4 +160,88 @@
 
 @media (max-width: 720px) {
   .cambio-rail { width: min(200px, 36vw); }
+}
+
+/* --- Badge: keep clear of right edit rail when editing --- */
+.cambio-body {
+  --cambio-rail-width: min(260px, 22vw);
+  /* Default: sit above left rail footprint only; right offset stays safe-area */
+  --badge-right: max(12px, env(safe-area-inset-right, 0px));
+  --badge-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  --badge-z: 35; /* above rails so badge stays visible but out of the way */
+}
+.cambio-body.cambio-editing {
+  /* Shift left of the open right edit rail */
+  --badge-right: max(12px, calc(var(--cambio-rail-width) + 12px), env(safe-area-inset-right, 0px));
+}
+.cambio-body #sporeSticker {
+  z-index: var(--badge-z);
+}
+
+/* Overlay passthrough during connector character-pick (creature receives hits) */
+.cambio-overlay.passthrough {
+  pointer-events: none !important;
+}
+.cambio-overlay.passthrough .cambio-prop,
+.cambio-overlay.passthrough .cambio-rotate-handle {
+  pointer-events: none !important;
+}
+
+/* enVivo-style inline edit rows (✎ / ✓ / ✕) */
+.ie-row {
+  margin: 0.55rem 0;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.ie-view {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+.ie-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.75;
+  flex: 0 0 100%;
+}
+.ie-value {
+  flex: 1 1 auto;
+  font-size: 0.78rem;
+  word-break: break-all;
+}
+.ie-actions {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+.ie-btn {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 0;
+  background: transparent;
+  color: #e8eef4;
+  min-width: 1.9rem;
+  height: 1.9rem;
+  line-height: 1;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0 0.35rem;
+  transition: background-color 0.12s, color 0.12s, transform 0.05s;
+}
+.ie-btn:hover { background: #e8eef4; color: #243447; }
+.ie-btn:active { transform: translateY(1px); }
+.ie-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.ie-btn.ie-save { border-color: #198754; background: #198754; color: #fff; }
+.ie-btn.ie-save:hover { background: #146c43; color: #fff; }
+.ie-btn.ie-cancel { border-color: #dc3545; background: #dc3545; color: #fff; }
+.ie-btn.ie-cancel:hover { background: #b02a37; color: #fff; }
+.ie-row.is-editing { background: rgba(122, 181, 160, 0.12); border-radius: 6px; padding: 0.45rem; }
+
+.selected-controls { margin-top: 0.5rem; }
+
+@media (max-width: 720px) {
+  .cambio-body {
+    --cambio-rail-width: min(200px, 36vw);
+  }
 }

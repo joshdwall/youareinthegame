@@ -163,23 +163,32 @@ img {
 }
 
 /**
- * Spore Sticker - positioned bottom-right of creature, floating with it
+ * Spore Sticker — fixed viewport bottom-right (apex + Cambio).
+ * Tweak position via CSS variables only (see KH Cambio plan).
+ *   --badge-corner: unused reserved (future: bl|br|tl|tr)
+ *   --badge-size / --badge-right / --badge-bottom / --badge-z
  */
+:root {
+  --badge-corner: br;
+  --badge-size: 96px;
+  --badge-right: max(12px, env(safe-area-inset-right, 0px));
+  --badge-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  --badge-z: 25;
+}
+
 .spore-sticker {
-  position: absolute;
-  width: 120px;
-  height: 120px;
-  bottom: calc(50% - 200px + 80px);
-  /* Moved way up closer to creature */
-  right: calc(50% - 200px - 20px);
-  /* Position to the right of the creature */
-  z-index: 20;
+  position: fixed;
+  width: var(--badge-size);
+  height: var(--badge-size);
+  right: var(--badge-right);
+  bottom: var(--badge-bottom);
+  left: auto;
+  top: auto;
+  z-index: var(--badge-z);
   animation: floatWithRotation 4s ease-in-out infinite;
-  /* Custom animation with rotation */
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
   transition: transform 0.3s ease;
   cursor: pointer;
-  /* Disable mobile touch highlighting and selection */
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   -khtml-user-select: none;
@@ -187,13 +196,13 @@ img {
   -ms-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-  /* Prevent dragging */
   -webkit-user-drag: none;
   -khtml-user-drag: none;
   -moz-user-drag: none;
   -o-user-drag: none;
   user-drag: none;
   draggable: false;
+  pointer-events: auto;
 }
 
 .spore-sticker:hover {
@@ -225,10 +234,7 @@ img {
   }
 
   .spore-sticker {
-    width: 90px;
-    height: 90px;
-    bottom: calc(50% - 150px + 60px);
-    right: calc(50% - 150px - 15px);
+    --badge-size: 80px;
   }
 }
 
@@ -239,10 +245,7 @@ img {
   }
 
   .spore-sticker {
-    width: 70px;
-    height: 70px;
-    bottom: calc(50% - 125px + 50px);
-    right: calc(50% - 125px - 10px);
+    --badge-size: 64px;
   }
 }
 /* No text selection / caret / focus ring on the play surface (real form fields excluded) */

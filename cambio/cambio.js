@@ -1,5 +1,6 @@
 /**
- * Cambio admin — Play / Edit with connector-point attach, rotation, float-parented props.
+ * Cambio admin — Play / Edit with modal pencil editors (enVivo ✎/✓/✕).
+ * Modes write only their own fields; Cancel restores a deep snapshot.
  * Public apex behavior unchanged; Access-gated on app.youareinthegame.com.
  */
 const state = {
@@ -10,7 +11,11 @@ const state = {
   editMode: false,
   selectedElementId: null,
   dirty: false,
-  /** null | 'object' | 'character' */
+  /** null | 'connector' | 'rotation' | 'position' | 'size' | 'transition' */
+  activeMode: null,
+  /** Deep clone of element (or transitionId) when mode opened */
+  modeSnapshot: null,
+  /** null | 'object' | 'character' — only while activeMode === 'connector' */
   connectorPick: null
 };
 
@@ -27,6 +32,10 @@ const saveStatus = $('saveStatus');
 const transitionSelect = $('transitionSelect');
 const selectedControls = $('selectedControls');
 const connectorHint = $('connectorHint');
+
+function deepClone(v) {
+  return JSON.parse(JSON.stringify(v));
+}
 
 async function loadJson(url) {
   const r = await fetch(url, { cache: 'no-store' });
@@ -46,7 +55,6 @@ function migrateElement(raw) {
       flipX: !!raw.flipX
     };
   }
-  // v1 → v2: old x/y was object center on character (translate -50%-50%)
   return {
     objectAnchor: { x: 0.5, y: 0.5 },
     characterAnchor: { x: +raw.x || 0.5, y: +raw.y || 0.5 },
@@ -96,7 +104,6 @@ async function boot() {
     }
   } catch (_) { /* seed only */ }
 
-  // Preloaded accessories: mount immediately when flag set
   for (const anim of state.manifest.animations) {
     if (anim.preloadedAccessories) {
       mountProps(anim.id, { interactive: false, visible: true });
@@ -105,18 +112,32 @@ async function boot() {
   }
 
   renderAnimList();
-  transitionSelect.addEventListener('change', () => {
-    if (!state.selectedAnim) return;
-    ensureAnimPlacement(state.selectedAnim.id).transitionId = transitionSelect.value;
-    state.dirty = true;
-    saveStatus.textContent = 'Unsaved changes';
-  });
   $('btnSave').addEventListener('click', savePlacements);
   $('btnExitEdit').addEventListener('click', () => exitEdit());
-  $('btnSetConnectors').addEventListener('click', startConnectorPick);
-  $('btnResetConnectors').addEventListener('click', resetConnectors);
+
+  $('btnEditTransition').addEventListener('click', () => enterMode('transition'));
+  $('btnSaveTransition').addEventListener('click', () => commitMode());
+  $('btnCancelTransition').addEventListener('click', () => cancelMode());
+  transitionSelect.addEventListener('change', onTransitionChange);
+
+  $('btnEditConnector').addEventListener('click', () => enterMode('connector'));
+  $('btnSaveConnector').addEventListener('click', () => commitMode());
+  $('btnCancelConnector').addEventListener('click', () => cancelMode());
+  $('btnResetConnectors').addEventListener('click', resetConnectorsInMode);
+
+  $('btnEditRotation').addEventListener('click', () => enterMode('rotation'));
+  $('btnSaveRotation').addEventListener('click', () => commitMode());
+  $('btnCancelRotation').addEventListener('click', () => cancelMode());
   $('rotationSlider').addEventListener('input', onRotationInput);
   $('rotationNum').addEventListener('input', onRotationInput);
+
+  $('btnEditPosition').addEventListener('click', () => enterMode('position'));
+  $('btnSavePosition').addEventListener('click', () => commitMode());
+  $('btnCancelPosition').addEventListener('click', () => cancelMode());
+
+  $('btnEditSize').addEventListener('click', () => enterMode('size'));
+  $('btnSaveSize').addEventListener('click', () => commitMode());
+  $('btnCancelSize').addEventListener('click', () => cancelMode());
   $('scaleSlider').addEventListener('input', onScaleInput);
 
   creature.addEventListener('pointerdown', onCreaturePointerDown);
@@ -133,6 +154,176 @@ function ensureAnimPlacement(id) {
     state.placements.byAnimation[id] = { transitionId: 'lightning', elements: {} };
   }
   return state.placements.byAnimation[id];
+}
+
+function currentElement() {
+  if (!state.selectedAnim || !state.selectedElementId) return null;
+  return ensureAnimPlacement(state.selectedAnim.id).elements[state.selectedElementId] || null;
+}
+
+function markDirty() {
+  state.dirty = true;
+  saveStatus.textContent = 'Unsaved changes';
+}
+
+/* ---------- Modal pencil modes ---------- */
+
+function enterMode(mode) {
+  if (!state.editMode || !state.selectedAnim) return;
+  if (mode !== 'transition' && !state.selectedElementId) return;
+  if (state.activeMode && state.activeMode !== mode) {
+    cancelMode();
+  }
+  state.activeMode = mode;
+  if (mode === 'transition') {
+    const place = ensureAnimPlacement(state.selectedAnim.id);
+    state.modeSnapshot = { transitionId: place.transitionId || 'lightning' };
+  } else {
+    const st = currentElement();
+    state.modeSnapshot = deepClone(st);
+  }
+  state.connectorPick = mode === 'connector' ? 'object' : null;
+  document.body.classList.toggle('picking-character', false);
+  document.body.classList.toggle('picking-object', mode === 'connector');
+  if (mode === 'connector') {
+    connectorHint.textContent = 'Click a point on the hat (object).';
+  }
+  syncModeUi();
+  mountProps(state.selectedAnim.id, { interactive: true });
+}
+
+function commitMode() {
+  if (!state.activeMode) return;
+  // Working values already written into state; just clear mode.
+  // Isolation: writers only touch their fields while mode is active.
+  state.activeMode = null;
+  state.modeSnapshot = null;
+  state.connectorPick = null;
+  document.body.classList.remove('picking-character', 'picking-object');
+  markDirty();
+  syncModeUi();
+  refreshViews();
+  if (state.selectedAnim) mountProps(state.selectedAnim.id, { interactive: true });
+}
+
+function cancelMode() {
+  if (!state.activeMode || !state.modeSnapshot) {
+    state.activeMode = null;
+    state.modeSnapshot = null;
+    state.connectorPick = null;
+    document.body.classList.remove('picking-character', 'picking-object');
+    syncModeUi();
+    return;
+  }
+  const mode = state.activeMode;
+  if (mode === 'transition') {
+    ensureAnimPlacement(state.selectedAnim.id).transitionId = state.modeSnapshot.transitionId;
+  } else {
+    const st = currentElement();
+    if (st && state.modeSnapshot) {
+      // Restore entire element snapshot so Cancel is exact
+      Object.keys(st).forEach((k) => delete st[k]);
+      Object.assign(st, deepClone(state.modeSnapshot));
+    }
+  }
+  state.activeMode = null;
+  state.modeSnapshot = null;
+  state.connectorPick = null;
+  document.body.classList.remove('picking-character', 'picking-object');
+  syncModeUi();
+  refreshViews();
+  if (state.selectedAnim) mountProps(state.selectedAnim.id, { interactive: true });
+}
+
+function syncModeUi() {
+  const mode = state.activeMode;
+  document.querySelectorAll('.ie-row').forEach((row) => {
+    const m = row.dataset.mode;
+    const editing = mode === m;
+    row.classList.toggle('is-editing', editing);
+    row.querySelector('.ie-view')?.classList.toggle('hidden', editing);
+    row.querySelector('.ie-edit')?.classList.toggle('hidden', !editing);
+  });
+  // Disable other pencils while one mode active
+  document.querySelectorAll('.ie-view .ie-btn').forEach((btn) => {
+    btn.disabled = !!mode;
+  });
+  overlay.classList.toggle('passthrough', mode === 'connector' && state.connectorPick === 'character');
+  overlay.classList.toggle('mode-position', mode === 'position');
+  overlay.classList.toggle('mode-rotation', mode === 'rotation');
+  overlay.classList.toggle('mode-connector', mode === 'connector');
+}
+
+function refreshViews() {
+  const place = state.selectedAnim ? ensureAnimPlacement(state.selectedAnim.id) : null;
+  if (place) {
+    $('transitionView').textContent = place.transitionId || 'lightning';
+    transitionSelect.value = place.transitionId || 'lightning';
+  }
+  const st = currentElement();
+  if (!st) {
+    selectedControls.classList.add('hidden');
+    return;
+  }
+  selectedControls.classList.remove('hidden');
+  $('selectedLabel').textContent = state.selectedElementId;
+  $('connectorView').textContent =
+    `obj(${st.objectAnchor.x.toFixed(2)},${st.objectAnchor.y.toFixed(2)}) → ` +
+    `char(${st.characterAnchor.x.toFixed(2)},${st.characterAnchor.y.toFixed(2)})`;
+  $('rotationView').textContent = `${Math.round(st.rotation || 0)}°`;
+  syncRotationControls(st.rotation || 0);
+  $('positionView').textContent =
+    `(${st.characterAnchor.x.toFixed(2)}, ${st.characterAnchor.y.toFixed(2)})`;
+  $('sizeView').textContent = Number(st.scale || 0.3).toFixed(2);
+  $('scaleSlider').value = String(st.scale || 0.3);
+}
+
+function onTransitionChange() {
+  if (state.activeMode !== 'transition' || !state.selectedAnim) return;
+  ensureAnimPlacement(state.selectedAnim.id).transitionId = transitionSelect.value;
+}
+
+function onRotationInput(e) {
+  if (state.activeMode !== 'rotation') return;
+  if (!state.selectedAnim || !state.selectedElementId) return;
+  const v = Math.max(-180, Math.min(180, +e.target.value || 0));
+  syncRotationControls(v);
+  const st = currentElement();
+  st.rotation = v; // rotation mode writes ONLY rotation
+  const img = overlay.querySelector(`[data-element-id="${state.selectedElementId}"]`);
+  if (img) positionProp(img, st);
+}
+
+function onScaleInput(e) {
+  if (state.activeMode !== 'size') return;
+  if (!state.selectedAnim || !state.selectedElementId) return;
+  const v = Math.max(0.05, Math.min(1.5, +e.target.value || 0.3));
+  const st = currentElement();
+  st.scale = v; // size mode writes ONLY scale
+  const img = overlay.querySelector(`[data-element-id="${state.selectedElementId}"]`);
+  if (img) {
+    positionProp(img, st);
+    if (state.activeMode === 'rotation') {
+      renderRotateHandle(state.selectedAnim.id, state.selectedElementId);
+    }
+  }
+}
+
+function resetConnectorsInMode() {
+  if (state.activeMode !== 'connector') return;
+  if (!state.selectedAnim || !state.selectedElementId) return;
+  const anim = state.selectedAnim;
+  const el = anim.elements.find((e) => e.id === state.selectedElementId);
+  const st = currentElement();
+  const def = defaultElementState(anim, el);
+  st.objectAnchor = { ...def.objectAnchor };
+  st.characterAnchor = { ...def.characterAnchor };
+  state.connectorPick = 'object';
+  document.body.classList.remove('picking-character');
+  document.body.classList.add('picking-object');
+  connectorHint.textContent = 'Reset. Click a point on the object.';
+  syncModeUi();
+  mountProps(anim.id, { interactive: true });
 }
 
 function renderAnimList() {
@@ -165,7 +356,6 @@ function renderAnimList() {
   }
 }
 
-/** Creature box relative to creature-rig (props live in rig space). */
 function creatureBoxInRig() {
   const rig = creatureRig.getBoundingClientRect();
   const r = creature.getBoundingClientRect();
@@ -211,6 +401,7 @@ function mountProps(animId, { interactive = false, visible = true } = {}) {
   overlay.innerHTML = '';
   markerLayer.innerHTML = '';
   overlay.classList.toggle('editing', interactive);
+  syncModeUi();
   if (!animId || !visible) return;
   const anim = state.manifest.animations.find((a) => a.id === animId);
   if (!anim?.elements?.length) return;
@@ -228,19 +419,38 @@ function mountProps(animId, { interactive = false, visible = true } = {}) {
     img.src = '/' + el.src.replace(/^\//, '');
     img.alt = el.id;
     img.className = 'cambio-prop' + (state.selectedElementId === el.id ? ' selected' : '');
-    if (state.connectorPick === 'object' && state.selectedElementId === el.id) {
+    if (state.activeMode === 'connector' && state.connectorPick === 'object' && state.selectedElementId === el.id) {
       img.classList.add('picking-object');
     }
     img.dataset.elementId = el.id;
     img.draggable = false;
+
+    // Hit-testing rules by mode:
+    // - connector object-pick: only selected prop receives clicks
+    // - connector character-pick: overlay passthrough → creature gets clicks (no prop PE)
+    // - position: selected prop draggable
+    // - rotation: rotate handle only (prop PE none for drag)
+    // - otherwise / no mode: select only (no drag)
+    const allowPropPe =
+      interactive &&
+      (
+        (state.activeMode === 'connector' && state.connectorPick === 'object' && el.id === state.selectedElementId) ||
+        (state.activeMode === 'position' && el.id === state.selectedElementId) ||
+        (!state.activeMode && interactive)
+      );
+    img.style.pointerEvents = allowPropPe ? 'auto' : 'none';
+
     positionProp(img, st);
     if (interactive) bindPropPointer(img, animId, el.id);
-    else img.style.pointerEvents = 'none';
     overlay.appendChild(img);
   }
   if (interactive && state.selectedElementId) {
-    renderMarkers(animId, state.selectedElementId);
-    renderRotateHandle(animId, state.selectedElementId);
+    if (state.activeMode === 'connector' || !state.activeMode) {
+      renderMarkers(animId, state.selectedElementId);
+    }
+    if (state.activeMode === 'rotation') {
+      renderRotateHandle(animId, state.selectedElementId);
+    }
   }
 }
 
@@ -258,37 +468,25 @@ function renderMarkers(animId, elementId) {
   charM.style.top = `${box.top + ca.y * box.height}px`;
   markerLayer.appendChild(charM);
 
-  const img = overlay.querySelector(`[data-element-id="${elementId}"]`);
-  if (img) {
-    const oa = st.objectAnchor;
-    // object marker at attachment point = characterAnchor in rig (they coincide when attached)
-    // Also show object-local marker on the prop bbox for clarity while picking
-    const ir = img.getBoundingClientRect();
-    const rig = creatureRig.getBoundingClientRect();
-    const objM = document.createElement('div');
-    objM.className = 'cambio-marker object';
-    objM.title = 'objectAnchor';
-    // After transform, objectAnchor lands on characterAnchor — place blue marker at same spot
-    // plus a slight offset label via second marker on untransformed estimate:
-    objM.style.left = `${box.left + ca.x * box.width}px`;
-    objM.style.top = `${box.top + ca.y * box.height}px`;
-    // Offset blue slightly so both visible when coincident
-    objM.style.boxShadow = '0 0 0 2px #fff, 0 0 8px rgba(0,0,0,.45), 3px 3px 0 #4a9eff';
-    markerLayer.appendChild(objM);
-    void ir; void rig; void oa;
-  }
+  const objM = document.createElement('div');
+  objM.className = 'cambio-marker object';
+  objM.title = 'objectAnchor';
+  objM.style.left = `${box.left + ca.x * box.width}px`;
+  objM.style.top = `${box.top + ca.y * box.height}px`;
+  objM.style.boxShadow = '0 0 0 2px #fff, 0 0 8px rgba(0,0,0,.45), 3px 3px 0 #4a9eff';
+  markerLayer.appendChild(objM);
 }
 
 function renderRotateHandle(animId, elementId) {
   const existing = overlay.querySelector('.cambio-rotate-handle');
   if (existing) existing.remove();
+  if (state.activeMode !== 'rotation') return;
   const img = overlay.querySelector(`[data-element-id="${elementId}"]`);
   if (!img) return;
   const st = ensureAnimPlacement(animId).elements[elementId];
   const handle = document.createElement('div');
   handle.className = 'cambio-rotate-handle';
   handle.title = 'Drag to rotate';
-  // Place handle above object center in rig space
   const box = creatureBoxInRig();
   const ca = st.characterAnchor;
   const w = (st.scale || 0.3) * box.width;
@@ -297,6 +495,7 @@ function renderRotateHandle(animId, elementId) {
   handle.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (state.activeMode !== 'rotation') return;
     const originX = box.left + ca.x * box.width;
     const originY = box.top + ca.y * box.height;
     const rig = creatureRig.getBoundingClientRect();
@@ -304,11 +503,9 @@ function renderRotateHandle(animId, elementId) {
       const px = ev.clientX - rig.left;
       const py = ev.clientY - rig.top;
       const ang = (Math.atan2(py - originY, px - originX) * 180) / Math.PI + 90;
-      st.rotation = Math.round(((ang + 540) % 360) - 180);
+      st.rotation = Math.round(((ang + 540) % 360) - 180); // ONLY rotation
       syncRotationControls(st.rotation);
       positionProp(img, st);
-      state.dirty = true;
-      saveStatus.textContent = 'Unsaved changes';
     };
     const up = () => {
       window.removeEventListener('pointermove', move);
@@ -325,14 +522,20 @@ function bindPropPointer(img, animId, elementId) {
   img.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    state.selectedElementId = elementId;
-    highlightElementRow(elementId);
-    updateSelectedControls(animId, elementId);
 
-    if (state.connectorPick === 'object') {
-      // Click on object sets objectAnchor in object-local normalized coords
+    // Selecting another element cancels active mode
+    if (state.selectedElementId !== elementId) {
+      if (state.activeMode) cancelMode();
+      state.selectedElementId = elementId;
+      highlightElementRow(elementId);
+      refreshViews();
+      mountProps(animId, { interactive: true });
+      return;
+    }
+
+    // Connector object-pick: write objectAnchor only
+    if (state.activeMode === 'connector' && state.connectorPick === 'object') {
       const rect = img.getBoundingClientRect();
-      // Approximate without inverse-rotate: use axis-aligned bbox (good enough for MVP; exact after re-mount)
       const ox = (e.clientX - rect.left) / rect.width;
       const oy = (e.clientY - rect.top) / rect.height;
       const st = ensureAnimPlacement(animId).elements[elementId];
@@ -341,44 +544,55 @@ function bindPropPointer(img, animId, elementId) {
         y: Math.min(1, Math.max(0, oy))
       };
       state.connectorPick = 'character';
+      document.body.classList.remove('picking-object');
       document.body.classList.add('picking-character');
       connectorHint.textContent = 'Now click the character where this object should attach.';
-      state.dirty = true;
-      saveStatus.textContent = 'Unsaved changes';
+      syncModeUi();
       mountProps(animId, { interactive: true });
       return;
     }
 
-    // Drag moves characterAnchor
-    img.classList.add('dragging', 'selected');
-    const st = ensureAnimPlacement(animId).elements[elementId];
-    const box = creatureBoxInRig();
-    const rig = creatureRig.getBoundingClientRect();
-    const move = (ev) => {
-      const x = (ev.clientX - rig.left - box.left) / box.width;
-      const y = (ev.clientY - rig.top - box.top) / box.height;
-      st.characterAnchor = {
-        x: Math.min(1.15, Math.max(-0.15, x)),
-        y: Math.min(1.15, Math.max(-0.15, y))
+    // Position mode only: drag characterAnchor
+    if (state.activeMode === 'position') {
+      img.classList.add('dragging', 'selected');
+      const st = ensureAnimPlacement(animId).elements[elementId];
+      const box = creatureBoxInRig();
+      const rig = creatureRig.getBoundingClientRect();
+      const move = (ev) => {
+        const x = (ev.clientX - rig.left - box.left) / box.width;
+        const y = (ev.clientY - rig.top - box.top) / box.height;
+        st.characterAnchor = {
+          x: Math.min(1.15, Math.max(-0.15, x)),
+          y: Math.min(1.15, Math.max(-0.15, y))
+        };
+        positionProp(img, st);
+        $('positionView').textContent =
+          `(${st.characterAnchor.x.toFixed(2)}, ${st.characterAnchor.y.toFixed(2)})`;
       };
-      positionProp(img, st);
-      renderMarkers(animId, elementId);
-      state.dirty = true;
-      saveStatus.textContent = 'Unsaved changes';
-    };
-    const up = () => {
-      img.classList.remove('dragging');
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-      mountProps(animId, { interactive: true });
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
+      const up = () => {
+        img.classList.remove('dragging');
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        mountProps(animId, { interactive: true });
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+      return;
+    }
+
+    // No active mode: click selects only (already selected) — no drag
   });
 }
 
 function onCreaturePointerDown(e) {
-  if (state.connectorPick !== 'character' || !state.editMode || !state.selectedAnim || !state.selectedElementId) {
+  // Character pick only in connector mode step 2
+  if (
+    state.activeMode !== 'connector' ||
+    state.connectorPick !== 'character' ||
+    !state.editMode ||
+    !state.selectedAnim ||
+    !state.selectedElementId
+  ) {
     return;
   }
   e.preventDefault();
@@ -392,35 +606,11 @@ function onCreaturePointerDown(e) {
     y: Math.min(1, Math.max(0, y))
   };
   state.connectorPick = null;
-  document.body.classList.remove('picking-character');
-  connectorHint.textContent = 'Connectors set. Drag to nudge · rotate with slider/handle.';
-  state.dirty = true;
-  saveStatus.textContent = 'Unsaved changes';
+  document.body.classList.remove('picking-character', 'picking-object');
+  connectorHint.textContent = 'Connectors preview set. ✓ to keep, ✕ to cancel.';
+  syncModeUi();
   mountProps(state.selectedAnim.id, { interactive: true });
-}
-
-function startConnectorPick() {
-  if (!state.selectedAnim || !state.selectedElementId) return;
-  state.connectorPick = 'object';
-  document.body.classList.remove('picking-character');
-  connectorHint.textContent = 'Click on the object to set its connector point.';
-  mountProps(state.selectedAnim.id, { interactive: true });
-}
-
-function resetConnectors() {
-  if (!state.selectedAnim || !state.selectedElementId) return;
-  const anim = state.selectedAnim;
-  const el = anim.elements.find((e) => e.id === state.selectedElementId);
-  const st = ensureAnimPlacement(anim.id).elements[state.selectedElementId];
-  const def = defaultElementState(anim, el);
-  st.objectAnchor = { ...def.objectAnchor };
-  st.characterAnchor = { ...def.characterAnchor };
-  state.connectorPick = null;
-  document.body.classList.remove('picking-character');
-  connectorHint.textContent = 'Connectors reset to defaults.';
-  state.dirty = true;
-  saveStatus.textContent = 'Unsaved changes';
-  mountProps(anim.id, { interactive: true });
+  refreshViews();
 }
 
 function syncRotationControls(deg) {
@@ -428,48 +618,16 @@ function syncRotationControls(deg) {
   $('rotationNum').value = String(deg);
 }
 
-function onRotationInput(e) {
-  if (!state.selectedAnim || !state.selectedElementId) return;
-  const v = Math.max(-180, Math.min(180, +e.target.value || 0));
-  syncRotationControls(v);
-  const st = ensureAnimPlacement(state.selectedAnim.id).elements[state.selectedElementId];
-  st.rotation = v;
-  const img = overlay.querySelector(`[data-element-id="${state.selectedElementId}"]`);
-  if (img) positionProp(img, st);
-  state.dirty = true;
-  saveStatus.textContent = 'Unsaved changes';
-}
-
-function onScaleInput(e) {
-  if (!state.selectedAnim || !state.selectedElementId) return;
-  const v = Math.max(0.05, Math.min(1.5, +e.target.value || 0.3));
-  const st = ensureAnimPlacement(state.selectedAnim.id).elements[state.selectedElementId];
-  st.scale = v;
-  const img = overlay.querySelector(`[data-element-id="${state.selectedElementId}"]`);
-  if (img) {
-    positionProp(img, st);
-    renderRotateHandle(state.selectedAnim.id, state.selectedElementId);
-  }
-  state.dirty = true;
-  saveStatus.textContent = 'Unsaved changes';
-}
-
-function updateSelectedControls(animId, elementId) {
-  selectedControls.classList.remove('hidden');
-  $('selectedLabel').textContent = elementId;
-  const st = ensureAnimPlacement(animId).elements[elementId];
-  syncRotationControls(st.rotation || 0);
-  $('scaleSlider').value = String(st.scale || 0.3);
-}
-
 function enterEdit(animId) {
   const anim = state.manifest.animations.find((a) => a.id === animId);
   if (!anim?.editable) return;
+  if (state.activeMode) cancelMode();
   state.selectedAnim = anim;
   state.editMode = true;
   state.selectedElementId = anim.elements[0]?.id || null;
   state.connectorPick = null;
-  document.body.classList.remove('picking-character');
+  document.body.classList.remove('picking-character', 'picking-object');
+  document.body.classList.add('cambio-editing');
   editSection.classList.remove('hidden');
   $('editTitle').textContent = anim.label;
   const place = ensureAnimPlacement(animId);
@@ -490,19 +648,18 @@ function enterEdit(animId) {
     li.dataset.elementId = el.id;
     li.innerHTML = `<span class="label">${el.id} → ${el.anchor}</span>`;
     li.addEventListener('click', () => {
+      if (state.activeMode) cancelMode();
       state.selectedElementId = el.id;
-      state.connectorPick = null;
-      document.body.classList.remove('picking-character');
       highlightElementRow(el.id);
-      updateSelectedControls(animId, el.id);
+      refreshViews();
       mountProps(animId, { interactive: true });
-      connectorHint.textContent = 'Select an object, then Set connectors — or drag / rotate.';
     });
     elementList.appendChild(li);
   }
-  if (state.selectedElementId) updateSelectedControls(animId, state.selectedElementId);
+  refreshViews();
+  syncModeUi();
   mountProps(animId, { interactive: true });
-  $('stageHint').textContent = 'Edit: connectors, rotate, drag · Save · Play';
+  $('stageHint').textContent = 'Edit: pencil a property · Save placements · Play';
   [...animList.children].forEach((li) => li.classList.toggle('active', li.dataset.id === animId));
 }
 
@@ -513,10 +670,11 @@ function highlightElementRow(id) {
 }
 
 function exitEdit() {
+  if (state.activeMode) cancelMode();
   state.editMode = false;
   state.selectedElementId = null;
   state.connectorPick = null;
-  document.body.classList.remove('picking-character');
+  document.body.classList.remove('picking-character', 'picking-object', 'cambio-editing');
   editSection.classList.add('hidden');
   selectedControls.classList.add('hidden');
   if (state.selectedAnim?.preloadedAccessories) {
@@ -602,9 +760,9 @@ async function playGhostSample() {
 }
 
 async function savePlacements() {
+  if (state.activeMode) commitMode();
   saveStatus.textContent = 'Saving…';
   try {
-    // Ensure migrated shape on save
     const migrated = migratePlacements(state.placements);
     const body = {
       ...migrated,
@@ -632,6 +790,14 @@ window.__cambioTest = {
   getState: () => state,
   mountProps,
   creatureBoxInRig,
+  enterMode,
+  commitMode,
+  cancelMode,
+  snapshotElement(elementId) {
+    const animId = state.selectedAnim?.id;
+    if (!animId) return null;
+    return deepClone(ensureAnimPlacement(animId).elements[elementId]);
+  },
   measureAttachment(elementId) {
     const img = overlay.querySelector(`[data-element-id="${elementId}"]`);
     if (!img || !state.selectedAnim) return null;
@@ -642,9 +808,6 @@ window.__cambioTest = {
       x: box.left + ca.x * box.width,
       y: box.top + ca.y * box.height
     };
-    // Sample objectAnchor in screen space via elementFromPoint-style geometry:
-    // After CSS transform, objectAnchor should be at left/top of the positioned element
-    // which equals expected. Read computed left/top.
     const left = parseFloat(img.style.left);
     const top = parseFloat(img.style.top);
     return {
@@ -654,7 +817,8 @@ window.__cambioTest = {
       dy: top - expected.y,
       rotation: st.rotation,
       objectAnchor: st.objectAnchor,
-      characterAnchor: st.characterAnchor
+      characterAnchor: st.characterAnchor,
+      scale: st.scale
     };
   },
   setConnectors(elementId, objectAnchor, characterAnchor) {
@@ -664,12 +828,21 @@ window.__cambioTest = {
     st.objectAnchor = { ...objectAnchor };
     st.characterAnchor = { ...characterAnchor };
     mountProps(animId, { interactive: state.editMode });
+    refreshViews();
   },
   setRotation(elementId, deg) {
     const animId = state.selectedAnim?.id;
     if (!animId) return;
     ensureAnimPlacement(animId).elements[elementId].rotation = deg;
     mountProps(animId, { interactive: state.editMode });
+    refreshViews();
+  },
+  setScale(elementId, scale) {
+    const animId = state.selectedAnim?.id;
+    if (!animId) return;
+    ensureAnimPlacement(animId).elements[elementId].scale = scale;
+    mountProps(animId, { interactive: state.editMode });
+    refreshViews();
   }
 };
 

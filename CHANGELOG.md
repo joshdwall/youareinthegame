@@ -7,6 +7,13 @@ SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.co
 
 ## 2026-10-30
 
+### Fixed
+- **Cambio modal pencil editors + connector hit-testing** (`modal-badge-1`): each property (Connector, Rotation, Position, Size, Transition) edits only via ✎ → ✓/✕ (enVivo inline-edit look). Cancel restores a deep snapshot; modes write only their own fields. Root causes: (a) `.cambio-overlay.editing { pointer-events: auto }` blocked creature clicks on connector step 2 — fixed with overlay passthrough + creature hit-test; prop drag no longer runs outside Position mode. (b) Always-live scale slider + non-modal UI caused accidental size changes — Size mode isolates `scale`. Playwright: field isolation save/cancel + real `mouse.click` two-click connectors at 1920×1080 and 1366×768 — ALL PASS.
+
+### Changed
+- **“Now with Spores!” badge** fixed to viewport **bottom-right** on apex/www and Cambio (desktop + mobile). CSS variables `--badge-corner`, `--badge-size`, `--badge-right`, `--badge-bottom`, `--badge-z` (+ safe-area insets). Cambio shifts `--badge-right` clear of the right edit rail when editing. Cache-bust `?v=modal-badge-1`. Plan: knowledge-hub `3f211ae0`.
+
+
 ### Changed
 - **Cambio connector-point attach + rotation + overlay harness** (`cowboy-connectors-1`): hat asset rotated −90° CCW (was stored crown-right / brim-vertical; no EXIF) so brim is horizontal; placement schema v2 `{objectAnchor, characterAnchor, rotation, scale, transition}` with migrate from v1 x/y; edit-mode rotation slider/numeric + rotate handle; two-click connectors (object then character) with markers + reset; props parented on `.creature-rig` float (bob with character); layout = real public site stage with left anim rail / right Edit rail overlays (character stays clear). MVP flag `preloadedAccessories` on animations (cowboy false). Apex remains ghost-only; no pages.dev.
 
