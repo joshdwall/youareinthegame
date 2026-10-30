@@ -6,6 +6,9 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
 ## 2026-10-30
+### Checkpoint
+- **Cowboy placements SSOT** (`checkpoint-2026-10-30-cowboy-placed`): git tag + bundle; KV dump `data/cambio-placements.checkpoint.json`; KV backup key `cambio:placements:backup:2026-10-30-cowboy-placed`; seed `content/cambio-placements.json` synced to operator-approved placements. Activation Play plan phases A–D start from this checkpoint.
+
 ### Fixed
 - **Selected-object prompts** (`move-select-1`): connector/move hints no longer hard-code “hat”. Prompts, markers, hit targets, and field writes follow `selectedElementId` with labels hat / mustache / left pistol / right pistol. Playwright covers all 4 objects.
 

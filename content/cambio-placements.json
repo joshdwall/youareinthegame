@@ -1,35 +1,61 @@
 {
   "schemaVersion": 2,
-  "updatedAt": null,
+  "updatedAt": "2026-10-30T22:16:03.402Z",
   "byAnimation": {
     "cowboy": {
       "transitionId": "lightning",
       "elements": {
         "hat": {
-          "objectAnchor": { "x": 0.5, "y": 0.85 },
-          "characterAnchor": { "x": 0.5, "y": 0.08 },
+          "objectAnchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "characterAnchor": {
+            "x": 0.48798449304854485,
+            "y": -0.07305050626728364
+          },
           "rotation": 0,
-          "scale": 0.55,
-          "transition": null
+          "scale": 1.05,
+          "transition": null,
+          "flipX": false
         },
         "mustache": {
-          "objectAnchor": { "x": 0.5, "y": 0.5 },
-          "characterAnchor": { "x": 0.5, "y": 0.56 },
+          "objectAnchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "characterAnchor": {
+            "x": 0.4949264790076918,
+            "y": 0.7959222378465736
+          },
           "rotation": 0,
           "scale": 0.38,
-          "transition": null
+          "transition": null,
+          "flipX": false
         },
         "pistolL": {
-          "objectAnchor": { "x": 0.5, "y": 0.5 },
-          "characterAnchor": { "x": 0.14, "y": 0.72 },
+          "objectAnchor": {
+            "x": 0.5599375681293318,
+            "y": 0.3445842106358893
+          },
+          "characterAnchor": {
+            "x": 0.0024783024801600623,
+            "y": 0.46025228913769484
+          },
           "rotation": -20,
           "scale": 0.28,
           "transition": null,
           "flipX": false
         },
         "pistolR": {
-          "objectAnchor": { "x": 0.5, "y": 0.5 },
-          "characterAnchor": { "x": 0.86, "y": 0.72 },
+          "objectAnchor": {
+            "x": 0.321173542793166,
+            "y": 0.479040138779011
+          },
+          "characterAnchor": {
+            "x": 0.9365892226504277,
+            "y": 0.4912562212983778
+          },
           "rotation": 20,
           "scale": 0.28,
           "transition": null,
