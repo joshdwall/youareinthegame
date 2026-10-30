@@ -6,6 +6,9 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
 ## 2026-10-30
+### Tests
+- **Activation Playwright** (`tests/cambio-activation-test.mjs`): @ 1920×1080 & 1366×768 — apex ghost threshold vs Cambio ghost Play (flash/spores/reset parity); cowboy Play accessories at saved placements + mini composite spores + reset. Frame captures under `capture/yaitg-activation/`.
+
 ### Changed
 - **Cowboy Play** uses the shared activation engine with saved placements (KV/seed SSOT): lightning + composite flash (hat, mustache, left/right pistols) + mini cowboy spore replicas + reset. Manifest `playMode: character-overlay`. Public apex still ghost-only.
 
