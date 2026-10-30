@@ -245,3 +245,28 @@
     --cambio-rail-width: min(200px, 36vw);
   }
 }
+
+/* Move mode — clearly visible alternative to Connector */
+.ie-row-move {
+  border: 1px solid rgba(122, 181, 160, 0.45);
+  border-radius: 8px;
+  padding: 0.5rem 0.45rem !important;
+  background: rgba(122, 181, 160, 0.1);
+}
+.ie-btn-move {
+  min-width: auto;
+  padding: 0.25rem 0.55rem !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border-color: #7ab5a0 !important;
+  background: #4a7c6a !important;
+  color: #fff !important;
+}
+.ie-btn-move:hover:not(:disabled) {
+  background: #5a927c !important;
+  color: #fff !important;
+}
+.ie-row-move.is-editing {
+  border-color: #f0c14b;
+  background: rgba(240, 193, 75, 0.12);
+}

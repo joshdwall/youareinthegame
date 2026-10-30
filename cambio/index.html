@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <title>Cambio — You Are In The Game (admin)</title>
   <!-- Real public site styles = background stage (float, sage, creature) -->
-  <link rel="stylesheet" href="/styles.css?v=modal-badge-1" />
-  <link rel="stylesheet" href="/cambio/cambio.css?v=modal-badge-1" />
+  <link rel="stylesheet" href="/styles.css?v=move-select-1" />
+  <link rel="stylesheet" href="/cambio/cambio.css?v=move-select-1" />
   <link rel="stylesheet" href="/effects/spore/ghost/effect.css" />
 </head>
 <body class="cambio-body">
@@ -82,6 +82,23 @@
         </div>
       </div>
 
+      <!-- Move (drag-to-stick; alternative to Connector) -->
+      <div class="ie-row ie-row-move" data-mode="move">
+        <div class="ie-view">
+          <span class="ie-label">Move</span>
+          <span class="ie-value" id="moveView">—</span>
+          <button type="button" class="ie-btn ie-btn-move" id="btnEditMove" title="Move object" aria-label="Move object">✎ Move</button>
+        </div>
+        <div class="ie-edit hidden">
+          <p id="moveHint" class="cambio-status">Drag the object to where it should stick.</p>
+          <div class="ie-actions">
+            <button type="button" class="ie-btn ie-save" id="btnSaveMove" title="Save">✓</button>
+            <button type="button" class="ie-btn ie-cancel" id="btnCancelMove" title="Cancel">✕</button>
+          </div>
+        </div>
+      </div>
+
+
       <!-- Rotation -->
       <div class="ie-row" data-mode="rotation">
         <div class="ie-view">
@@ -104,21 +121,7 @@
         </div>
       </div>
 
-      <!-- Position -->
-      <div class="ie-row" data-mode="position">
-        <div class="ie-view">
-          <span class="ie-label">Position</span>
-          <span class="ie-value" id="positionView">—</span>
-          <button type="button" class="ie-btn" id="btnEditPosition" title="Edit position" aria-label="Edit position">✎</button>
-        </div>
-        <div class="ie-edit hidden">
-          <p class="cambio-status">Drag the object on the stage.</p>
-          <div class="ie-actions">
-            <button type="button" class="ie-btn ie-save" id="btnSavePosition" title="Save">✓</button>
-            <button type="button" class="ie-btn ie-cancel" id="btnCancelPosition" title="Cancel">✕</button>
-          </div>
-        </div>
-      </div>
+
 
       <!-- Size -->
       <div class="ie-row" data-mode="size">
@@ -146,6 +149,6 @@
     <p id="saveStatus" class="cambio-status" aria-live="polite"></p>
   </aside>
 
-  <script type="module" src="/cambio/cambio.js?v=modal-badge-1"></script>
+  <script type="module" src="/cambio/cambio.js?v=move-select-1"></script>
 </body>
 </html>

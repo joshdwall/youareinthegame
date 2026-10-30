@@ -11,7 +11,7 @@ const state = {
   editMode: false,
   selectedElementId: null,
   dirty: false,
-  /** null | 'connector' | 'rotation' | 'position' | 'size' | 'transition' */
+  /** null | 'connector' | 'rotation' | 'move' | 'size' | 'transition' */
   activeMode: null,
   /** Deep clone of element (or transitionId) when mode opened */
   modeSnapshot: null,
@@ -32,6 +32,26 @@ const saveStatus = $('saveStatus');
 const transitionSelect = $('transitionSelect');
 const selectedControls = $('selectedControls');
 const connectorHint = $('connectorHint');
+
+/** Human labels for cowboy (and future) elements — drives prompts + UI. */
+const ELEMENT_LABELS = {
+  hat: 'hat',
+  mustache: 'mustache',
+  pistolL: 'left pistol',
+  pistolR: 'right pistol'
+};
+
+function elementLabel(id) {
+  if (!id) return 'object';
+  if (ELEMENT_LABELS[id]) return ELEMENT_LABELS[id];
+  const el = state.selectedAnim?.elements?.find((e) => e.id === id);
+  return el?.label || id;
+}
+
+function selectedLabel() {
+  return elementLabel(state.selectedElementId);
+}
+
 
 function deepClone(v) {
   return JSON.parse(JSON.stringify(v));
@@ -131,9 +151,9 @@ async function boot() {
   $('rotationSlider').addEventListener('input', onRotationInput);
   $('rotationNum').addEventListener('input', onRotationInput);
 
-  $('btnEditPosition').addEventListener('click', () => enterMode('position'));
-  $('btnSavePosition').addEventListener('click', () => commitMode());
-  $('btnCancelPosition').addEventListener('click', () => cancelMode());
+  $('btnEditMove').addEventListener('click', () => enterMode('move'));
+  $('btnSaveMove').addEventListener('click', () => commitMode());
+  $('btnCancelMove').addEventListener('click', () => cancelMode());
 
   $('btnEditSize').addEventListener('click', () => enterMode('size'));
   $('btnSaveSize').addEventListener('click', () => commitMode());
@@ -186,7 +206,15 @@ function enterMode(mode) {
   document.body.classList.toggle('picking-character', false);
   document.body.classList.toggle('picking-object', mode === 'connector');
   if (mode === 'connector') {
-    connectorHint.textContent = 'Click a point on the hat (object).';
+    connectorHint.textContent = `Click a connector point on the ${selectedLabel()}.`;
+  }
+  if (mode === 'move') {
+    const st = currentElement();
+    if (st && (!st.objectAnchor || !Number.isFinite(+st.objectAnchor.x))) {
+      st.objectAnchor = { x: 0.5, y: 0.5 };
+    }
+    const mh = $('moveHint');
+    if (mh) mh.textContent = `Drag the ${selectedLabel()} to where it should stick.`;
   }
   syncModeUi();
   mountProps(state.selectedAnim.id, { interactive: true });
@@ -249,7 +277,7 @@ function syncModeUi() {
     btn.disabled = !!mode;
   });
   overlay.classList.toggle('passthrough', mode === 'connector' && state.connectorPick === 'character');
-  overlay.classList.toggle('mode-position', mode === 'position');
+  overlay.classList.toggle('mode-move', mode === 'move');
   overlay.classList.toggle('mode-rotation', mode === 'rotation');
   overlay.classList.toggle('mode-connector', mode === 'connector');
 }
@@ -266,14 +294,17 @@ function refreshViews() {
     return;
   }
   selectedControls.classList.remove('hidden');
-  $('selectedLabel').textContent = state.selectedElementId;
+  $('selectedLabel').textContent = selectedLabel();
   $('connectorView').textContent =
     `obj(${st.objectAnchor.x.toFixed(2)},${st.objectAnchor.y.toFixed(2)}) → ` +
     `char(${st.characterAnchor.x.toFixed(2)},${st.characterAnchor.y.toFixed(2)})`;
   $('rotationView').textContent = `${Math.round(st.rotation || 0)}°`;
   syncRotationControls(st.rotation || 0);
-  $('positionView').textContent =
-    `(${st.characterAnchor.x.toFixed(2)}, ${st.characterAnchor.y.toFixed(2)})`;
+  const mv = $('moveView');
+  if (mv) {
+    mv.textContent =
+      `(${st.characterAnchor.x.toFixed(2)}, ${st.characterAnchor.y.toFixed(2)})`;
+  }
   $('sizeView').textContent = Number(st.scale || 0.3).toFixed(2);
   $('scaleSlider').value = String(st.scale || 0.3);
 }
@@ -321,7 +352,7 @@ function resetConnectorsInMode() {
   state.connectorPick = 'object';
   document.body.classList.remove('picking-character');
   document.body.classList.add('picking-object');
-  connectorHint.textContent = 'Reset. Click a point on the object.';
+  connectorHint.textContent = `Reset. Click a connector point on the ${selectedLabel()}.`;
   syncModeUi();
   mountProps(anim.id, { interactive: true });
 }
@@ -425,17 +456,17 @@ function mountProps(animId, { interactive = false, visible = true } = {}) {
     img.dataset.elementId = el.id;
     img.draggable = false;
 
-    // Hit-testing rules by mode:
+    // Hit-testing rules by mode (always scoped to selectedElementId):
     // - connector object-pick: only selected prop receives clicks
-    // - connector character-pick: overlay passthrough → creature gets clicks (no prop PE)
-    // - position: selected prop draggable
-    // - rotation: rotate handle only (prop PE none for drag)
+    // - connector character-pick: overlay passthrough → creature gets clicks
+    // - move: selected prop draggable
+    // - rotation: rotate handle only
     // - otherwise / no mode: select only (no drag)
     const allowPropPe =
       interactive &&
       (
         (state.activeMode === 'connector' && state.connectorPick === 'object' && el.id === state.selectedElementId) ||
-        (state.activeMode === 'position' && el.id === state.selectedElementId) ||
+        (state.activeMode === 'move' && el.id === state.selectedElementId) ||
         (!state.activeMode && interactive)
       );
     img.style.pointerEvents = allowPropPe ? 'auto' : 'none';
@@ -546,34 +577,58 @@ function bindPropPointer(img, animId, elementId) {
       state.connectorPick = 'character';
       document.body.classList.remove('picking-object');
       document.body.classList.add('picking-character');
-      connectorHint.textContent = 'Now click the character where this object should attach.';
+      connectorHint.textContent = `Now click the character where the ${selectedLabel()} should attach.`;
       syncModeUi();
       mountProps(animId, { interactive: true });
       return;
     }
 
-    // Position mode only: drag characterAnchor
-    if (state.activeMode === 'position') {
+    // Move mode only: drag → characterAnchor under objectAnchor (no jump / no float drift)
+    if (state.activeMode === 'move') {
+      if (elementId !== state.selectedElementId) return;
       img.classList.add('dragging', 'selected');
       const st = ensureAnimPlacement(animId).elements[elementId];
-      const box = creatureBoxInRig();
-      const rig = creatureRig.getBoundingClientRect();
+      // Keep objectAnchor; default to center if missing. Never touch scale/rotation.
+      if (!st.objectAnchor || !Number.isFinite(+st.objectAnchor.x)) {
+        st.objectAnchor = { x: 0.5, y: 0.5 };
+      }
+      const rig0 = creatureRig.getBoundingClientRect();
+      // Attach point is CSS left/top (characterAnchor in rig-local space)
+      const attachX = parseFloat(img.style.left) || 0;
+      const attachY = parseFloat(img.style.top) || 0;
+      const grabDx = (e.clientX - rig0.left) - attachX;
+      const grabDy = (e.clientY - rig0.top) - attachY;
       const move = (ev) => {
-        const x = (ev.clientX - rig.left - box.left) / box.width;
-        const y = (ev.clientY - rig.top - box.top) / box.height;
+        const rig = creatureRig.getBoundingClientRect(); // live — float-safe
+        const box = creatureBoxInRig();
+        const newAttachX = (ev.clientX - rig.left) - grabDx;
+        const newAttachY = (ev.clientY - rig.top) - grabDy;
+        // characterAnchor = character-normalized point under objectAnchor at this drop pose
         st.characterAnchor = {
-          x: Math.min(1.15, Math.max(-0.15, x)),
-          y: Math.min(1.15, Math.max(-0.15, y))
+          x: Math.min(1.15, Math.max(-0.15, (newAttachX - box.left) / box.width)),
+          y: Math.min(1.15, Math.max(-0.15, (newAttachY - box.top) / box.height))
         };
         positionProp(img, st);
-        $('positionView').textContent =
-          `(${st.characterAnchor.x.toFixed(2)}, ${st.characterAnchor.y.toFixed(2)})`;
+        const mv = $('moveView');
+        if (mv) {
+          mv.textContent =
+            `(${st.characterAnchor.x.toFixed(2)}, ${st.characterAnchor.y.toFixed(2)})`;
+        }
       };
       const up = () => {
         img.classList.remove('dragging');
         window.removeEventListener('pointermove', move);
         window.removeEventListener('pointerup', up);
+        // Final convert against current creature box (objectAnchor unchanged)
+        const box = creatureBoxInRig();
+        const left = parseFloat(img.style.left) || 0;
+        const top = parseFloat(img.style.top) || 0;
+        st.characterAnchor = {
+          x: Math.min(1.15, Math.max(-0.15, (left - box.left) / box.width)),
+          y: Math.min(1.15, Math.max(-0.15, (top - box.top) / box.height))
+        };
         mountProps(animId, { interactive: true });
+        refreshViews();
       };
       window.addEventListener('pointermove', move);
       window.addEventListener('pointerup', up);
@@ -607,7 +662,7 @@ function onCreaturePointerDown(e) {
   };
   state.connectorPick = null;
   document.body.classList.remove('picking-character', 'picking-object');
-  connectorHint.textContent = 'Connectors preview set. ✓ to keep, ✕ to cancel.';
+  connectorHint.textContent = `${selectedLabel()} connectors preview set. ✓ to keep, ✕ to cancel.`;
   syncModeUi();
   mountProps(state.selectedAnim.id, { interactive: true });
   refreshViews();
@@ -646,7 +701,7 @@ function enterEdit(animId) {
     const li = document.createElement('li');
     li.className = 'el-row' + (state.selectedElementId === el.id ? ' selected' : '');
     li.dataset.elementId = el.id;
-    li.innerHTML = `<span class="label">${el.id} → ${el.anchor}</span>`;
+    li.innerHTML = `<span class="label">${elementLabel(el.id)} → ${el.anchor}</span>`;
     li.addEventListener('click', () => {
       if (state.activeMode) cancelMode();
       state.selectedElementId = el.id;
@@ -793,6 +848,15 @@ window.__cambioTest = {
   enterMode,
   commitMode,
   cancelMode,
+  elementLabel,
+  selectElement(id) {
+    if (!state.selectedAnim) return;
+    if (state.activeMode) cancelMode();
+    state.selectedElementId = id;
+    highlightElementRow(id);
+    refreshViews();
+    mountProps(state.selectedAnim.id, { interactive: true });
+  },
   snapshotElement(elementId) {
     const animId = state.selectedAnim?.id;
     if (!animId) return null;

@@ -6,6 +6,12 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
 ## 2026-10-30
+### Fixed
+- **Selected-object prompts** (`move-select-1`): connector/move hints no longer hard-code “hat”. Prompts, markers, hit targets, and field writes follow `selectedElementId` with labels hat / mustache / left pistol / right pistol. Playwright covers all 4 objects.
+
+### Changed
+- **Move mode** (renamed from Position): prominent **✎ Move** in the edit rail. Drag-to-stick with grab-offset (no jump); float-safe characterAnchor updates; ✓ keeps `objectAnchor` and writes only `characterAnchor` (scale/rotation untouched). Survives Save + reload while floating.
+
 
 ### Fixed
 - **Cambio modal pencil editors + connector hit-testing** (`modal-badge-1`): each property (Connector, Rotation, Position, Size, Transition) edits only via ✎ → ✓/✕ (enVivo inline-edit look). Cancel restores a deep snapshot; modes write only their own fields. Root causes: (a) `.cambio-overlay.editing { pointer-events: auto }` blocked creature clicks on connector step 2 — fixed with overlay passthrough + creature hit-test; prop drag no longer runs outside Position mode. (b) Always-live scale slider + non-modal UI caused accidental size changes — Size mode isolates `scale`. Playwright: field isolation save/cancel + real `mouse.click` two-click connectors at 1920×1080 and 1366×768 — ALL PASS.
