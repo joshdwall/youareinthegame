@@ -6,6 +6,9 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
 ## 2026-10-30
+### Fixed
+- **Cowboy Play duplicated the base character** during activation flash. Root cause: ActivationEngine composite profile built a full-size `CharacterComposite` (base + accessories) beside live `#mainCreature`, so two platypuses appeared. Fix: flash flickers accessories mounted on the live character via the same `mountProps` / objectAnchor→characterAnchor path as edit mode (`flashHost: #overlayLayer`); mini spores stay small base+overlay composites; reset clears overlays and leaves the character untouched. Playwright @ 1920×1080 & 1366×768 asserts exactly 1 full-size base and accessory bbox ≤2px vs edit-mode while floating.
+
 ### Tests
 - **Activation Playwright** (`tests/cambio-activation-test.mjs`): @ 1920×1080 & 1366×768 — apex ghost threshold vs Cambio ghost Play (flash/spores/reset parity); cowboy Play accessories at saved placements + mini composite spores + reset. Frame captures under `capture/yaitg-activation/`.
 

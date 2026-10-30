@@ -1,6 +1,7 @@
 /**
  * Build a composited character (base + overlay elements at placements).
- * Used for full-size flash overlay and for mini spore replicas.
+ * Used for mini spore replicas (base + overlays, scaled down).
+ * Full-size flash must NOT use this — accessories mount on the live character via mountProps.
  */
 
 /**

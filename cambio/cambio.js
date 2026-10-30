@@ -765,7 +765,9 @@ function compositeElementsFor(animId) {
 
 /**
  * Play = activate. Ghost uses image-overlay + firework spores (apex parity).
- * Cowboy (and future overlays) use composite flash + mini composite spores.
+ * Cowboy (and future overlays): flash accessories ON the live #mainCreature via
+ * the same mountProps placement path as edit mode (no duplicate base character).
+ * Mini spores remain small base+overlay composites.
  */
 async function playAnimation(animId) {
   const anim = state.manifest.animations.find((a) => a.id === animId);
@@ -776,8 +778,7 @@ async function playAnimation(animId) {
   }
   state.selectedAnim = anim;
   [...animList.children].forEach((li) => li.classList.toggle('active', li.dataset.id === animId));
-  // Clear edit overlays for a clean activate pass
-  overlay.innerHTML = '';
+  // Clear edit markers; accessories remounted below for flash (shared edit path)
   markerLayer.innerHTML = '';
   $('stageHint').textContent = `Playing ${anim.label}…`;
   state._activationBusy = true;
@@ -785,6 +786,7 @@ async function playAnimation(animId) {
   const container = $('siteStage');
   try {
     if (anim.playMode === 'legacy-ghost' || anim.id === 'ghost') {
+      overlay.innerHTML = '';
       await runActivation({
         container,
         creature,
@@ -796,7 +798,8 @@ async function playAnimation(animId) {
       return;
     }
 
-    // Character-overlay activation (cowboy + future)
+    // Mount accessories with the EXACT edit-mode placement path, then flicker that host.
+    mountProps(animId, { interactive: false, visible: true });
     const elements = compositeElementsFor(animId);
     await runActivation({
       container,
@@ -804,20 +807,30 @@ async function playAnimation(animId) {
       creatureRig,
       sporeHost: container,
       profile: 'composite',
+      flashHost: overlay,
       composite: {
+        // Spores only — never used for a full-size duplicate flash layer
         baseSrc: creature.getAttribute('src') || '/img/mushroom-platypus.png',
         elements
       },
       spore: { count: 8, scale: 0.32, durationMs: 1800, spreadPx: 140 }
     });
 
+    // Reset: hide/remove overlay items; live character untouched
     if (state.editMode) {
       mountProps(animId, { interactive: true });
+    } else {
+      overlay.innerHTML = '';
+      overlay.style.opacity = '';
+      overlay.classList.remove('activation-flash-host');
     }
     $('stageHint').textContent = `${anim.label} play finished`;
   } catch (err) {
     console.error('activation failed', err);
     $('stageHint').textContent = `Play failed: ${err.message || err}`;
+    overlay.innerHTML = '';
+    overlay.style.opacity = '';
+    overlay.classList.remove('activation-flash-host');
   } finally {
     state._activationBusy = false;
   }

@@ -1,5 +1,7 @@
 /**
  * Character-overlay activation: ghost Play ≈ apex threshold; cowboy flash+spores+reset.
+ * Cowboy: accessories flash ON the live #mainCreature (no duplicate full-size base);
+ * accessory bboxes match edit-mode placement within 2px while floating.
  * Viewports: 1920×1080 and 1366×768.
  */
 import { chromium } from 'playwright';
@@ -34,28 +36,95 @@ async function waitHint(page, re, timeout = 20000) {
   );
 }
 
+/** Relative accessory boxes vs #mainCreature (float-invariant). */
+async function relativePropBoxes(page) {
+  return page.evaluate(() => {
+    const c = document.getElementById('mainCreature')?.getBoundingClientRect();
+    if (!c) return {};
+    const out = {};
+    for (const p of document.querySelectorAll('.cambio-prop')) {
+      const id = p.dataset.elementId;
+      if (!id) continue;
+      const r = p.getBoundingClientRect();
+      out[id] = {
+        left: r.left - c.left,
+        top: r.top - c.top,
+        width: r.width,
+        height: r.height
+      };
+    }
+    return out;
+  });
+}
+
 async function sampleActivation(page, labelPrefix) {
   const frames = [];
   for (let i = 0; i < 12; i++) {
     await page.waitForTimeout(350);
     const shot = path.join(OUT, `${labelPrefix}-f${i}.png`);
     await page.screenshot({ path: shot, fullPage: false });
-    const counts = await page.evaluate(() => ({
-      flashBody: document.querySelectorAll('body > .lightning-flash').length,
-      effectOverlay: document.querySelectorAll('#effectOverlay, .activation-flash-layer').length,
-      overlayOpacity: (() => {
-        const el = document.querySelector('#effectOverlay, .activation-flash-layer');
-        return el ? parseFloat(getComputedStyle(el).opacity || '0') : 0;
-      })(),
-      fireworkSpores: document.querySelectorAll('.firework-spore').length,
-      compositeSpores: document.querySelectorAll('.activation-spore').length,
-      compositeEls: document.querySelectorAll('.activation-composite-el').length,
-      accessoryIds: [...document.querySelectorAll('.activation-composite-el')].map((e) => e.dataset.elementId)
-    }));
+    const counts = await page.evaluate(() => {
+      const main = document.getElementById('mainCreature');
+      const mainW = main ? main.getBoundingClientRect().width : 0;
+      const fullSizeBases = [...document.querySelectorAll('#mainCreature, img.activation-composite-base')].filter((el) => {
+        const w = el.getBoundingClientRect().width;
+        return w >= mainW * 0.85 && w > 40;
+      }).length;
+      const props = [...document.querySelectorAll('.cambio-prop')].map((e) => e.dataset.elementId);
+      const flashHost = document.querySelector('#overlayLayer.activation-flash-host, .activation-flash-host');
+      return {
+        flashBody: document.querySelectorAll('body > .lightning-flash').length,
+        effectOverlay: document.querySelectorAll('#effectOverlay, .activation-flash-layer').length,
+        flashHost: !!flashHost,
+        flashHostOpacity: flashHost ? parseFloat(getComputedStyle(flashHost).opacity || '0') : 0,
+        overlayOpacity: (() => {
+          const el = document.querySelector('#effectOverlay, .activation-flash-layer, .activation-flash-host');
+          return el ? parseFloat(getComputedStyle(el).opacity || '0') : 0;
+        })(),
+        fireworkSpores: document.querySelectorAll('.firework-spore').length,
+        compositeSpores: document.querySelectorAll('.activation-spore').length,
+        compositeEls: document.querySelectorAll('.activation-composite-el').length,
+        accessoryIds: [
+          ...props,
+          ...[...document.querySelectorAll('.activation-composite-el')].map((e) => e.dataset.elementId)
+        ],
+        cambioPropIds: props,
+        fullSizeBases,
+        mainCreatureCount: document.querySelectorAll('#mainCreature').length,
+        relativeProps: (() => {
+          const c = document.getElementById('mainCreature')?.getBoundingClientRect();
+          if (!c) return {};
+          const out = {};
+          for (const el of document.querySelectorAll('.cambio-prop')) {
+            const id = el.dataset.elementId;
+            if (!id) continue;
+            const r = el.getBoundingClientRect();
+            out[id] = { left: r.left - c.left, top: r.top - c.top, width: r.width, height: r.height };
+          }
+          return out;
+        })()
+      };
+    });
     frames.push({ i, shot, ...counts });
-    console.log(`    frame ${i}`, counts);
+    console.log(`    frame ${i}`, {
+      flashBody: counts.flashBody,
+      fullSizeBases: counts.fullSizeBases,
+      props: counts.cambioPropIds.length,
+      spores: counts.compositeSpores || counts.fireworkSpores,
+      opacity: counts.overlayOpacity
+    });
   }
   return frames;
+}
+
+function maxBoxDelta(a, b) {
+  if (!a || !b) return Infinity;
+  return Math.max(
+    Math.abs(a.left - b.left),
+    Math.abs(a.top - b.top),
+    Math.abs(a.width - b.width),
+    Math.abs(a.height - b.height)
+  );
 }
 
 async function runViewport(browser, vp) {
@@ -66,8 +135,6 @@ async function runViewport(browser, vp) {
   // --- Apex ghost threshold (force) ---
   await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
   await page.waitForSelector('#mainCreature');
-  // Force threshold via evaluating into loaded effect if exposed; else click many times
-  // Drive apex to threshold with spaced clicks (debounce ~50ms); fallback force lightning
   for (let i = 0; i < 12; i++) {
     await page.click('#mainCreature', { force: true });
     await page.waitForTimeout(80);
@@ -77,7 +144,6 @@ async function runViewport(browser, vp) {
     const effect = app?.currentEffect;
     if (effect && typeof effect.triggerLightningReset === 'function') {
       if (effect.clickCount < effect.resetThreshold) effect.clickCount = effect.resetThreshold;
-      // Return a promise that resolves on finale
       return new Promise((resolve) => {
         const orig = effect.onFinaleComplete.bind(effect);
         effect.onFinaleComplete = () => { orig(); resolve('forced'); };
@@ -121,54 +187,98 @@ async function runViewport(browser, vp) {
   }));
   ok(gReset.flashLayer === 0 && gReset.spores === 0, `${vp.name}: Cambio ghost reset cleared overlay+spores`);
 
-  // Parity: both had flash + spores
   ok(apexHadFlash && gFlash, `${vp.name}: ghost flash parity (apex + Cambio)`);
   ok(apexHadSpores && gSpores, `${vp.name}: ghost spore parity (apex + Cambio)`);
 
-  // --- Cowboy Play ---
+  // --- Cowboy: capture edit-mode accessory boxes (shared mountProps path) ---
+  await page.evaluate(() => {
+    window.__cambioTest.mountProps('cowboy', { interactive: false, visible: true });
+  });
+  await page.waitForTimeout(100);
+  const editSamples = [];
+  for (let i = 0; i < 6; i++) {
+    editSamples.push(await relativePropBoxes(page));
+    await page.waitForTimeout(400); // sample across float
+  }
+  const editIds = Object.keys(editSamples[0] || {});
+  ok(
+    ['hat', 'mustache', 'pistolL', 'pistolR'].every((id) => editIds.includes(id)),
+    `${vp.name}: edit-mode mountProps shows all 4 cowboy accessories`
+  );
+  // Median-ish reference: first sample (relative to creature — float-invariant)
+  const editRef = editSamples[0];
+
+  // Clear then Play
+  await page.evaluate(() => {
+    document.getElementById('overlayLayer').innerHTML = '';
+  });
+
   const cowPlayP = page.evaluate(() => window.__cambioTest.runActivationPlay('cowboy'));
   const cowFrames = await sampleActivation(page, `cambio-cowboy-${vp.name}`);
   await cowPlayP;
-  const cowFlash = cowFrames.some((f) => f.effectOverlay > 0 || f.overlayOpacity > 0.05 || f.compositeEls >= 4);
+  const flashRelSamples = cowFrames
+    .map((f) => f.relativeProps)
+    .filter((r) => r && Object.keys(r).length >= 4);
+
+  const cowFlash = cowFrames.some(
+    (f) => f.flashHost || f.overlayOpacity > 0.05 || (f.cambioPropIds && f.cambioPropIds.length >= 4)
+  );
   const cowAccessories = cowFrames.some((f) => {
-    const ids = new Set(f.accessoryIds || []);
+    const ids = new Set(f.cambioPropIds || []);
     return ids.has('hat') && ids.has('mustache') && ids.has('pistolL') && ids.has('pistolR');
   });
   const cowSpores = cowFrames.some((f) => f.compositeSpores > 0);
   const sporeAccessories = cowFrames.some((f) => f.compositeSpores > 0 && f.compositeEls >= 4);
-  ok(cowFlash, `${vp.name}: cowboy Play showed composite flash`);
-  ok(cowAccessories, `${vp.name}: cowboy flash had all 4 accessories`);
+
+  // Exactly 1 full-size base during flash frames that had props or lightning
+  const flashActive = cowFrames.filter(
+    (f) => f.flashBody > 0 || f.overlayOpacity > 0.02 || (f.cambioPropIds && f.cambioPropIds.length > 0)
+  );
+  const allSingleBase = flashActive.length > 0 && flashActive.every((f) => f.fullSizeBases === 1 && f.mainCreatureCount === 1);
+  ok(cowFlash, `${vp.name}: cowboy Play showed overlay flash on live host`);
+  ok(cowAccessories, `${vp.name}: cowboy flash had all 4 accessories on live character`);
+  ok(allSingleBase, `${vp.name}: exactly 1 full-size base during flash (no duplicate character)`);
   ok(cowSpores, `${vp.name}: cowboy mini composite spores`);
   ok(sporeAccessories, `${vp.name}: spores carried accessories (composite-el present while spores live)`);
 
-  // Placements during flash match saved SSOT
-  const placementCheck = await page.evaluate(() => {
-    const st = window.__cambioTest.getState();
-    const cow = st.placements?.byAnimation?.cowboy?.elements;
-    if (!cow) return { ok: false, reason: 'no placements' };
-    const els = window.__cambioTest.compositeElementsFor('cowboy');
-    const got = Object.fromEntries(els.map((e) => [e.id, e.placement.characterAnchor]));
-    return {
-      ok: true,
-      hatY: got.hat?.y,
-      mustacheY: got.mustache?.y,
-      savedHatY: cow.hat?.characterAnchor?.y,
-      savedMustacheY: cow.mustache?.characterAnchor?.y
-    };
-  });
+  // Bbox parity: flash relative boxes vs edit-mode within 2px over several float samples
+  let worst = 0;
+  let worstId = '';
+  let samplesCompared = 0;
+  for (const flashBoxes of flashRelSamples) {
+    for (const id of ['hat', 'mustache', 'pistolL', 'pistolR']) {
+      if (!flashBoxes[id] || !editRef[id]) continue;
+      const d = maxBoxDelta(flashBoxes[id], editRef[id]);
+      samplesCompared += 1;
+      if (d > worst) {
+        worst = d;
+        worstId = id;
+      }
+    }
+  }
   ok(
-    placementCheck.ok &&
-      Math.abs(placementCheck.hatY - placementCheck.savedHatY) < 1e-9 &&
-      Math.abs(placementCheck.mustacheY - placementCheck.savedMustacheY) < 1e-9,
-    `${vp.name}: cowboy composite uses saved placements (hat/mustache anchors)`
+    samplesCompared >= 8 && worst <= 2,
+    `${vp.name}: accessory bbox vs edit-mode ≤2px while floating (worst ${worst.toFixed(2)}px on ${worstId || 'n/a'}, n=${samplesCompared})`
   );
+
+  // Save a mid-flash screenshot path note
+  const flashShot = cowFrames.find((f) => f.overlayOpacity > 0.05 || (f.cambioPropIds && f.cambioPropIds.length >= 4));
+  if (flashShot) {
+    fs.copyFileSync(flashShot.shot, path.join(OUT, `cowboy-flash-frame-${vp.name}.png`));
+  }
 
   await waitHint(page, /Cowboy play finished/i, 25000);
   const cReset = await page.evaluate(() => ({
-    flash: document.querySelectorAll('.activation-flash-layer, #effectOverlay').length,
-    spores: document.querySelectorAll('.activation-spore').length
+    flashOwned: document.querySelectorAll('.activation-flash-layer, #effectOverlay').length,
+    flashHost: document.querySelectorAll('.activation-flash-host').length,
+    props: document.querySelectorAll('.cambio-prop').length,
+    spores: document.querySelectorAll('.activation-spore').length,
+    main: document.querySelectorAll('#mainCreature').length
   }));
-  ok(cReset.flash === 0 && cReset.spores === 0, `${vp.name}: cowboy reset cleared`);
+  ok(
+    cReset.flashOwned === 0 && cReset.flashHost === 0 && cReset.props === 0 && cReset.spores === 0 && cReset.main === 1,
+    `${vp.name}: cowboy reset cleared overlays/spores; character untouched`
+  );
 
   await context.close();
 }

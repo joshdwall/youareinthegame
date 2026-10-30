@@ -2,7 +2,9 @@
  * Shared character-overlay activation engine.
  * Play / threshold → transition + overlay flash + spore replicas + reset.
  * Ghost uses image overlay + FireworkManager (apex-compatible assets/timings).
- * Cowboy (and future) uses composite flash + composite-replica spores.
+ * Cowboy (and future) flashes accessories on the LIVE character via flashHost
+ * (same mount/placement path as edit mode) + mini composite-replica spores.
+ * Never draws a second full-size base character during the flash.
  */
 import { FireworkManager } from '../spore/finale.js';
 import { GHOST_CONFIG } from '../spore/ghost/config.js';
@@ -44,7 +46,9 @@ function bodyFlash(classExtra = '') {
  * @param {HTMLElement} opts.creature - #mainCreature
  * @param {HTMLElement} [opts.sporeHost] - where spores append (default container)
  * @param {'ghost'|'composite'} opts.profile
- * @param {object} [opts.composite] - { baseSrc, elements:[{id,src,placement}] }
+ * @param {object} [opts.composite] - { baseSrc, elements } — used for mini spores only when profile=composite
+ * @param {HTMLElement} [opts.flashHost] - existing overlay host (e.g. #overlayLayer with accessories
+ *   already mounted via edit-mode mountProps). When set, flash flickers THIS host — no duplicate base.
  * @param {object} [opts.spore] - overrides { count, scale, durationMs }
  * @param {AbortSignal} [opts.signal]
  * @returns {Promise<{ok:boolean}>}
@@ -57,6 +61,7 @@ export async function runActivation(opts) {
     sporeHost = container,
     profile = 'ghost',
     composite = null,
+    flashHost = null,
     spore = {},
     signal = null
   } = opts;
@@ -82,6 +87,7 @@ export async function runActivation(opts) {
 
   const boxInContainer = measureCreatureBox(creature, flashParent);
   let flashLayer = null;
+  let flashOwned = false; // true when we created the layer and may remove it
   let flickerInterval = null;
   let fireworkManager = null;
 
@@ -117,6 +123,21 @@ export async function runActivation(opts) {
     flashLayer.style.opacity = '0';
   };
 
+  const cleanupFlashLayer = () => {
+    hideFlash();
+    if (!flashLayer) return;
+    if (flashOwned) {
+      flashLayer.remove();
+    } else {
+      flashLayer.classList.remove('activation-flash-host');
+      // Keep opacity 0 until caller clears accessory children (avoids a final opaque flash).
+      flashLayer.style.opacity = '0';
+      flashLayer.style.transition = '';
+      // Caller clears accessory children; do not remove the live overlay host.
+    }
+    flashLayer = null;
+  };
+
   // Build flash overlay
   if (profile === 'ghost') {
     flashLayer = document.createElement('img');
@@ -135,33 +156,25 @@ export async function runActivation(opts) {
       'animation:none' /* parent rig already floats */
     ].join(';');
     flashParent.appendChild(flashLayer);
-  } else if (profile === 'composite' && composite) {
-    flashLayer = document.createElement('div');
-    flashLayer.className = 'activation-flash-layer effect-overlay';
-    flashLayer.style.cssText = [
-      'position:absolute',
-      `left:${boxInContainer.left}px`,
-      `top:${boxInContainer.top}px`,
-      `width:${boxInContainer.width}px`,
-      `height:${boxInContainer.height}px`,
-      'opacity:0',
-      'pointer-events:none',
-      'z-index:5'
-    ].join(';');
-    const comp = buildCharacterComposite({
-      baseSrc: composite.baseSrc,
-      elements: composite.elements,
-      box: { width: boxInContainer.width, height: boxInContainer.height },
-      scale: 1
-    });
-    comp.style.position = 'absolute';
-    comp.style.left = '0';
-    comp.style.top = '0';
-    flashLayer.appendChild(comp);
-    flashParent.appendChild(flashLayer);
+  } else if (profile === 'composite') {
+    // Flash accessories ON the live character — never a second full-size base.
+    // Caller mounts props via the same edit-mode path (mountProps) into flashHost.
+    if (!flashHost) {
+      throw new Error('activation: composite profile requires flashHost (live overlay with accessories)');
+    }
+    if (!composite) {
+      throw new Error('activation: composite profile requires composite (for mini spores)');
+    }
+    flashLayer = flashHost;
+    flashOwned = false;
+    flashLayer.classList.add('activation-flash-host');
+    flashLayer.style.opacity = '0';
+    flashLayer.style.pointerEvents = 'none';
+    flashLayer.style.transition = 'none';
   } else {
     throw new Error(`activation: unknown profile ${profile}`);
   }
+  if (profile === 'ghost') flashOwned = true;
 
   // Lightning sequence (same timing envelope as SporeBaseEffect)
   const L = GHOST_CONFIG.LIGHTNING;
@@ -190,7 +203,7 @@ export async function runActivation(opts) {
 
   if (aborted()) {
     clearTimers();
-    flashLayer?.remove();
+    cleanupFlashLayer();
     return { ok: false, aborted: true };
   }
 
@@ -250,11 +263,9 @@ export async function runActivation(opts) {
 
   await sporeDone;
 
-  // Reset
+  // Reset — remove owned flash layers; leave live character + flashHost structure untouched
   clearTimers();
-  hideFlash();
-  flashLayer?.remove();
-  flashLayer = null;
+  cleanupFlashLayer();
   sporeHost.querySelectorAll('.activation-spore, .firework-spore').forEach((n) => n.remove());
   flashParent.querySelectorAll('.activation-flash-layer, #effectOverlay').forEach((n) => n.remove());
   container.querySelectorAll('.activation-flash-layer, #effectOverlay').forEach((n) => n.remove());
