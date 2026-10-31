@@ -5,6 +5,12 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
+## 2026-10-30 (America/Chicago) — Cambio full Edit + sidebar hamburger
+
+- **Full Edit restored/visible.** Row Actions had Play/Click/Edit/Archive in markup but Edit was clipped by table overflow after the envivo-ui remount. Edit now sits next to Play (enVivo `btn btn-sm btn-outline-dark` + `border-radius:0`), actions wrap with overflow visible, and the selected-row detail bar also exposes Edit. Opens the right-rail full animation editor (pencils + Save placements); git history: same `data-act="edit"` / `enterEdit` path as pre-pf-kit desk list.
+- **Hamburger collapses entire sidebar.** CoreUI/enVivo `header-toggler` + `header-toggler-icon` in `#sidebar .sidebar-header` (`#evSidebarToggle`). Toggle uses `body.sidebar-narrow` (+ `cambio-sidebar-collapsed`); collapsed width 0 so the stage/canvas takes the space. Persists `localStorage['cambio.sidebar.show']` (mirrors enVivo `envivo.sidebar.show`). Floating `#cambioSidebarReopen` when collapsed.
+- Checkpoint `checkpoint-2026-10-30-pre-edit-hamburger`. Playwright `tests/edit-hamburger-test.mjs` (Edit→editor+save, hamburger expand/collapse). Screenshots `/workspace/capture/edit-hamburger/`.
+
 ## 2026-10-30
 
 ### Changed

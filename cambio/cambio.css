@@ -432,3 +432,132 @@
   pointer-events: none !important;
   cursor: default !important;
 }
+
+/* Row actions: never clip Edit / Archive (enVivo btn-sm pattern) */
+.cambio-col-actions,
+.ev-scroll-list-host table.table tbody td.cambio-col-actions {
+  overflow: visible !important;
+  white-space: normal;
+  vertical-align: middle;
+}
+.cambio-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.cambio-row-actions .btn {
+  border-radius: 0;
+  font-size: 0.72rem;
+  padding: 0.15rem 0.4rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.cambio-row-actions .btn[data-act="edit"] {
+  font-weight: 600;
+}
+
+/* Detail bar Edit (selected animation) */
+.cambio-anim-detail {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.35rem 0.15rem 0.55rem;
+  border-bottom: 1px solid var(--cui-border-color, rgba(255,255,255,.12));
+  margin-bottom: 0.35rem;
+}
+.cambio-anim-detail .btn { border-radius: 0; }
+
+/* enVivo header-toggler (hamburger) in sidebar-header */
+#sidebar .sidebar-header {
+  position: relative;
+  min-height: 2.75rem;
+  padding-left: 2.75rem;
+}
+#sidebar .sidebar-header .header-toggler {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: absolute;
+  left: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2rem;
+  height: 2rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  z-index: 2;
+}
+#sidebar .sidebar-header .header-toggler-icon {
+  display: block !important;
+  width: 1.15rem;
+  height: 2px;
+  margin: 0;
+  padding: 0;
+  background-color: currentColor !important;
+  background-image: none !important;
+  border-radius: 0;
+  box-shadow:
+    0 -5px 0 currentColor,
+    0 5px 0 currentColor;
+}
+
+/* Collapse ENTIRE sidebar — canvas takes space (enVivo body.sidebar-narrow hide path) */
+body.sidebar-narrow #sidebar.cambio-rail-left,
+body.cambio-sidebar-collapsed #sidebar.cambio-rail-left {
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  overflow: hidden !important;
+  box-shadow: none !important;
+  --cambio-sidebar-width: 0px;
+  --cui-sidebar-occupy-start: 0px;
+  pointer-events: none;
+  visibility: hidden;
+}
+body.sidebar-narrow,
+body.cambio-sidebar-collapsed {
+  --cambio-rail-width: 0px;
+  --cambio-sidebar-width: 0px;
+}
+/* Floating reopen when fully collapsed */
+#cambioSidebarReopen {
+  display: none;
+  position: fixed;
+  left: 0.5rem;
+  top: 0.55rem;
+  z-index: 50;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0;
+  background: rgba(36, 52, 71, 0.92);
+  color: #e8eef4;
+  cursor: pointer;
+  border-radius: 0;
+  box-shadow: 0 2px 10px rgba(0,0,0,.35);
+}
+body.sidebar-narrow #cambioSidebarReopen,
+body.cambio-sidebar-collapsed #cambioSidebarReopen {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+#cambioSidebarReopen .header-toggler-icon {
+  display: block;
+  width: 1.15rem;
+  height: 2px;
+  background-color: currentColor;
+  box-shadow:
+    0 -5px 0 currentColor,
+    0 5px 0 currentColor;
+}

@@ -264,6 +264,7 @@ async function boot() {
 
   ensureAnimDeskList();
   renderAnimList();
+  wireSidebarToggle();
   $('createForm')?.addEventListener('submit', onCreateSubmit);
   $('btnSave').addEventListener('click', savePlacements);
   $('btnExitEdit').addEventListener('click', () => exitEdit());
@@ -677,6 +678,56 @@ function resetConnectorsInMode() {
   mountProps(anim.id, { interactive: true });
 }
 
+
+/** Persist key — mirrors enVivo `envivo.sidebar.show` (Cambio-scoped). */
+const CAMBIO_SIDEBAR_SHOW_KEY = 'cambio.sidebar.show';
+
+function isSidebarCollapsed() {
+  return document.body.classList.contains('sidebar-narrow') || document.body.classList.contains('cambio-sidebar-collapsed');
+}
+
+function setSidebarVisible(show, { persist = true } = {}) {
+  const visible = Boolean(show);
+  document.body.classList.toggle('sidebar-narrow', !visible);
+  document.body.classList.toggle('cambio-sidebar-collapsed', !visible);
+  const side = $('sidebar');
+  if (side) {
+    side.classList.toggle('show', visible);
+    side.setAttribute('aria-hidden', visible ? 'false' : 'true');
+  }
+  const tog = $('evSidebarToggle');
+  if (tog) {
+    tog.setAttribute('aria-expanded', visible ? 'true' : 'false');
+    tog.title = visible ? 'Collapse sidebar' : 'Expand sidebar';
+  }
+  if (persist) {
+    try {
+      localStorage.setItem(CAMBIO_SIDEBAR_SHOW_KEY, visible ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+function wireSidebarToggle() {
+  const toggle = (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    setSidebarVisible(isSidebarCollapsed());
+  };
+  $('evSidebarToggle')?.addEventListener('click', toggle);
+  $('cambioSidebarReopen')?.addEventListener('click', toggle);
+  let show = true;
+  try {
+    const stored = localStorage.getItem(CAMBIO_SIDEBAR_SHOW_KEY);
+    if (stored === '0') show = false;
+    if (stored === '1') show = true;
+  } catch {
+    /* ignore */
+  }
+  setSidebarVisible(show, { persist: false });
+}
+
 function ensureAnimDeskList() {
   if (animDeskList) return animDeskList;
   const host = $('animListHost');
@@ -686,7 +737,7 @@ function ensureAnimDeskList() {
     {
       key: 'label',
       label: 'Name',
-      width: '22%',
+      width: '18%',
       className: 'ev-desk-col--wrap',
       render: (anim) => `<span class="label">${escapeHtml(anim.label)}</span>`
     },
@@ -742,23 +793,26 @@ function ensureAnimDeskList() {
     {
       key: 'actions',
       label: 'Actions',
-      width: '34%',
+      width: '38%',
       sortType: 'none',
       className: 'cambio-col-actions',
       render: (anim) => {
-        const canEditPlacement =
+        // Full Edit = open right-rail editor (existed pre-pf-kit / envivo-ui remount; restore + keep visible)
+        const canFullEdit =
           anim.editable !== false && anim.placementEditable !== false && anim.id !== 'ghost';
         const canArchive = anim.editable !== false && anim.id !== 'ghost';
+        const br = ' style="border-radius:0"';
         let actions =
-          `<button type="button" class="btn btn-sm btn-primary" data-act="play" data-id="${escapeHtml(anim.id)}">Play</button>` +
-          `<button type="button" class="btn btn-sm btn-outline-dark" data-act="click-preview" data-id="${escapeHtml(anim.id)}" title="Preview this animation's per-click character effect">Click preview</button>`;
-        if (canEditPlacement) {
-          actions += `<button type="button" class="btn btn-sm btn-outline-dark" data-act="edit" data-id="${escapeHtml(anim.id)}">Edit</button>`;
+          `<button type="button" class="btn btn-sm btn-primary"${br} data-act="play" data-id="${escapeHtml(anim.id)}">Play</button>`;
+        if (canFullEdit) {
+          // enVivo standard row-action Edit (response-schemas / food-specials pattern)
+          actions += `<button type="button" class="btn btn-sm btn-outline-dark"${br} data-act="edit" data-id="${escapeHtml(anim.id)}" title="Open full animation editor">Edit</button>`;
         } else if (anim.id === 'ghost') {
           actions += `<span class="text-body-secondary" style="font-size:.7rem">placement locked</span>`;
         }
+        actions += `<button type="button" class="btn btn-sm btn-outline-dark"${br} data-act="click-preview" data-id="${escapeHtml(anim.id)}" title="Preview this animation's per-click character effect">Click</button>`;
         if (canArchive) {
-          actions += `<button type="button" class="btn btn-sm btn-outline-dark" data-act="archive" data-id="${escapeHtml(anim.id)}">${
+          actions += `<button type="button" class="btn btn-sm btn-outline-dark"${br} data-act="archive" data-id="${escapeHtml(anim.id)}">${
             anim.archived ? 'Restore' : 'Archive'
           }</button>`;
         }
@@ -767,6 +821,7 @@ function ensureAnimDeskList() {
     }
   ];
 
+  const detailHost = $('animDetailHost');
   animDeskList = mountEvScrollList(host, {
     title: 'Animations',
     searchPlaceholder: 'Search animations…',
@@ -776,6 +831,19 @@ function ensureAnimDeskList() {
     maxHeightCss: 'min(70vh, 36rem)',
     emptyHtml: `<tr><td colspan="6" class="ev-hint">No animations yet</td></tr>`,
     rowKey: (item) => String(item.id),
+    detailHost,
+    renderDetail: (anim) => {
+      const canFullEdit =
+        anim.editable !== false && anim.placementEditable !== false && anim.id !== 'ghost';
+      const br = ' style="border-radius:0"';
+      let html = `<strong class="me-2">${escapeHtml(anim.label)}</strong>`;
+      html += `<button type="button" class="btn btn-sm btn-primary"${br} data-act="play" data-id="${escapeHtml(anim.id)}">Play</button>`;
+      if (canFullEdit) {
+        html += `<button type="button" class="btn btn-sm btn-outline-dark"${br} data-act="edit" data-id="${escapeHtml(anim.id)}" title="Open full animation editor">Edit</button>`;
+      }
+      html += `<button type="button" class="btn btn-sm btn-outline-dark"${br} data-act="click-preview" data-id="${escapeHtml(anim.id)}">Click</button>`;
+      return html;
+    },
     headerActions: [
       { label: '+ Create', attrs: 'id="btnCreateAnim"' },
       { label: 'Export→git', attrs: 'id="btnExportRepo" title="Snapshot KV → git"' }
@@ -826,24 +894,31 @@ function ensureAnimDeskList() {
 
 
 function wireAnimListActions() {
-  const root = $('animList') || $('animListHost');
-  if (!root || root.dataset.cambioWired === '1') return;
-  root.dataset.cambioWired = '1';
+  const wireClick = (root) => {
+    if (!root || root.dataset.cambioWired === '1') return;
+    root.dataset.cambioWired = '1';
+    root.addEventListener('click', (ev) => {
+      const btn = ev.target.closest?.('[data-act]');
+      if (!btn || !root.contains(btn)) return;
+      if (btn.tagName === 'INPUT' || btn.tagName === 'SELECT') return;
+      const act = btn.getAttribute('data-act');
+      const id = btn.getAttribute('data-id');
+      if (!act || !id) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (act === 'play') void playAnimation(id);
+      else if (act === 'click-preview') void previewClickAnimation(id);
+      else if (act === 'edit') enterEdit(id);
+      else if (act === 'archive') void toggleArchive(id);
+    });
+  };
+  wireClick($('animListHost'));
+  wireClick($('animDetailHost'));
+  wireClick($('animList'));
 
-  root.addEventListener('click', (ev) => {
-    const btn = ev.target.closest?.('[data-act]');
-    if (!btn || !root.contains(btn)) return;
-    if (btn.tagName === 'INPUT' || btn.tagName === 'SELECT') return;
-    const act = btn.getAttribute('data-act');
-    const id = btn.getAttribute('data-id');
-    if (!act || !id) return;
-    ev.preventDefault();
-    ev.stopPropagation();
-    if (act === 'play') void playAnimation(id);
-    else if (act === 'click-preview') void previewClickAnimation(id);
-    else if (act === 'edit') enterEdit(id);
-    else if (act === 'archive') void toggleArchive(id);
-  });
+  const root = $('animListHost') || $('animList');
+  if (!root || root.dataset.cambioChangeWired === '1') return;
+  root.dataset.cambioChangeWired = '1';
 
   root.addEventListener('change', (ev) => {
     const el = ev.target;
@@ -1332,8 +1407,12 @@ function syncRotationControls(deg) {
 }
 
 function enterEdit(animId) {
-  const anim = state.manifest.animations.find((a) => a.id === animId);
-  if (!anim?.editable) return;
+  const pool = state.runtimeConfig?.animations || state.manifest?.animations || [];
+  const anim = pool.find((a) => a.id === animId) || state.manifest?.animations?.find((a) => a.id === animId);
+  if (!anim || anim.editable === false || anim.id === 'ghost') return;
+  if (!state.manifest?.animations?.some((a) => a.id === animId) && state.manifest) {
+    state.manifest.animations.push(anim);
+  }
   if (state.activeMode) cancelMode();
   state.selectedAnim = anim;
   state.editMode = true;
@@ -1556,6 +1635,9 @@ async function savePlacements() {
 
 /** Test helpers exposed for Playwright */
 window.__cambioTest = {
+  setSidebarVisible,
+  isSidebarCollapsed,
+  wireSidebarToggle,
   runActivationPlay: (id) => playAnimation(id),
   previewClick: (id) => previewClickAnimation(id),
   compositeElementsFor,

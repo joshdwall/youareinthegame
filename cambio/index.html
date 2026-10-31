@@ -11,12 +11,15 @@
   <link rel="stylesheet" href="/cambio/vendor/envivo-ui/tokens/envivo-tokens.css?v=ev1" />
   <link rel="stylesheet" href="/cambio/vendor/envivo-ui/ev-scroll-list/ev-scroll-list.css?v=ev1" data-ev-skin="ev-scroll-list" />
   <link rel="stylesheet" href="/cambio/vendor/envivo-ui/sidebar-shell.css?v=ev1" />
-  <link rel="stylesheet" href="/cambio/cambio.css?v=ev1" />
+  <link rel="stylesheet" href="/cambio/cambio.css?v=edit-ham-1" />
   <link rel="stylesheet" href="/effects/spore/ghost/effect.css" />
   <link rel="stylesheet" href="/effects/spore/finale.css" />
   <link rel="stylesheet" href="/effects/activation/activation.css?v=ev1" />
 </head>
 <body class="cambio-body">
+  <button type="button" class="header-toggler" id="cambioSidebarReopen" aria-label="Expand sidebar" title="Expand sidebar">
+    <span class="header-toggler-icon" aria-hidden="true"></span>
+  </button>
   <!-- Real site stage (same markup shape as apex index.html) -->
   <div class="container" id="siteStage">
     <div class="creature-rig" id="creatureRig">
@@ -31,10 +34,14 @@
   <!-- enVivo CoreUI sidebar shell (same markup/classes as apps/envivo-dashboard #sidebar) — brand Cambio once; body = scrollable list -->
   <div class="sidebar sidebar-fixed border-end cambio-rail cambio-rail-left" id="sidebar" aria-label="Cambio">
     <div class="sidebar-header">
+      <button class="header-toggler" type="button" id="evSidebarToggle" aria-label="Toggle sidebar" title="Toggle sidebar">
+        <span class="header-toggler-icon" aria-hidden="true"></span>
+      </button>
       <strong class="sidebar-brand-full" id="cambioSidebarBrand">Cambio</strong>
     </div>
     <div class="cambio-sidebar-body" id="cambioPanel">
       <!-- mountEvScrollList host — same module enVivo features import -->
+      <div id="animDetailHost" class="cambio-anim-detail d-none"></div>
       <div id="animListHost" class="cambio-anim-list-host"></div>
 
       <!-- Site settings (live KV — no redeploy) -->
@@ -264,6 +271,6 @@
     <p id="saveStatus" class="cambio-status" aria-live="polite"></p>
   </aside>
 
-  <script type="module" src="/cambio/cambio.js?v=oa-1"></script>
+  <script type="module" src="/cambio/cambio.js?v=edit-ham-1"></script>
 </body>
 </html>
