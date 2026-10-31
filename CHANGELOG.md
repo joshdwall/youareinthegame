@@ -5,6 +5,14 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
+## 2026-10-30 (America/Chicago) — Cambio list horizontal scroll + compact settings cards
+
+- **Ask:** Scrollable lists (main sidebar + editor item lists) must scroll horizontally when content is wider than the rail so nothing is clipped (enVivo overflow-x:auto / nowrap; header stays aligned). Non-list options/settings in both sidebars → enVivo/CoreUI cards (`card` / `card-header` / `card-body`, compact) by logical section; put inputs side-by-side in a flex-wrap row at content width (≈6ch numbers, inline checkboxes, auto selects); keep per-setting ✎/✓/✕.
+- **Fix:** `enableCambioListHScroll` after `mountEvScrollList` paint disconnects autofit RO (which forced `width:100%` + ellipsis) and sets wrap `overflow-x:auto` + table `width:max-content` / `table-layout:auto` with nowrap cells; sticky thead kept. Site settings, edit Animation settings, and selected-object controls wrap in CoreUI cards with `.cambio-settings-compact` flex row.
+- Heights (view mode): site settings **157 → 99px**; edit Animation block **131 → 89px**; selected controls **419 → 181px**.
+- Checkpoint `checkpoint-2026-10-30-pre-cambio-cards-hscroll`. Playwright `tests/cambio-cards-hscroll-test.mjs` (h-scroll both lists, `.card` wrapping, input widths, before/after heights, isolation). Isolation + envivo-sizes + edit-sidebar still green. Screenshots `/workspace/capture/cambio-cards-hscroll/` and `/workspace/cambio-cards-hscroll-shots/`.
+- YAITG `5510706` → CF Pages deploy `b7023fa9-a785-418c-89ec-85f6636fe03d` (production aliases: apex, www, app).
+
 ## 2026-10-30 (America/Chicago) — Cambio edit sidebar = same enVivo CoreUI chrome + item scroll-list
 
 - **Ask:** Extend the main Cambio sidebar style (CoreUI `#sidebar`, hamburger + title, compact sizes, scoped CSS, overlay-only) to the full Edit panel; title = animation name. List animation items (overlays, object actions/action points, effects) via the same `mountEvScrollList` with enVivo defaults (single-row, square buttons, fonts) and per-row Select/Edit/Delete; row select = stage select. Keep per-setting pencils ✓/✕ isolated.
