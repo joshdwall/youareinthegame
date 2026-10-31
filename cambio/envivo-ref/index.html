@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" data-coreui-theme="dark" data-ev-theme="dark" data-ev-sidebar-theme="follow">
+<head>
+  <meta charset="UTF-8" />
+  <title>enVivo sidebar reference</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@coreui/coreui@5.2.0/dist/css/coreui.min.css" />
+  <link rel="stylesheet" href="/cambio/vendor/envivo-ui/tokens/envivo-tokens.css" />
+  <link rel="stylesheet" href="/cambio/vendor/envivo-ui/ev-scroll-list/ev-scroll-list.css" data-ev-skin="ev-scroll-list" />
+  <link rel="stylesheet" href="/cambio/envivo-ref/shell-header.css" />
+  <style>
+    html, body { margin:0; height:100%; background:#1b2430; color:#e8eef4; }
+    :root {
+      --ev-sidebar-panel-w: 32.25rem;
+      --ev-rail-w: calc(var(--ev-rail-column-w) + var(--ev-sidebar-panel-w));
+      --ev-rail-brand-x: calc(var(--ev-rail-w) / 2);
+    }
+    #sidebar {
+      width: var(--ev-rail-w) !important;
+      position: fixed; top:0; left:0; bottom:0;
+      display:flex; flex-direction:column;
+      background: var(--ev-sidebar-bg, #243447);
+      color: var(--ev-sidebar-fg, #e8eef4);
+      z-index: 1030;
+    }
+    #sidebar .sidebar-body { flex:1; min-height:0; overflow:auto; padding:0.35rem 0.45rem; }
+    .cambio-row-actions { display:inline-flex; gap:0.2rem; flex-wrap:nowrap; align-items:center; }
+    /* Match ev-scroll-list card-header .btn compact sizing */
+    .ev-scroll-list-host .btn-sm,
+    .cambio-row-actions .btn {
+      border-radius: 0 !important;
+      --cui-btn-font-size: 0.7rem;
+      --cui-btn-padding-y: 0.12rem;
+      --cui-btn-padding-x: 0.35rem;
+      --cui-btn-border-radius: 0;
+      font-size: 0.7rem;
+      line-height: 1.15;
+      padding: 0.12rem 0.35rem;
+    }
+  </style>
+</head>
+<body class="ev-compact">
+  <div class="sidebar sidebar-fixed" id="sidebar">
+    <div class="sidebar-header">
+      <button class="header-toggler" type="button" id="evSidebarToggle" aria-label="Toggle sidebar">
+        <span class="header-toggler-icon" aria-hidden="true"></span>
+      </button>
+      <strong class="sidebar-brand-full" id="evSidebarBrand">enVivo</strong>
+    </div>
+    <div class="sidebar-body">
+      <div id="listHost"></div>
+    </div>
+  </div>
+  <script type="module">
+    import { mountEvScrollList } from '/cambio/vendor/envivo-ui/ev-scroll-list/mount.mjs';
+    const items = [
+      { id: 'a', label: 'Alpha Special', live: true, tier: 'legendary', weight: 1, pct: '25.0%' },
+      { id: 'b', label: 'Beta Item With A Longer Name', live: false, tier: 'common', weight: 100, pct: '—' },
+      { id: 'c', label: 'Gamma', live: true, tier: 'rare', weight: 10, pct: '12.5%' },
+    ];
+    mountEvScrollList(document.getElementById('listHost'), {
+      title: 'Animations',
+      searchPlaceholder: 'Search…',
+      searchFields: ['id', 'label', 'tier'],
+      items,
+      minRows: 6,
+      maxHeightCss: 'min(70vh, 36rem)',
+      rowKey: (r) => r.id,
+      columns: [
+        { key: 'label', label: 'Name', width: '22%', render: (r) => `<span class="label">${r.label}</span>` },
+        { key: 'live', label: 'Live', width: '10%', sortType: 'none', render: (r) => r.live ? '✓' : '—' },
+        { key: 'tier', label: 'Tier', width: '14%', render: (r) => r.tier },
+        { key: 'weight', label: 'Weight', width: '10%', sortType: 'number', render: (r) => String(r.weight) },
+        { key: 'pct', label: '%', width: '8%', sortType: 'number', render: (r) => r.pct },
+        { key: 'actions', label: 'Actions', width: '36%', sortType: 'none', render: () =>
+          `<div class="cambio-row-actions">
+            <button type="button" class="btn btn-sm btn-primary" style="border-radius:0">Play</button>
+            <button type="button" class="btn btn-sm btn-outline-dark" style="border-radius:0">Edit</button>
+          </div>` },
+      ],
+    });
+    window.__envivoRefReady = true;
+  </script>
+</body>
+</html>

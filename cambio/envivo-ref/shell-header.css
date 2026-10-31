@@ -1,0 +1,144 @@
+/* extracted from enVivo apps/envivo-dashboard/shell.css */
+/**
+ * enVivo CoreUI shell — brand color + surface ladder.
+ * Teal accent on nav, header, brand; page tint from tokens.
+ */
+
+:root {
+  --ev-content-pad-y: 0.35rem;
+  --ev-chrome-bar-h: 3rem;
+  /* SSOT: desk status bar + rail eye strip share this height */
+  --ev-status-bar-h: 1.25rem;
+  --ev-rail-dock-h: var(--ev-status-bar-h);
+  --ev-rail-eye-ico: 0.7rem;
+  --ev-rail-bulk-inset: 0.2rem;
+  --ev-chrome-rule: 1px solid var(--ev-border, rgba(0, 0, 0, 0.12));
+  /*
+    Rail geometry + motion — edit HERE only (one owner).
+    --ev-rail-column-w: fixed icon strip (hamburger + icons never leave this x).
+    --ev-sidebar-panel-w: extra width for labels when expanded.
+    --ev-rail-w: painted sidebar width AND desk occupy (PUSH).
+    --ev-rail-tog-left: hamburger + icon centers (lists must be flush to #sidebar).
+    --ev-rail-icon-size / --ev-rail-subdot-gap: column subdot sits just right of icon.
+    --ev-rail-row-pad-y / --ev-rail-row-min-h: identical collapsed + expanded (nav + footer).
+    --ev-rail-brand-x: viewport x of expanded sidebar center (title stays here; panel wipes under it).
+    --ev-rail-motion-*: sidebar width + wrapper occupy + status bar.
+  */
+  --ev-rail-column-w: 3.75rem;
+  --ev-sidebar-panel-w: 12.75rem;
+  --ev-rail-w: calc(var(--ev-rail-column-w) + var(--ev-sidebar-panel-w));
+  --ev-rail-tog-size: 2rem;
+  --ev-rail-tog-left: calc(var(--ev-rail-column-w) / 2);
+  --ev-rail-bulk-left: calc(var(--ev-rail-column-w) / 2);
+  /* Top bulk: band under hamburger → HR; nudge y only (never move hamburger). */
+  --ev-rail-bulk-bottom: 0.34rem;
+  --ev-rail-bulk-pad-bottom: 0;
+  --ev-rail-bulk-nudge-y: -3px;
+  --ev-rail-icon-size: 1.15rem;
+  --ev-rail-subdot-gap: 0.2rem;
+  --ev-rail-row-pad-y: 0.38rem;
+  --ev-rail-row-min-h: 2.25rem;
+  --ev-rail-brand-x: calc((var(--ev-rail-column-w) + var(--ev-sidebar-panel-w)) / 2);
+  --ev-rail-motion-ms: 180ms;
+  --ev-rail-motion-ease: ease-out;
+  /* Live Editor right edit dock (hover overlay) */
+  --ev-live-dock-w: 22rem;
+  --ev-live-dock-z: 1040;
+  --ev-live-dock-bg: var(--ev-surface, #f3efe6);
+  --ev-live-dock-border: var(--ev-border, rgba(0, 0, 0, 0.14));
+  --ev-live-stage-bg: #0c1016;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ev-rail-motion-ms: 0ms;
+  }
+}
+#sidebar .sidebar-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--ev-chrome-bar-h);
+  height: var(--ev-chrome-bar-h);
+  box-sizing: border-box;
+  padding: 0;
+  position: relative;
+  border-bottom: var(--ev-chrome-rule);
+}
+
+/* Hamburger: absolute slot BOTH modes — same x as icon strip center */
+#sidebar .sidebar-header .header-toggler {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: absolute;
+  left: var(--ev-rail-tog-left);
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: var(--ev-rail-tog-size);
+  height: var(--ev-rail-tog-size);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  flex: 0 0 auto;
+  z-index: 2;
+}
+
+#sidebar .sidebar-header .header-toggler-icon {
+  display: block !important;
+  width: 1.15rem;
+  height: 2px;
+  margin: 0;
+  padding: 0;
+  background-color: currentColor !important;
+  background-image: none !important;
+  border-radius: 0;
+  box-shadow:
+    0 -5px 0 currentColor,
+    0 5px 0 currentColor;
+}
+
+/*
+  M-BRAND-REVEAL: title sits at expanded sidebar center (--ev-rail-brand-x) and STAYS.
+  Panel slides under it (wipe). #evTopbarBrand is a body-level position:fixed node
+  (never inside .wrapper / sticky header — that trapped fixed and caused a left pop
+  on handoff). Sidebar brand uses the same x for seamless swap after motion.
+*/
+#sidebar .sidebar-header .sidebar-brand-full {
+  position: absolute;
+  left: var(--ev-rail-brand-x);
+  top: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  z-index: 1;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+body > .ev-topbar-brand,
+body > #evTopbarBrand,
+.ev-topbar-brand,
+#evTopbarBrand {
+  position: fixed;
+  left: var(--ev-rail-brand-x);
+  top: calc(var(--ev-chrome-bar-h) / 2);
+  transform: translate(-50%, -50%);
+  z-index: 1031; /* above #sidebar (1030) so expand wipes under the title */
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  font-family: var(--ev-font);
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+  color: var(--ev-sidebar-brand, var(--ev-title, var(--ev-text)));
+  font-weight: var(--ev-title-weight, 600);
+  font-style: normal;
+  opacity: 0.95;
+}

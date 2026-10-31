@@ -754,14 +754,14 @@ function ensureAnimDeskList() {
     {
       key: 'label',
       label: 'Name',
-      width: '18%',
-      className: 'ev-desk-col--wrap',
+      width: '16%',
+      className: 'cambio-col-name',
       render: (anim) => `<span class="label">${escapeHtml(anim.label)}</span>`
     },
     {
       key: 'live',
       label: 'Live',
-      width: '10%',
+      width: '8%',
       sortType: 'none',
       className: 'cambio-col-live',
       render: (anim) => {
@@ -773,7 +773,7 @@ function ensureAnimDeskList() {
     {
       key: 'tier',
       label: 'Tier',
-      width: '16%',
+      width: '14%',
       render: (anim) => {
         const tierOpts = Object.entries(state.tiers || {})
           .map(([tid, tdef]) => {
@@ -810,7 +810,7 @@ function ensureAnimDeskList() {
     {
       key: 'actions',
       label: 'Actions',
-      width: '38%',
+      width: '44%',
       sortType: 'none',
       className: 'cambio-col-actions',
       render: (anim) => {

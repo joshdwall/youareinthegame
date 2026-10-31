@@ -2,6 +2,18 @@
 :root {
   --cambio-sidebar-width: 36rem;
   --cui-sidebar-occupy-start: var(--cambio-sidebar-width);
+  /* enVivo chrome bar + hamburger slot (shell.css) */
+  --ev-chrome-bar-h: 3rem;
+  --ev-rail-column-w: 3.75rem;
+  --ev-rail-tog-size: 2rem;
+  --ev-rail-tog-left: calc(var(--ev-rail-column-w) / 2);
+  /* Brand centered in expanded Cambio sidebar (same idea as --ev-rail-brand-x) */
+  --ev-rail-brand-x: calc(var(--cambio-sidebar-width) / 2);
+  /* Square industrial controls (enVivo scroll-list / compact) */
+  --ev-radius: 0;
+  --cui-border-radius: 0;
+  --cui-border-radius-sm: 0;
+  --cui-border-radius-lg: 0;
 }
 
 /* CoreUI sidebar host sized for Cambio (wider than default) */
@@ -14,37 +26,86 @@
   max-height: 100vh;
   overflow: hidden;
 }
+
+/*
+ * enVivo sidebar-header: hamburger + brand side-by-side in one bar.
+ * Toggler in left rail slot; brand at expanded-sidebar center — never overlapping.
+ * (apps/envivo-dashboard/shell.css #sidebar .sidebar-header*)
+ */
 #sidebar .sidebar-header {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  flex: 0 0 auto;
-  padding: 0.55rem 0.75rem;
+  justify-content: center;
+  min-height: var(--ev-chrome-bar-h);
+  height: var(--ev-chrome-bar-h);
+  box-sizing: border-box;
+  padding: 0;
+  position: relative;
   border-bottom: 1px solid var(--cui-border-color, rgba(0,0,0,.12));
-}
-#sidebar .sidebar-brand-full {
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-}
-#sidebar .sidebar-nav,
-#sidebar .cambio-sidebar-body {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-  padding: 0.5rem 0.55rem 0.75rem;
-}
-#sidebar .ev-scroll-list-host {
-  min-width: 0;
-}
-
-#sidebar .sidebar-header {
   background: var(--ev-sidebar-bg, var(--ev-chrome)) !important;
   border-bottom: var(--ev-chrome-rule) !important;
   color: var(--ev-sidebar-fg, var(--ev-text)) !important;
 }
 
+#sidebar .sidebar-header .header-toggler {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: absolute;
+  left: var(--ev-rail-tog-left);
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: var(--ev-rail-tog-size);
+  height: var(--ev-rail-tog-size);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  flex: 0 0 auto;
+  z-index: 2;
+}
+
+#sidebar .sidebar-header .header-toggler-icon {
+  display: block !important;
+  width: 1.15rem;
+  height: 2px;
+  margin: 0;
+  padding: 0;
+  background-color: currentColor !important;
+  background-image: none !important;
+  border-radius: 0;
+  box-shadow:
+    0 -5px 0 currentColor,
+    0 5px 0 currentColor;
+}
+
 #sidebar .sidebar-header .sidebar-brand-full {
+  position: absolute;
+  left: var(--ev-rail-brand-x);
+  top: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  z-index: 1;
+  pointer-events: none;
+  white-space: nowrap;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   color: var(--ev-sidebar-brand, var(--ev-title, var(--ev-text))) !important;
+}
+
+#sidebar .sidebar-nav,
+#sidebar .cambio-sidebar-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.35rem 0.45rem 0.55rem;
+}
+#sidebar .ev-scroll-list-host {
+  min-width: 0;
 }

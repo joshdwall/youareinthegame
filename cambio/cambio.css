@@ -434,29 +434,68 @@
   cursor: default !important;
 }
 
-/* Row actions: never clip Edit / Archive (enVivo btn-sm pattern) */
-.cambio-col-actions,
-.ev-scroll-list-host table.table tbody td.cambio-col-actions {
-  overflow: visible !important;
-  white-space: normal;
+/* Row actions — enVivo mountEvScrollList defaults: single-row, square btn-sm, no wrap */
+#cambioRoot .cambio-col-actions,
+#cambioRoot .ev-scroll-list-host table.table tbody td.cambio-col-actions {
+  overflow: hidden;
+  white-space: nowrap !important;
+  text-overflow: ellipsis;
   vertical-align: middle;
 }
-.cambio-row-actions {
-  display: flex;
-  flex-wrap: wrap;
+#cambioRoot .cambio-row-actions {
+  display: inline-flex;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.2rem;
   min-width: 0;
+  max-width: 100%;
 }
-.cambio-row-actions .btn {
-  border-radius: 0;
-  font-size: 0.72rem;
-  padding: 0.15rem 0.4rem;
-  line-height: 1.2;
+#cambioRoot .cambio-row-actions .btn,
+#cambioRoot .ev-scroll-list-host .btn-sm,
+#cambioRoot .cambio-anim-detail .btn-sm {
+  --cui-btn-padding-y: 0.12rem;
+  --cui-btn-padding-x: 0.35rem;
+  --cui-btn-font-size: 0.7rem;
+  --cui-btn-border-radius: 0;
+  border-radius: 0 !important;
+  font-size: 0.7rem;
+  line-height: 1.15;
+  padding: 0.12rem 0.35rem;
   white-space: nowrap;
 }
-.cambio-row-actions .btn[data-act="edit"] {
+#cambioRoot .cambio-row-actions .btn[data-act="edit"] {
   font-weight: 600;
+}
+
+/* Compact cell controls match --ev-sl-row-font */
+#cambioRoot .ev-scroll-list-host table.table tbody td select,
+#cambioRoot .ev-scroll-list-host table.table tbody td input[type="number"],
+#cambioRoot .ev-scroll-list-host table.table tbody td input[type="checkbox"] {
+  font-size: var(--ev-sl-row-font, 0.82rem);
+  line-height: 1.15;
+  max-width: 100%;
+  border-radius: 0 !important;
+}
+#cambioRoot .ev-scroll-list-host table.table tbody td select,
+#cambioRoot .ev-scroll-list-host table.table tbody td input[type="number"] {
+  padding: 0.05rem 0.25rem;
+  height: 1.35rem;
+  box-sizing: border-box;
+}
+#cambioRoot .cambio-col-live .cambio-live-lab {
+  font-size: var(--ev-sl-row-font, 0.82rem);
+}
+
+/* Force square radius tokens on chrome (overrides envivo-tokens --ev-radius) */
+#cambioRoot {
+  --ev-radius: 0;
+  --cui-border-radius: 0;
+  --cui-border-radius-sm: 0;
+  --cui-border-radius-lg: 0;
+}
+#cambioRoot.ev-compact .btn,
+#cambioRoot .btn {
+  border-radius: 0 !important;
 }
 
 /* Detail bar Edit (selected animation) */
@@ -471,33 +510,10 @@
 }
 .cambio-anim-detail .btn { border-radius: 0; }
 
-/* enVivo header-toggler (hamburger) in sidebar-header */
-#sidebar .sidebar-header {
-  position: relative;
-  min-height: 2.75rem;
-  padding-left: 2.75rem;
-}
-#sidebar .sidebar-header .header-toggler {
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  visibility: visible !important;
-  opacity: 1 !important;
-  position: absolute;
-  left: 0.85rem;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 2rem;
-  height: 2rem;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  z-index: 2;
-}
-#sidebar .sidebar-header .header-toggler-icon {
+/* enVivo header-toggler + brand — layout owned by sidebar-shell (scoped).
+ * Keep icon glyph here; do NOT re-absolute-position over the brand (that caused overlap).
+ */
+#cambioRoot #sidebar .sidebar-header .header-toggler-icon {
   display: block !important;
   width: 1.15rem;
   height: 2px;
@@ -509,6 +525,15 @@
   box-shadow:
     0 -5px 0 currentColor,
     0 5px 0 currentColor;
+}
+
+/* Ensure toggler/brand never overlap (shell uses absolute slots; assert clearance) */
+#cambioRoot #sidebar .sidebar-header .header-toggler {
+  z-index: 2;
+}
+#cambioRoot #sidebar .sidebar-header .sidebar-brand-full {
+  z-index: 1;
+  pointer-events: none;
 }
 
 /*

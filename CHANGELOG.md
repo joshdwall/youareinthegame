@@ -5,6 +5,13 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
+## 2026-10-30 (America/Chicago) — Cambio enVivo header spacing + compact scroll-list defaults
+
+- **Bug:** Sidebar brand "Cambio" overlapped the hamburger toggler (absolute toggler vs padded flex brand). Scroll list rows wrapped, buttons were oversized/rounded, and fonts were larger than enVivo `mountEvScrollList` defaults — Name/Live/Tier/Weight/%/Actions clipped horizontally in the sidebar.
+- **Fix:** Port enVivo shell header layout into `cambio/vendor/envivo-ui/sidebar-shell.css` (rail vars `--ev-rail-tog-left` / `--ev-rail-brand-x`; absolute toggler + brand, no overlap). Match scroll-list defaults: single-row `nowrap`+ellipsis, square controls (`--ev-radius:0`, compact `btn-sm`), `--ev-sl-row-font`/`--ev-sl-head-font` unchanged. Remove wrap/size-inflating overrides in `cambio.css` / `cambio.js`. Local enVivo fixture `cambio/envivo-ref/` for side-by-side Playwright.
+- Checkpoint `checkpoint-2026-10-30-pre-cambio-envivo-sizes`. Playwright `tests/cambio-envivo-sizes-test.mjs` (header boxes, nowrap, radius 0, font sizes, no overflow; isolation still green). Screenshots `/workspace/capture/cambio-envivo-sizes/` and `/workspace/cambio-envivo-sizes-shots/` (side-by-side header/list/sidebar).
+- YAITG commit/deploy: _(filled after ship)_.
+
 ## 2026-10-30 (America/Chicago) — Cambio overlay isolation (sidebar must not affect page)
 
 - **Bug:** Collapsing/expanding the Cambio hamburger mutated `body.sidebar-narrow` / `body.cambio-sidebar-collapsed` and zeroed `--cambio-rail-width`, so the live youareinthegame.com stage under the harness reflowed (badge clearance, layout). Cambio is an overlay harness — one UI must not affect the page behind.
