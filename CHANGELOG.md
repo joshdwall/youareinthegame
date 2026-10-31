@@ -11,7 +11,7 @@ SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.co
 - **Root cause:** (1) Cambio passed `%` column `width`s (contract anti-pattern). (2) enVivo autofit SL-27 leftover→flex + `width:100%` stretches columns past content. (3) Prior h-scroll helper set `table.style.minWidth='100%'` which stretched every column; disconnecting the autofit RO also dropped content measure.
 - **Fix:** Drop `%` widths; set `fit:'content'` on all list columns. Rewrite `enableCambioListHScroll` to the SL-27 **measure** path without grow-to-fill: nowrap → measure max(header, body) → colgroup px widths → `table.width = sum`, `overflow-x:auto`. `#cambioRoot` tokens (`--cambio-fs-label/body/ctrl`, `--cambio-ctrl-h`, `--cambio-gap/pad/card-pad`) unify `.btn` / `.ie-btn` / inputs / labels / cards in both rails.
 - Checkpoint `checkpoint-2026-10-30-pre-cambio-colfit-normalize`. Playwright `tests/cambio-colfit-normalize-test.mjs` (th≈body, no minWidth 100%, uniform btn/input heights, h-scroll, isolation). cards-hscroll + isolation + edit-sidebar still green. Screenshots `/workspace/capture/cambio-colfit-normalize/` and `/workspace/cambio-colfit-normalize-shots/`.
-- YAITG `COMMIT` → CF Pages deploy `DEPLOY` (production aliases: apex, www, app).
+- YAITG `61f2680` → CF Pages deploy `11fd5d19-4d07-4a24-acb1-ce2799da30c2` (production aliases: apex, www, app).
 
 ## 2026-10-30 (America/Chicago) — Cambio list horizontal scroll + compact settings cards
 
