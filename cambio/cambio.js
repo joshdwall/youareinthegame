@@ -1,8 +1,8 @@
 import { runActivation, previewClick, activate } from '/effects/activation/ActivationEngine.js';
 import { applyElementPlacement, measureCreatureBoxInHost } from '/effects/activation/placementMath.js';
-import { escapeHtml } from '/cambio/vendor/pf-kit/helpers/esc.mjs';
-import { mountDeskListCard } from '/cambio/vendor/pf-kit/helpers/desk-page.mjs';
-/** @type {ReturnType<typeof mountDeskListCard>|null} */
+import { escapeHtml } from '/cambio/vendor/envivo-ui/desk-list.mjs';
+import { mountEvScrollList } from '/cambio/vendor/envivo-ui/ev-scroll-list/mount.mjs';
+/** @type {ReturnType<typeof mountEvScrollList>|null} */
 let animDeskList = null;
 /**
  * Cambio admin — Play / Edit with modal pencil editors (enVivo ✎/✓/✕).
@@ -22,7 +22,7 @@ const state = {
   selectedElementId: null,
   dirty: false,
   animFilter: '',
-  /** null | 'connector' | 'rotation' | 'move' | 'size' | 'transition' | 'action' */
+  /** null | 'connector' | 'rotation' | 'move' | 'size' | 'transition' | 'action' | 'previewObjectActions' */
   activeMode: null,
   /** Deep clone of element (or transitionId) when mode opened */
   modeSnapshot: null,
@@ -267,6 +267,9 @@ async function boot() {
   $('btnEditTransition').addEventListener('click', () => enterMode('transition'));
   $('btnSaveTransition').addEventListener('click', () => commitMode());
   $('btnCancelTransition').addEventListener('click', () => cancelMode());
+  $('btnEditPreviewObjectActions')?.addEventListener('click', () => enterMode('previewObjectActions'));
+  $('btnSavePreviewObjectActions')?.addEventListener('click', () => commitMode());
+  $('btnCancelPreviewObjectActions')?.addEventListener('click', () => cancelMode());
   transitionSelect.addEventListener('change', onTransitionChange);
 
   $('btnEditConnector').addEventListener('click', () => enterMode('connector'));
@@ -323,7 +326,7 @@ function markDirty() {
 
 function enterMode(mode) {
   if (!state.editMode || !state.selectedAnim) return;
-  if (mode !== 'transition' && !state.selectedElementId) return;
+  if (mode !== 'transition' && mode !== 'previewObjectActions' && !state.selectedElementId) return;
   if (state.activeMode && state.activeMode !== mode) {
     cancelMode();
   }
@@ -331,6 +334,10 @@ function enterMode(mode) {
   if (mode === 'transition') {
     const place = ensureAnimPlacement(state.selectedAnim.id);
     state.modeSnapshot = { transitionId: place.transitionId || 'lightning' };
+  } else if (mode === 'previewObjectActions') {
+    state.modeSnapshot = { previewObjectActions: !!state.selectedAnim.previewObjectActions };
+    const ck = $('previewObjectActionsCheck');
+    if (ck) ck.checked = !!state.selectedAnim.previewObjectActions;
   } else {
     const st = currentElement();
     state.modeSnapshot = deepClone(st);
@@ -364,7 +371,7 @@ function enterMode(mode) {
   mountProps(state.selectedAnim.id, { interactive: true });
 }
 
-function commitMode() {
+async function commitMode() {
   if (!state.activeMode) return;
   // Isolation: action mode writes ONLY objectActions on commit.
   if (state.activeMode === 'action' && state.actionDraft) {
@@ -372,6 +379,17 @@ function commitMode() {
     if (st) {
       const others = (st.objectActions || []).filter((a) => a.type !== 'fire');
       st.objectActions = [...others, { ...state.actionDraft, point: { ...state.actionDraft.point } }];
+    }
+  }
+  if (state.activeMode === 'previewObjectActions' && state.selectedAnim) {
+    const ck = $('previewObjectActionsCheck');
+    const val = !!ck?.checked;
+    state.selectedAnim.previewObjectActions = val;
+    try {
+      await patchAnimation(state.selectedAnim.id, { previewObjectActions: val });
+    } catch (e) {
+      console.error(e);
+      $('saveStatus').textContent = `Preview object actions save failed: ${e.message || e}`;
     }
   }
   state.activeMode = null;
@@ -400,6 +418,8 @@ function cancelMode() {
   const mode = state.activeMode;
   if (mode === 'transition') {
     ensureAnimPlacement(state.selectedAnim.id).transitionId = state.modeSnapshot.transitionId;
+  } else if (mode === 'previewObjectActions') {
+    // Cancel: leave animation field unchanged (draft was only in checkbox)
   } else {
     const st = currentElement();
     if (st && state.modeSnapshot) {
@@ -443,6 +463,12 @@ function refreshViews() {
   const place = state.selectedAnim ? ensureAnimPlacement(state.selectedAnim.id) : null;
   if (place) {
     $('transitionView').textContent = place.transitionId || 'lightning';
+    const pov = $('previewObjectActionsView');
+    if (pov) pov.textContent = state.selectedAnim?.previewObjectActions ? 'on' : 'off';
+    const pock = $('previewObjectActionsCheck');
+    if (pock && state.activeMode !== 'previewObjectActions') {
+      pock.checked = !!state.selectedAnim?.previewObjectActions;
+    }
     transitionSelect.value = place.transitionId || 'lightning';
   }
   const st = currentElement();
@@ -526,40 +552,124 @@ function ensureAnimDeskList() {
   const host = $('animListHost');
   if (!host) throw new Error('animListHost missing');
 
-  const extraToolbarHtml =
-    `<button type="button" class="pf-btn pf-btn--secondary pf-btn--desk-sm" id="btnCreateAnim">+ Create</button>` +
-    `<button type="button" class="pf-btn pf-btn--secondary pf-btn--desk-sm" id="btnExportRepo" title="Snapshot KV → git">Export→git</button>`;
-
   const columns = [
-    { key: 'label', label: 'Name', sortType: 'string' },
-    { key: 'live', label: 'Live', sortType: 'none', className: 'cambio-col-live' },
-    { key: 'tier', label: 'Tier', sortType: 'string' },
-    { key: 'weight', label: 'Weight', sortType: 'number', className: 'cambio-col-num' },
-    { key: 'pct', label: '%', sortType: 'number', className: 'cambio-col-num' },
-    { key: 'actions', label: 'Actions', sortType: 'none', className: 'cambio-col-actions' }
+    {
+      key: 'label',
+      label: 'Name',
+      width: '22%',
+      className: 'ev-desk-col--wrap',
+      render: (anim) => `<span class="label">${escapeHtml(anim.label)}</span>`
+    },
+    {
+      key: 'live',
+      label: 'Live',
+      width: '10%',
+      sortType: 'none',
+      className: 'cambio-col-live',
+      render: (anim) => {
+        const liveDisabled = anim.archived ? ' disabled' : '';
+        const liveChecked = anim.live && !anim.archived ? ' checked' : '';
+        return `<label class="cambio-live-lab"><input type="checkbox" data-act="live" data-id="${escapeHtml(anim.id)}"${liveChecked}${liveDisabled} /> Live</label>`;
+      }
+    },
+    {
+      key: 'tier',
+      label: 'Tier',
+      width: '16%',
+      render: (anim) => {
+        const tierOpts = Object.entries(state.tiers || {})
+          .map(([tid, tdef]) => {
+            const sel = (anim.tier || 'legendary') === tid ? ' selected' : '';
+            return `<option value="${escapeHtml(tid)}"${sel}>${escapeHtml(tdef.label)} (${tdef.weight})</option>`;
+          })
+          .join('');
+        return `<select data-act="tier" data-id="${escapeHtml(anim.id)}" aria-label="Tier">${tierOpts}</select>`;
+      }
+    },
+    {
+      key: 'weight',
+      label: 'Weight',
+      width: '10%',
+      sortType: 'number',
+      className: 'cambio-col-num',
+      render: (anim) => {
+        const weight = anim.weight != null ? anim.weight : effectiveWeight(anim);
+        return `<input type="number" min="0" step="0.1" data-act="weight" data-id="${escapeHtml(anim.id)}" value="${escapeHtml(String(weight))}" title="Direct weight (overrides tier×multiplier when set)" />`;
+      }
+    },
+    {
+      key: 'pct',
+      label: '%',
+      width: '8%',
+      sortType: 'number',
+      className: 'cambio-col-num',
+      render: (anim) => {
+        const pcts = livePercents();
+        const pct = anim.live && !anim.archived ? `${(pcts[anim.id] || 0).toFixed(1)}%` : '—';
+        return `<span class="pct">${escapeHtml(pct)}</span>`;
+      }
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      width: '34%',
+      sortType: 'none',
+      className: 'cambio-col-actions',
+      render: (anim) => {
+        const canEditPlacement =
+          anim.editable !== false && anim.placementEditable !== false && anim.id !== 'ghost';
+        const canArchive = anim.editable !== false && anim.id !== 'ghost';
+        let actions =
+          `<button type="button" class="btn btn-sm btn-primary" data-act="play" data-id="${escapeHtml(anim.id)}">Play</button>` +
+          `<button type="button" class="btn btn-sm btn-outline-dark" data-act="click-preview" data-id="${escapeHtml(anim.id)}" title="Preview this animation's per-click character effect">Click preview</button>`;
+        if (canEditPlacement) {
+          actions += `<button type="button" class="btn btn-sm btn-outline-dark" data-act="edit" data-id="${escapeHtml(anim.id)}">Edit</button>`;
+        } else if (anim.id === 'ghost') {
+          actions += `<span class="text-body-secondary" style="font-size:.7rem">placement locked</span>`;
+        }
+        if (canArchive) {
+          actions += `<button type="button" class="btn btn-sm btn-outline-dark" data-act="archive" data-id="${escapeHtml(anim.id)}">${
+            anim.archived ? 'Restore' : 'Archive'
+          }</button>`;
+        }
+        return `<div class="cambio-row-actions">${actions}</div>`;
+      }
+    }
   ];
 
-  animDeskList = mountDeskListCard(host, {
+  animDeskList = mountEvScrollList(host, {
     title: 'Animations',
-    searchId: 'animSearch',
     searchPlaceholder: 'Search animations…',
-    showRefresh: false,
-    extraToolbarHtml,
-    scrollId: 'animList',
-    metaId: 'animListMeta',
+    searchFields: ['id', 'label', 'tier'],
     columns,
-    tableClass: 'cambio-anim-table',
     minRows: 10,
-    rowClick: 'select',
+    maxHeightCss: 'min(70vh, 36rem)',
+    emptyHtml: `<tr><td colspan="6" class="ev-hint">No animations yet</td></tr>`,
     rowKey: (item) => String(item.id),
-    searchText: (item) => `${item.id} ${item.label} ${item.tier || ''}`,
-    emptyHint: 'No animations yet',
-    emptyFilterHint: 'No matches for filter',
-    rowToCells: (anim) => rowCellsHtml(anim),
-    onAfterRender: () => wireAnimListActions()
+    headerActions: [
+      { label: '+ Create', attrs: 'id="btnCreateAnim"' },
+      { label: 'Export→git', attrs: 'id="btnExportRepo" title="Snapshot KV → git"' }
+    ],
+    afterPaint: () => wireAnimListActions()
   });
 
-  // Create / Export live in the toolbar painted by mountDeskListCard
+  // Give the painted card an id tests / markAnimRowActive can find
+  const card = host.querySelector('.card, .ev-desk-list, [data-ev-component="ev-desk-list"]');
+  if (card && !card.id) card.id = 'animList';
+  host.id = host.id || 'animListHost';
+  // Also stamp id on scroll wrap for #animList selector compatibility
+  const stamp = () => {
+    const root = host.querySelector('[data-ev-component="ev-desk-list"]') || host.querySelector('.card');
+    if (root) root.id = 'animList';
+  };
+  stamp();
+  const _set = animDeskList.setItems.bind(animDeskList);
+  animDeskList.setItems = (items) => {
+    _set(items);
+    stamp();
+    wireAnimListActions();
+  };
+
   host.addEventListener('click', (ev) => {
     const t = ev.target;
     if (!(t instanceof HTMLElement)) return;
@@ -584,58 +694,9 @@ function ensureAnimDeskList() {
   return animDeskList;
 }
 
-function rowCellsHtml(anim) {
-  const pcts = livePercents();
-  const weight = anim.weight != null ? anim.weight : effectiveWeight(anim);
-  const pct =
-    anim.live && !anim.archived ? `${(pcts[anim.id] || 0).toFixed(1)}%` : '—';
-  const tierLabel = (state.tiers?.[anim.tier || 'legendary']?.label) || anim.tier || '—';
-  const canEditPlacement =
-    anim.editable !== false && anim.placementEditable !== false && anim.id !== 'ghost';
-  const canArchive = anim.editable !== false && anim.id !== 'ghost';
-
-  const liveDisabled = anim.archived ? ' disabled' : '';
-  const liveChecked = anim.live && !anim.archived ? ' checked' : '';
-
-  let actions =
-    `<button type="button" class="btn primary" data-act="play" data-id="${escapeHtml(anim.id)}">Play</button>` +
-    `<button type="button" class="btn" data-act="click-preview" data-id="${escapeHtml(anim.id)}" title="Preview this animation's per-click character effect">Click preview</button>`;
-  if (canEditPlacement) {
-    actions += `<button type="button" class="btn" data-act="edit" data-id="${escapeHtml(anim.id)}">Edit</button>`;
-  } else if (anim.id === 'ghost') {
-    actions += `<span class="pf-muted" style="font-size:.7rem">placement locked</span>`;
-  }
-  if (canArchive) {
-    actions += `<button type="button" class="btn" data-act="archive" data-id="${escapeHtml(anim.id)}">${
-      anim.archived ? 'Restore' : 'Archive'
-    }</button>`;
-  }
-
-  const tierOpts = Object.entries(state.tiers || {})
-    .map(([tid, tdef]) => {
-      const sel = (anim.tier || 'legendary') === tid ? ' selected' : '';
-      return `<option value="${escapeHtml(tid)}"${sel}>${escapeHtml(tdef.label)} (${tdef.weight})</option>`;
-    })
-    .join('');
-
-  return (
-    `<div class="od-fd-cell" role="cell"><span class="label">${escapeHtml(anim.label)}</span></div>` +
-    `<div class="od-fd-cell cambio-col-live" role="cell">` +
-    `<label class="cambio-live-lab"><input type="checkbox" data-act="live" data-id="${escapeHtml(anim.id)}"${liveChecked}${liveDisabled} /> Live</label>` +
-    `</div>` +
-    `<div class="od-fd-cell" role="cell">` +
-    `<select data-act="tier" data-id="${escapeHtml(anim.id)}" aria-label="Tier">${tierOpts}</select>` +
-    `</div>` +
-    `<div class="od-fd-cell cambio-col-num" role="cell">` +
-    `<input type="number" min="0" step="0.1" data-act="weight" data-id="${escapeHtml(anim.id)}" value="${escapeHtml(String(weight))}" title="Direct weight (overrides tier×multiplier when set)" />` +
-    `</div>` +
-    `<div class="od-fd-cell cambio-col-num" role="cell"><span class="pct">${escapeHtml(pct)}</span></div>` +
-    `<div class="od-fd-cell cambio-col-actions" role="cell"><div class="cambio-row-actions">${actions}</div></div>`
-  );
-}
 
 function wireAnimListActions() {
-  const root = $('animList');
+  const root = $('animList') || $('animListHost');
   if (!root || root.dataset.cambioWired === '1') return;
   root.dataset.cambioWired = '1';
 
@@ -696,33 +757,13 @@ function wireAnimListActions() {
   });
 }
 
-async function toggleArchive(id) {
-  const anim = (state.runtimeConfig?.animations || state.manifest.animations || []).find((a) => a.id === id);
-  if (!anim) return;
-  try {
-    if (anim.archived) {
-      await patchAnimation(id, { archived: false });
-      saveStatus.textContent = 'Restored';
-    } else {
-      if (!confirm(`Archive "${anim.label}"? It will leave the live pool.`)) return;
-      await apiJson(`/api/cambio/animations/${encodeURIComponent(id)}`, { method: 'DELETE' });
-      const r = await apiJson('/api/cambio/runtime-config');
-      state.runtimeConfig = r.config;
-      syncManifestFromRuntime();
-      renderAnimList();
-      saveStatus.textContent = 'Archived (soft-delete)';
-    }
-  } catch (err) {
-    saveStatus.textContent = err.message;
-  }
-}
-
 function markAnimRowActive(animId) {
-  const root = $('animList');
+  const root = $('animList') || $('animListHost');
   if (!root) return;
-  root.querySelectorAll('.od-fd-row[data-row-id]').forEach((row) => {
-    row.classList.toggle('od-fd-row--selected', row.getAttribute('data-row-id') === animId);
-    row.classList.toggle('active', row.getAttribute('data-row-id') === animId);
+  root.querySelectorAll('tr[data-row-id], .ev-sl-row[data-row-id]').forEach((row) => {
+    const on = row.getAttribute('data-row-id') === animId;
+    row.classList.toggle('ev-sl-row--selected', on);
+    row.classList.toggle('active', on);
   });
 }
 
@@ -730,8 +771,7 @@ function renderAnimList() {
   ensureAnimDeskList();
   const all = state.runtimeConfig?.animations || state.manifest.animations || [];
   const q = state.animFilter || '';
-  // mountDeskListCard owns search; still hide archived unless filtering (component sees all we pass)
-  // Pass full pool; archived rows stay visible so Restore works. Filter text is component-owned.
+  // mountEvScrollList owns search; pass full pool (archived stay visible so Restore works).
   const pool = all.slice();
   animDeskList.setItems(pool);
   const hint = $('poolHint');
@@ -787,7 +827,8 @@ async function onCreateSubmit(ev) {
       playMode: 'character-overlay',
       overlayFlashMode: 'composite',
       elements,
-      transitionsAvailable: ['lightning', 'none']
+      transitionsAvailable: ['lightning', 'none'],
+      previewObjectActions: false
     };
     const data = await apiJson('/api/cambio/animations', { method: 'POST', body: JSON.stringify(body) });
     if (data.config) state.runtimeConfig = data.config;

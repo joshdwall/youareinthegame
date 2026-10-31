@@ -65,7 +65,7 @@ for (const vp of VIEWPORTS) {
     const t = window.__cambioTest;
     if (t?.enterEdit) return t.enterEdit('cowboy');
     // fallback: click Edit on cowboy row
-    const li = [...document.querySelectorAll('#animList .od-fd-row[data-row-id]')].find((el) => el.getAttribute("data-row-id") === "cowboy");
+    const li = [...document.querySelectorAll('#animList tr[data-row-id]')].find((el) => el.getAttribute("data-row-id") === "cowboy");
     li?.querySelector('button')?.click(); // may be Play; try Edit
     const edit = [...(li?.querySelectorAll('button') || [])].find((b) => /Edit/i.test(b.textContent || ''));
     edit?.click();

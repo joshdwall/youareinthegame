@@ -1,32 +1,26 @@
-/* Cambio harness — site-hub od-sidebar + desk table (pf-kit pin). */
+/* Cambio harness — enVivo CoreUI #sidebar + mountEvScrollList (envivo-ui pin). */
 
-/* ── site-hub od-sidebar host (wider so desk TABLE fits) ── */
-.cambio-body.od-body {
-  /* Desk tokens load for the sidebar; public stage keeps sage from styles.css */
+.cambio-body {
+  /* Public stage keeps sage from styles.css; CoreUI tokens paint the sidebar */
   background-color: #7ab5a0 !important;
   background-image: none;
   color: inherit;
 }
 
-.cambio-rail.od-sidebar,
-.od-sidebar.cambio-rail-left {
+/* Wider CoreUI sidebar (enVivo shell markup; width override only) */
+#sidebar.sidebar.cambio-rail-left,
+.cambio-rail-left#sidebar {
   --cambio-sidebar-width: 36rem;
-  width: var(--cambio-sidebar-width);
-  max-width: min(36rem, 48vw);
+  width: var(--cambio-sidebar-width) !important;
+  max-width: min(36rem, 52vw);
+  --cui-sidebar-occupy-start: var(--cambio-sidebar-width);
   position: fixed;
   top: 0;
   bottom: 0;
   left: 0;
   z-index: 40;
-  background: var(--color-surface, #161b22);
-  color: var(--color-text-primary, #e8eef7);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  padding: 0.35rem 0 0.55rem 0.55rem;
-  border-right: 1px solid var(--color-border);
-  box-shadow: 0 0 28px rgba(0, 0, 0, 0.35);
   pointer-events: auto;
+  box-shadow: 0 0 28px rgba(0, 0, 0, 0.35);
 }
 
 .cambio-rail-left { left: 0; }
@@ -50,7 +44,6 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding-right: 0.45rem;
 }
 
 .cambio-anim-list-host {
@@ -61,56 +54,23 @@
   overflow: hidden;
 }
 
-.cambio-anim-list-host .pf-desk-section {
+.cambio-anim-list-host .ev-scroll-list-host,
+.cambio-anim-list-host > .card,
+.cambio-anim-list-host > .ev-desk-list {
   flex: 1 1 auto;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
 }
 
-.cambio-anim-list-host .pf-desk-section__body {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+.cambio-anim-list-host .ev-desk-list__scroll,
+.cambio-anim-list-host .table-responsive {
+  max-height: min(70vh, 36rem);
 }
 
-.cambio-anim-list-host .pf-desk-list-unit {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.cambio-anim-list-host .od-rg-pane-scroll {
-  flex: 1 1 auto;
-  min-height: 12rem;
-  max-height: none;
-  overflow: auto;
-}
-
-/* Default TABLE column geometry for Name | Live | Tier | Weight | % | Actions */
-.cambio-anim-table {
-  --od-fd-cols: minmax(0, 1.3fr) 3.6rem minmax(5.5rem, 0.9fr) 4.2rem 3.2rem minmax(11rem, 1.6fr);
-}
-
-.cambio-row-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  justify-content: flex-end;
-}
-
-.cambio-col-num input[type="number"] {
-  width: 3.6rem;
-  padding: 0.15rem 0.25rem;
-  font-size: 0.72rem;
-  background: var(--color-bg);
-  color: inherit;
-  border: 1px solid var(--color-border);
+@media (max-width: 1100px) {
+  #sidebar.sidebar.cambio-rail-left {
+    --cambio-sidebar-width: min(32rem, 56vw);
+    width: var(--cambio-sidebar-width) !important;
+  }
 }
 
 .cambio-col-live .cambio-live-lab {
@@ -129,22 +89,11 @@
   border: 1px solid var(--color-border);
 }
 
-.od-sidebar .od-topbar-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  padding: 0.25rem 0.45rem 0.35rem 0;
-}
 
-.od-sidebar .od-nav {
-  flex: 0 0 auto;
-  max-height: none;
-  overflow: visible;
-  padding-bottom: 0.35rem;
-}
 
-.od-sidebar .od-nav-item.is-active {
-  background: color-mix(in srgb, var(--color-accent, #2dd4bf) 18%, var(--color-surface));
-}
+
+
+
 
 /* Badge clearance uses wider rail */
 :root {
@@ -152,11 +101,7 @@
 }
 
 @media (max-width: 1100px) {
-  .cambio-rail.od-sidebar,
-  .od-sidebar.cambio-rail-left {
-    --cambio-sidebar-width: min(32rem, 56vw);
-    max-width: min(32rem, 56vw);
-  }
+  .cambio-rail
   :root { --cambio-rail-width: min(32rem, 56vw); }
 }
 

@@ -45,7 +45,7 @@ function deepEq(a, b, keys) {
 async function openCowboyEdit(page) {
   await page.goto(`${raw}/cambio/`, { waitUntil: 'networkidle', timeout: 60000 });
   await page.waitForFunction(() => window.__cambioTest?.getState?.()?.manifest, null, { timeout: 15000 });
-  await page.locator('#animList .od-fd-row[data-row-id="cowboy"] button', { hasText: 'Edit' }).click();
+  await page.locator('#animList tr[data-row-id="cowboy"] button', { hasText: 'Edit' }).click();
   await page.waitForTimeout(500);
   await page.waitForSelector('#selectedControls:not(.hidden)');
 }

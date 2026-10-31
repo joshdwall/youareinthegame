@@ -1,28 +1,22 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="ev-compact" data-ui-base="coreui-bootstrap5" data-coreui-theme="dark" data-ev-sidebar-theme="follow">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <title>Cambio — You Are In The Game (admin)</title>
   <!-- Real public site styles = background stage (float, sage, creature) -->
-  <link rel="stylesheet" href="/styles.css?v=sh1" />
-  <!-- site-hub pf-kit (pinned tag site-hub-v2026.10.09) — assemble-style vendor -->
-  <link rel="stylesheet" href="/cambio/vendor/pf-kit/themes/bs-desk-dark/tokens.css?v=sh1" />
-  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-semantic-tokens.css?v=sh1" />
-  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-platform-defaults.css?v=sh1" />
-  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-desk-shell.css?v=sh1" />
-  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-desk-fold.css?v=sh1" />
-  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-desk-elevation.css?v=sh1" />
-  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-desk-controls.css?v=sh1" />
-  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-desk-table.css?v=sh1" />
-  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-desk-card-shell.css?v=sh1" />
-  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-desk-page.css?v=sh1" />
-  <link rel="stylesheet" href="/cambio/cambio.css?v=sh1" />
+  <link rel="stylesheet" href="/styles.css?v=ev1" />
+  <!-- Same CoreUI + enVivo desk chrome the live envivo-dashboard uses -->
+  <link href="https://cdn.jsdelivr.net/npm/@coreui/coreui@5.2.0/dist/css/coreui.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="/cambio/vendor/envivo-ui/tokens/envivo-tokens.css?v=ev1" />
+  <link rel="stylesheet" href="/cambio/vendor/envivo-ui/ev-scroll-list/ev-scroll-list.css?v=ev1" data-ev-skin="ev-scroll-list" />
+  <link rel="stylesheet" href="/cambio/vendor/envivo-ui/sidebar-shell.css?v=ev1" />
+  <link rel="stylesheet" href="/cambio/cambio.css?v=ev1" />
   <link rel="stylesheet" href="/effects/spore/ghost/effect.css" />
   <link rel="stylesheet" href="/effects/spore/finale.css" />
-  <link rel="stylesheet" href="/effects/activation/activation.css?v=sh1" />
+  <link rel="stylesheet" href="/effects/activation/activation.css?v=ev1" />
 </head>
-<body class="cambio-body od-body">
+<body class="cambio-body">
   <!-- Real site stage (same markup shape as apex index.html) -->
   <div class="container" id="siteStage">
     <div class="creature-rig" id="creatureRig">
@@ -34,18 +28,13 @@
     <div id="lightningFlash" class="lightning-flash" hidden></div>
   </div>
 
-  <!-- site-hub od-sidebar shell (pf-desk-shell) — ONE title: Cambio -->
-  <aside class="od-sidebar cambio-rail cambio-rail-left" id="sidebar" aria-label="Cambio">
-    <div class="od-sidebar-nav-head">
-      <strong class="od-topbar-title" id="cambioSidebarBrand">Cambio</strong>
+  <!-- enVivo CoreUI sidebar shell (same markup/classes as apps/envivo-dashboard #sidebar) — brand Cambio once; body = scrollable list -->
+  <div class="sidebar sidebar-fixed border-end cambio-rail cambio-rail-left" id="sidebar" aria-label="Cambio">
+    <div class="sidebar-header">
+      <strong class="sidebar-brand-full" id="cambioSidebarBrand">Cambio</strong>
     </div>
-    <nav class="od-nav" id="cambioNav" aria-label="Cambio sections">
-      <div class="od-nav-group">
-        <button type="button" class="od-nav-item is-active" data-feature="animations" title="Animations">Animations</button>
-      </div>
-    </nav>
     <div class="cambio-sidebar-body" id="cambioPanel">
-      <!-- mountDeskListCard host (site-hub helpers/desk-page.mjs) -->
+      <!-- mountEvScrollList host — same module enVivo features import -->
       <div id="animListHost" class="cambio-anim-list-host"></div>
       <p id="poolHint" class="cambio-status" style="font-size:.75rem"></p>
       <dialog id="createDialog" class="cambio-dialog">
@@ -82,7 +71,7 @@
         <a href="https://youareinthegame.com" target="_blank" rel="noopener">Open public site</a>
       </footer>
     </div>
-  </aside>
+  </div>
 
   <aside class="cambio-rail cambio-rail-right hidden" id="editSection">
     <h2>Edit · <span id="editTitle"></span></h2>
@@ -101,6 +90,27 @@
         <div class="ie-actions">
           <button type="button" class="ie-btn ie-save" id="btnSaveTransition" title="Save">✓</button>
           <button type="button" class="ie-btn ie-cancel" id="btnCancelTransition" title="Cancel">✕</button>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Preview object actions (per-animation; default off — click preview shows overlays without guns) -->
+    <div class="ie-row" id="previewObjectActionsRow" data-mode="previewObjectActions">
+      <div class="ie-view">
+        <span class="ie-label">Preview object actions</span>
+        <span class="ie-value" id="previewObjectActionsView">off</span>
+        <button type="button" class="ie-btn" id="btnEditPreviewObjectActions" title="Edit preview object actions" aria-label="Edit preview object actions">✎</button>
+      </div>
+      <div class="ie-edit hidden">
+        <label class="cambio-field">
+          <input type="checkbox" id="previewObjectActionsCheck" />
+          Run guns/actions on click-preview spores
+        </label>
+        <p class="cambio-status" style="font-size:.72rem">Real activation always runs object actions. Default off.</p>
+        <div class="ie-actions">
+          <button type="button" class="ie-btn ie-save" id="btnSavePreviewObjectActions" title="Save">✓</button>
+          <button type="button" class="ie-btn ie-cancel" id="btnCancelPreviewObjectActions" title="Cancel">✕</button>
         </div>
       </div>
     </div>

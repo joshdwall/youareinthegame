@@ -8,6 +8,12 @@ SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.co
 ## 2026-10-30
 
 ### Changed
+- **Cambio uses enVivo CoreUI `#sidebar` + `mountEvScrollList`** (same as live envivo-dashboard / features). Pin via `scripts/sync-envivo-ui.mjs` → `cambio/vendor/envivo-ui/` (enVivo rev in `ENVIVO_PIN.json`). Brand **Cambio** once; wider sidebar; animation list = Live/Tier/Weight/%/Actions. Not pf-kit / od-sidebar unless that is what enVivo renders (it is not). Checkpoint `checkpoint-2026-10-30-pre-envivo-components`.
+
+### Added
+- **`previewObjectActions` (default false)** on each animation. Character-click / Click-preview spores show overlay composites but do **not** run object actions (guns) unless the flag is on. Real activation always runs object actions. Cambio pencil ✎/✓/✕ on the edit rail; PATCH `/api/cambio/animations/:id`. Playwright: `tests/preview-object-actions-test.mjs`.
+
+### Changed
 - **Cambio consumes site-hub components directly (no look-alikes).** Deleted vendored imitation `cambio/vendor/{desk-list.mjs,envivo-sidebar.css,pf-desk-list.css}`. Pin `site-hub-v2026.10.09` (rev `830a4b88508ddd266eab6cfa543118a859179384`) via `scripts/sync-site-hub-pf-kit.mjs` → `cambio/vendor/pf-kit/` (assemble-style). Menu = real `od-sidebar` (brand **Cambio** once, wider `--cambio-sidebar-width: 36rem`). Animation list = `mountDeskListCard` default TABLE (Name, Live, Tier, Weight, %, Actions) with component search/scroll. Checkpoint `checkpoint-2026-10-30-pre-sitehub-consume`. Plan req: *Cambio must consume site-hub components directly; no re-implementations.* Screenshots: `capture/sitehub-vs-cambio/`.
 
 ### Fixed

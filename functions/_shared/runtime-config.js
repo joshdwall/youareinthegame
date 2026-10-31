@@ -39,7 +39,8 @@ export const BUILTIN_SEED = {
       overlayFlashMode: 'image',
       tier: 'legendary',
       multiplier: 1,
-      weight: 1
+      weight: 1,
+      previewObjectActions: false
     },
     {
       id: 'cowboy',
@@ -61,7 +62,8 @@ export const BUILTIN_SEED = {
       overlayFlashMode: 'composite',
       tier: 'legendary',
       multiplier: 3,
-      weight: 3
+      weight: 3,
+      previewObjectActions: false
     }
   ]
 };

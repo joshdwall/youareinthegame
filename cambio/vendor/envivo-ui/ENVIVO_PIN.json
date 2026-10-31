@@ -1,0 +1,32 @@
+{
+  "source": "joshdwall/enVivo",
+  "rev": "836c59c26445b3bd4d44a5f4ef553c4fc5d3018d",
+  "syncedAt": "2026-10-31T01:06:15.409Z",
+  "components": {
+    "menu": {
+      "markup": "CoreUI #sidebar.sidebar.sidebar-fixed (apps/envivo-dashboard/index.html)",
+      "css": [
+        "cdn @coreui/coreui@5.2.0",
+        "sidebar-shell.css",
+        "tokens/envivo-tokens.css"
+      ]
+    },
+    "scrollableList": {
+      "module": "ev-scroll-list/mount.mjs",
+      "export": "mountEvScrollList",
+      "enVivoPath": "shared/ui/ev-scroll-list/mount.mjs"
+    }
+  },
+  "files": [
+    "shared/ui/ev-scroll-list/mount.mjs",
+    "shared/ui/ev-scroll-list/defaults.mjs",
+    "shared/ui/ev-scroll-list/toolbar.mjs",
+    "shared/ui/ev-scroll-list/autofit.mjs",
+    "shared/ui/ev-scroll-list/ev-scroll-list.css",
+    "shared/ui/coreui-card-table.mjs",
+    "shared/ui/desk-list.mjs",
+    "shared/ui/desk-list-sort.mjs",
+    "shared/ui/vendor/coreui-recipes.bundle.mjs",
+    "shared/tokens/envivo-tokens.css"
+  ]
+}

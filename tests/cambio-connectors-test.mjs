@@ -41,7 +41,7 @@ ok(/122,\s*181,\s*160|122,\s*181,\s*160/.test(bodyBg) || bodyBg.includes('122'),
 await page.screenshot({ path: path.join(OUT, '01-list.png'), fullPage: true });
 
 // Enter cowboy edit
-await page.locator('#animList .od-fd-row[data-row-id="cowboy"] button', { hasText: 'Edit' }).click();
+await page.locator('#animList tr[data-row-id="cowboy"] button', { hasText: 'Edit' }).click();
 await page.waitForTimeout(600);
 const editVisible = !(await page.locator('#editSection').evaluate((el) => el.classList.contains('hidden')));
 const rightRail = await page.locator('.cambio-rail-right').boundingBox();
@@ -120,7 +120,7 @@ ok(/Saved/i.test(saveResult), `save status: ${saveResult}`);
 
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForTimeout(800);
-await page.locator('#animList .od-fd-row[data-row-id="cowboy"] button', { hasText: 'Edit' }).click();
+await page.locator('#animList tr[data-row-id="cowboy"] button', { hasText: 'Edit' }).click();
 await page.waitForTimeout(500);
 const reloaded = await page.evaluate(() => {
   const st = window.__cambioTest.getState();

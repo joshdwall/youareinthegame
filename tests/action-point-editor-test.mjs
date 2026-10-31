@@ -74,14 +74,17 @@ ok(result.fire2?.point?.x === 0.11 && result.fire2?.direction === 135, 'cancel r
 const chrome = await page.evaluate(() => ({
   sidebar: !!document.getElementById('sidebar'),
   brand: document.getElementById('cambioSidebarBrand')?.textContent,
-  desk: !!document.querySelector('.pf-desk-list-unit'),
-  search: !!document.querySelector('.pf-desk-list-search'),
+  desk: !!document.querySelector('.ev-scroll-list-host, [data-ev-component="ev-desk-list"]'),
+  search: !!document.querySelector('.ev-sl-search, .ev-desk-search'),
+  brandClass: document.getElementById('cambioSidebarBrand')?.className,
+  sidebarClass: document.getElementById('sidebar')?.className,
   meta: !!document.getElementById('animListHost'),
   actionBtn: !!document.getElementById('btnEditAction')
 }));
 console.log(chrome);
-ok(chrome.sidebar && chrome.brand === 'Cambio', 'site-hub od-sidebar brand is Cambio once');
-ok(chrome.desk && chrome.search, 'SITE-HUB desk list present');
+ok(chrome.sidebar && chrome.brand === 'Cambio', 'enVivo CoreUI sidebar brand is Cambio once');
+ok(chrome.sidebarClass?.includes('sidebar') && chrome.brandClass?.includes('sidebar-brand-full'), 'sidebar uses enVivo CoreUI classes');
+ok(chrome.desk && chrome.search, 'enVivo mountEvScrollList present');
 ok(chrome.actionBtn, 'Action point pencil present');
 
 await browser.close();

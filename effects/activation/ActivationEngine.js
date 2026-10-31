@@ -413,13 +413,17 @@ export function previewClick(opts) {
       const duration = 0.6 + Math.random() * 0.4;
       node.style.animation = `explode ${duration}s ease-out ${delay}s forwards`;
 
-      const ctrl = runObjectActions({
-        root: node,
-        elements: compositeElements,
-        target: 'spore',
-        sporeIndex: layer * perLayer + i
-      });
-      node.__actionStop = ctrl.stop;
+      // Object actions (guns etc.) only on preview when animation.previewObjectActions === true (default false).
+      // Real activate()/runActivation always runs object actions.
+      if (animation?.previewObjectActions === true) {
+        const ctrl = runObjectActions({
+          root: node,
+          elements: compositeElements,
+          target: 'spore',
+          sporeIndex: layer * perLayer + i
+        });
+        node.__actionStop = ctrl.stop;
+      }
       sporeHost.appendChild(node);
       setTimeout(() => {
         try { node.__actionStop?.(); } catch (_) {}

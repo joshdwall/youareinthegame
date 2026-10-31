@@ -67,7 +67,8 @@ export async function onRequestPost(context) {
     overlayFlashMode: body.overlayFlashMode || 'composite',
     elements: Array.isArray(body.elements) ? body.elements : [],
     transitionsAvailable: body.transitionsAvailable || ['lightning', 'none'],
-    preloadedAccessories: false
+    preloadedAccessories: false,
+    previewObjectActions: body.previewObjectActions === true
   };
   config.animations.push(anim);
   const saved = await writeRuntimeConfig(env, config);
