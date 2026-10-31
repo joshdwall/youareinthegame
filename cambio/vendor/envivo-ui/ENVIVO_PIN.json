@@ -1,7 +1,7 @@
 {
   "source": "joshdwall/enVivo",
   "rev": "836c59c26445b3bd4d44a5f4ef553c4fc5d3018d",
-  "syncedAt": "2026-10-31T01:22:46.132Z",
+  "syncedAt": "2026-10-31T01:33:48.770Z",
   "components": {
     "menu": {
       "markup": "CoreUI #sidebar.sidebar.sidebar-fixed (apps/envivo-dashboard/index.html)",

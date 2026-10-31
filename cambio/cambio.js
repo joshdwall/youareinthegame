@@ -683,15 +683,28 @@ function resetConnectorsInMode() {
 const CAMBIO_SIDEBAR_SHOW_KEY = 'cambio.sidebar.show';
 
 function isSidebarCollapsed() {
-  return document.body.classList.contains('sidebar-narrow') || document.body.classList.contains('cambio-sidebar-collapsed');
+  const root = $('cambioRoot');
+  if (root?.dataset?.sidebarCollapsed === '1') return true;
+  const side = $('sidebar');
+  return Boolean(side?.classList.contains('hide'));
 }
 
+/**
+ * Collapse/expand is overlay-only: state lives on #cambioRoot + #sidebar.
+ * Never mutate body/html classes or fire layout changes on the public stage.
+ */
 function setSidebarVisible(show, { persist = true } = {}) {
   const visible = Boolean(show);
-  document.body.classList.toggle('sidebar-narrow', !visible);
-  document.body.classList.toggle('cambio-sidebar-collapsed', !visible);
+  const root = $('cambioRoot');
+  if (root) {
+    root.dataset.sidebarCollapsed = visible ? '0' : '1';
+  }
+  // Strip any legacy body classes from older builds (must not affect page CSS).
+  document.body.classList.remove('sidebar-narrow', 'cambio-sidebar-collapsed');
+  document.documentElement.classList.remove('sidebar-narrow', 'cambio-sidebar-collapsed');
   const side = $('sidebar');
   if (side) {
+    side.classList.toggle('hide', !visible);
     side.classList.toggle('show', visible);
     side.setAttribute('aria-hidden', visible ? 'false' : 'true');
   }
@@ -699,6 +712,10 @@ function setSidebarVisible(show, { persist = true } = {}) {
   if (tog) {
     tog.setAttribute('aria-expanded', visible ? 'true' : 'false');
     tog.title = visible ? 'Collapse sidebar' : 'Expand sidebar';
+  }
+  const reopen = $('cambioSidebarReopen');
+  if (reopen) {
+    reopen.setAttribute('aria-hidden', visible ? 'true' : 'false');
   }
   if (persist) {
     try {

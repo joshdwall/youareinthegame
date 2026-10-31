@@ -1,0 +1,50 @@
+/* scoped to #cambioRoot — Cambio overlay isolation */
+/* Slim extract of enVivo dashboard shell.css — sidebar only. Pin via ENVIVO_PIN.json */
+#cambioRoot{
+  --cambio-sidebar-width: 36rem;
+  --cui-sidebar-occupy-start: var(--cambio-sidebar-width);
+}
+
+/* CoreUI sidebar host sized for Cambio (wider than default) */
+#cambioRoot #sidebar.sidebar.sidebar-fixed{
+  width: var(--cambio-sidebar-width);
+  --cui-sidebar-occupy-start: var(--cambio-sidebar-width);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  max-height: 100vh;
+  overflow: hidden;
+}
+#cambioRoot #sidebar .sidebar-header{
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--cui-border-color, rgba(0,0,0,.12));
+}
+#cambioRoot #sidebar .sidebar-brand-full{
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+#cambioRoot #sidebar .sidebar-nav,#cambioRoot #sidebar .cambio-sidebar-body{
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.5rem 0.55rem 0.75rem;
+}
+#cambioRoot #sidebar .ev-scroll-list-host{
+  min-width: 0;
+}
+
+#cambioRoot #sidebar .sidebar-header{
+  background: var(--ev-sidebar-bg, var(--ev-chrome)) !important;
+  border-bottom: var(--ev-chrome-rule) !important;
+  color: var(--ev-sidebar-fg, var(--ev-text)) !important;
+}
+
+#cambioRoot #sidebar .sidebar-header .sidebar-brand-full{
+  color: var(--ev-sidebar-brand, var(--ev-title, var(--ev-text))) !important;
+}

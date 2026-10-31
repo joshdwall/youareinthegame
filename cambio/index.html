@@ -1,26 +1,23 @@
 <!DOCTYPE html>
-<html lang="en" class="ev-compact" data-ui-base="coreui-bootstrap5" data-coreui-theme="dark" data-ev-sidebar-theme="follow">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <title>Cambio — You Are In The Game (admin)</title>
   <!-- Real public site styles = background stage (float, sage, creature) -->
   <link rel="stylesheet" href="/styles.css?v=ev1" />
-  <!-- Same CoreUI + enVivo desk chrome the live envivo-dashboard uses -->
-  <link href="https://cdn.jsdelivr.net/npm/@coreui/coreui@5.2.0/dist/css/coreui.min.css" rel="stylesheet" />
-  <link rel="stylesheet" href="/cambio/vendor/envivo-ui/tokens/envivo-tokens.css?v=ev1" />
-  <link rel="stylesheet" href="/cambio/vendor/envivo-ui/ev-scroll-list/ev-scroll-list.css?v=ev1" data-ev-skin="ev-scroll-list" />
-  <link rel="stylesheet" href="/cambio/vendor/envivo-ui/sidebar-shell.css?v=ev1" />
-  <link rel="stylesheet" href="/cambio/cambio.css?v=edit-ham-1" />
+  <!-- CoreUI + enVivo scoped under #cambioRoot — must not paint the public stage -->
+  <link rel="stylesheet" href="/cambio/vendor/scoped/coreui.scoped.css?v=iso1" />
+  <link rel="stylesheet" href="/cambio/vendor/scoped/envivo-tokens.scoped.css?v=iso1" />
+  <link rel="stylesheet" href="/cambio/vendor/scoped/ev-scroll-list.scoped.css?v=iso1" data-ev-skin="ev-scroll-list" />
+  <link rel="stylesheet" href="/cambio/vendor/scoped/sidebar-shell.scoped.css?v=iso1" />
+  <link rel="stylesheet" href="/cambio/cambio.css?v=iso1" />
   <link rel="stylesheet" href="/effects/spore/ghost/effect.css" />
   <link rel="stylesheet" href="/effects/spore/finale.css" />
   <link rel="stylesheet" href="/effects/activation/activation.css?v=ev1" />
 </head>
 <body class="cambio-body">
-  <button type="button" class="header-toggler" id="cambioSidebarReopen" aria-label="Expand sidebar" title="Expand sidebar">
-    <span class="header-toggler-icon" aria-hidden="true"></span>
-  </button>
-  <!-- Real site stage (same markup shape as apex index.html) -->
+  <!-- Real site stage (same markup shape as apex index.html) — NEVER reflowed by Cambio chrome -->
   <div class="container" id="siteStage">
     <div class="creature-rig" id="creatureRig">
       <img id="mainCreature" class="creature" src="/img/mushroom-platypus.png" alt="Mushroom Platypus" draggable="false" />
@@ -31,8 +28,13 @@
     <div id="lightningFlash" class="lightning-flash" hidden></div>
   </div>
 
-  <!-- enVivo CoreUI sidebar shell (same markup/classes as apps/envivo-dashboard #sidebar) — brand Cambio once; body = scrollable list -->
-  <div class="sidebar sidebar-fixed border-end cambio-rail cambio-rail-left" id="sidebar" aria-label="Cambio">
+  <!-- Cambio harness overlay — all CoreUI/enVivo state scoped here; sibling of stage, not a layout parent -->
+  <div id="cambioRoot" class="cambio-root ev-compact" data-ui-base="coreui-bootstrap5" data-coreui-theme="dark" data-ev-theme="dark" data-ev-sidebar-theme="follow" data-sidebar-collapsed="0">
+  <button type="button" class="header-toggler" id="cambioSidebarReopen" aria-label="Expand sidebar" title="Expand sidebar">
+    <span class="header-toggler-icon" aria-hidden="true"></span>
+  </button>
+  <!-- enVivo CoreUI sidebar — fixed overlay (sidebar-overlaid); collapse only slides/hides this layer -->
+  <div class="sidebar sidebar-fixed sidebar-overlaid border-end cambio-rail cambio-rail-left" id="sidebar" aria-label="Cambio">
     <div class="sidebar-header">
       <button class="header-toggler" type="button" id="evSidebarToggle" aria-label="Toggle sidebar" title="Toggle sidebar">
         <span class="header-toggler-icon" aria-hidden="true"></span>
@@ -270,7 +272,8 @@
     </div>
     <p id="saveStatus" class="cambio-status" aria-live="polite"></p>
   </aside>
+  </div><!-- /#cambioRoot -->
 
-  <script type="module" src="/cambio/cambio.js?v=edit-ham-1"></script>
+  <script type="module" src="/cambio/cambio.js?v=iso1"></script>
 </body>
 </html>

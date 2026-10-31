@@ -59,12 +59,16 @@ ok(!!saveText && !/error|fail/i.test(saveText), `Save placements status: ${saveT
 await page.click('#evSidebarToggle');
 await page.waitForTimeout(250);
 const collapsed = await page.evaluate(() => ({
-  narrow: document.body.classList.contains('sidebar-narrow'),
-  sideW: document.getElementById('sidebar')?.getBoundingClientRect().width || 0,
+  bodyNarrow: document.body.classList.contains('sidebar-narrow') || document.body.classList.contains('cambio-sidebar-collapsed'),
+  rootCollapsed: document.getElementById('cambioRoot')?.dataset.sidebarCollapsed,
+  sideHidden: document.getElementById('sidebar')?.classList.contains('hide'),
+  sideVis: getComputedStyle(document.getElementById('sidebar')).visibility,
   stored: localStorage.getItem('cambio.sidebar.show')
 }));
-ok(collapsed.narrow === true, 'body.sidebar-narrow after hamburger');
-ok(collapsed.sideW < 8, `sidebar width ~0 when collapsed (got ${collapsed.sideW})`);
+ok(collapsed.bodyNarrow === false, 'body must NOT get sidebar-narrow/collapsed');
+ok(collapsed.rootCollapsed === '1', `cambioRoot data-sidebar-collapsed=1 (got ${collapsed.rootCollapsed})`);
+ok(collapsed.sideHidden === true, 'sidebar.has hide when collapsed');
+ok(collapsed.sideVis === 'hidden', `sidebar visibility hidden (got ${collapsed.sideVis})`);
 ok(collapsed.stored === '0', `persisted cambio.sidebar.show=0 (got ${collapsed.stored})`);
 
 await page.screenshot({ path: `${OUT}/sidebar-collapsed.png`, fullPage: false });
@@ -74,11 +78,13 @@ console.log('shot', `${OUT}/sidebar-collapsed.png`);
 await page.click('#cambioSidebarReopen');
 await page.waitForTimeout(250);
 const expanded = await page.evaluate(() => ({
-  narrow: document.body.classList.contains('sidebar-narrow'),
+  bodyNarrow: document.body.classList.contains('sidebar-narrow') || document.body.classList.contains('cambio-sidebar-collapsed'),
+  rootCollapsed: document.getElementById('cambioRoot')?.dataset.sidebarCollapsed,
+  sideHidden: document.getElementById('sidebar')?.classList.contains('hide'),
   sideW: document.getElementById('sidebar')?.getBoundingClientRect().width || 0,
   stored: localStorage.getItem('cambio.sidebar.show')
 }));
-ok(expanded.narrow === false, 'sidebar expanded again');
+ok(expanded.bodyNarrow === false && expanded.rootCollapsed === '0', 'sidebar expanded again');
 ok(expanded.sideW > 200, `sidebar width restored (got ${expanded.sideW})`);
 ok(expanded.stored === '1', `persisted show=1 (got ${expanded.stored})`);
 

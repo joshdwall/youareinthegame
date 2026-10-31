@@ -13,7 +13,8 @@
   --cambio-sidebar-width: 36rem;
   width: var(--cambio-sidebar-width) !important;
   max-width: min(36rem, 52vw);
-  --cui-sidebar-occupy-start: var(--cambio-sidebar-width);
+  /* Overlay only — never push page layout via CoreUI occupy */
+  --cui-sidebar-occupy-start: 0px;
   position: fixed;
   top: 0;
   bottom: 0;
@@ -21,6 +22,7 @@
   z-index: 40;
   pointer-events: auto;
   box-shadow: 0 0 28px rgba(0, 0, 0, 0.35);
+  transition: transform 0.2s ease, visibility 0.2s ease;
 }
 
 .cambio-rail-left { left: 0; }
@@ -101,7 +103,6 @@
 }
 
 @media (max-width: 1100px) {
-  .cambio-rail
   :root { --cambio-rail-width: min(32rem, 56vw); }
 }
 
@@ -510,28 +511,22 @@
     0 5px 0 currentColor;
 }
 
-/* Collapse ENTIRE sidebar — canvas takes space (enVivo body.sidebar-narrow hide path) */
-body.sidebar-narrow #sidebar.cambio-rail-left,
-body.cambio-sidebar-collapsed #sidebar.cambio-rail-left {
-  width: 0 !important;
-  min-width: 0 !important;
-  max-width: 0 !important;
-  padding: 0 !important;
-  border: 0 !important;
-  overflow: hidden !important;
-  box-shadow: none !important;
-  --cambio-sidebar-width: 0px;
-  --cui-sidebar-occupy-start: 0px;
-  pointer-events: none;
+/*
+ * Collapse = slide/hide the fixed overlay only.
+ * State is on #cambioRoot[data-sidebar-collapsed] / #sidebar.hide — NEVER on body/html.
+ * Must not change page width, margins, transforms, canvas size, or fire resize.
+ */
+#cambioRoot[data-sidebar-collapsed="1"] #sidebar.cambio-rail-left,
+#sidebar.cambio-rail-left.hide {
+  transform: translateX(-105%);
   visibility: hidden;
+  pointer-events: none;
+  box-shadow: none !important;
+  /* keep intrinsic width — do not shrink layout boxes the page could observe */
 }
-body.sidebar-narrow,
-body.cambio-sidebar-collapsed {
-  --cambio-rail-width: 0px;
-  --cambio-sidebar-width: 0px;
-}
-/* Floating reopen when fully collapsed */
-#cambioSidebarReopen {
+
+/* Floating reopen when fully collapsed (still inside #cambioRoot) */
+#cambioRoot #cambioSidebarReopen {
   display: none;
   position: fixed;
   left: 0.5rem;
@@ -545,9 +540,9 @@ body.cambio-sidebar-collapsed {
   cursor: pointer;
   border-radius: 0;
   box-shadow: 0 2px 10px rgba(0,0,0,.35);
+  pointer-events: auto;
 }
-body.sidebar-narrow #cambioSidebarReopen,
-body.cambio-sidebar-collapsed #cambioSidebarReopen {
+#cambioRoot[data-sidebar-collapsed="1"] #cambioSidebarReopen {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -560,4 +555,51 @@ body.cambio-sidebar-collapsed #cambioSidebarReopen {
   box-shadow:
     0 -5px 0 currentColor,
     0 5px 0 currentColor;
+}
+
+/* ---- Overlay host: chrome floats above the stage; empty space passes clicks through ---- */
+#cambioRoot.cambio-root {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  /* Do not participate in document flow / flex centering of the public stage */
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  transform: none;
+  width: auto;
+  height: auto;
+}
+#cambioRoot.cambio-root > * {
+  pointer-events: auto;
+}
+
+/* ---- Public stage firewall: identical layout regardless of Cambio UI state ---- */
+body.cambio-body {
+  /* Re-assert public styles.css after any residual vendor tokens */
+  background-color: #7ab5a0 !important;
+  background-image: none !important;
+  color: inherit;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  margin: 0 !important;
+  /* CoreUI occupy vars must stay zero on the page */
+  --cui-sidebar-occupy-start: 0px !important;
+  --cui-sidebar-occupy-end: 0px !important;
+}
+body.cambio-body #siteStage.container {
+  width: 100vw !important;
+  height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: none !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  position: relative !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
 }
