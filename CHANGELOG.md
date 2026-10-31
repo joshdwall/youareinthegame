@@ -5,6 +5,14 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
+## 2026-10-30 (America/Chicago) — Cambio content-fit columns + sidebar normalize
+
+- **Ask:** Column headers in scroll lists too wide for content — investigate original enVivo `mountEvScrollList` (fixed cols / `table-layout:fixed` / `width:100%` / th min-width / colgroup); use recommended content-fit so each column auto-fits its widest cell/header with horizontal scroll for overflow. Also standardize/normalize/compact **both** Cambio sidebars (uniform enVivo btn-sm, one label size, one input height, consistent card pad/gap); define scoped CSS tokens under `#cambioRoot`.
+- **Root cause:** (1) Cambio passed `%` column `width`s (contract anti-pattern). (2) enVivo autofit SL-27 leftover→flex + `width:100%` stretches columns past content. (3) Prior h-scroll helper set `table.style.minWidth='100%'` which stretched every column; disconnecting the autofit RO also dropped content measure.
+- **Fix:** Drop `%` widths; set `fit:'content'` on all list columns. Rewrite `enableCambioListHScroll` to the SL-27 **measure** path without grow-to-fill: nowrap → measure max(header, body) → colgroup px widths → `table.width = sum`, `overflow-x:auto`. `#cambioRoot` tokens (`--cambio-fs-label/body/ctrl`, `--cambio-ctrl-h`, `--cambio-gap/pad/card-pad`) unify `.btn` / `.ie-btn` / inputs / labels / cards in both rails.
+- Checkpoint `checkpoint-2026-10-30-pre-cambio-colfit-normalize`. Playwright `tests/cambio-colfit-normalize-test.mjs` (th≈body, no minWidth 100%, uniform btn/input heights, h-scroll, isolation). cards-hscroll + isolation + edit-sidebar still green. Screenshots `/workspace/capture/cambio-colfit-normalize/` and `/workspace/cambio-colfit-normalize-shots/`.
+- YAITG `COMMIT` → CF Pages deploy `DEPLOY` (production aliases: apex, www, app).
+
 ## 2026-10-30 (America/Chicago) — Cambio list horizontal scroll + compact settings cards
 
 - **Ask:** Scrollable lists (main sidebar + editor item lists) must scroll horizontally when content is wider than the rail so nothing is clipped (enVivo overflow-x:auto / nowrap; header stays aligned). Non-list options/settings in both sidebars → enVivo/CoreUI cards (`card` / `card-header` / `card-body`, compact) by logical section; put inputs side-by-side in a flex-wrap row at content width (≈6ch numbers, inline checkboxes, auto selects); keep per-setting ✎/✓/✕.

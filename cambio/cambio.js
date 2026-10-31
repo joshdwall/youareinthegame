@@ -3,35 +3,65 @@ import { applyElementPlacement, measureCreatureBoxInHost } from '/effects/activa
 import { escapeHtml } from '/cambio/vendor/envivo-ui/desk-list.mjs';
 import { mountEvScrollList } from '/cambio/vendor/envivo-ui/ev-scroll-list/mount.mjs';
 
-/** Allow mountEvScrollList tables to scroll horizontally when content > rail (enVivo autofit shrinks otherwise). */
+/**
+ * Content-fit columns for Cambio rails (enVivo SL-27 measure, without grow-to-fill).
+ * Root cause of fat headers: (1) page % column widths + (2) autofit leftover→flex /
+ * width:100% stretch, and our prior minWidth:100% hack. Contract: fit:'content',
+ * no rem/% widths; measure nowrap content. Sidebar needs h-scroll instead of
+ * leftover stretch — keep measured px cols, table width = sum, overflow-x:auto.
+ */
 function enableCambioListHScroll(host) {
   if (!host) return;
   const wrap = host.querySelector('.table-responsive, .ev-desk-list__scroll');
   const table = host.querySelector('table.table');
-  if (wrap) {
-    wrap.style.overflowX = 'auto';
-    wrap.style.maxWidth = '100%';
-    wrap.style.minWidth = '0';
-    // Stop enVivo autofit RO from re-forcing width:100% / fixed cols (clips instead of scroll).
-    if (wrap._evSlFitRo) {
-      try { wrap._evSlFitRo.disconnect(); } catch {}
-      wrap._evSlFitRo = null;
-    }
+  if (!wrap || !table) return;
+
+  // Autofit RO re-applies width:100% + leftover into flex — disconnect for rail h-scroll.
+  if (wrap._evSlFitRo) {
+    try { wrap._evSlFitRo.disconnect(); } catch {}
+    wrap._evSlFitRo = null;
   }
-  if (table) {
-    table.style.tableLayout = 'auto';
-    table.style.width = 'max-content';
-    table.style.minWidth = '100%';
-    table.style.maxWidth = 'none';
-    table.querySelector('colgroup')?.remove();
-    const thead = table.querySelector('thead');
-    if (thead) {
-      for (const th of thead.querySelectorAll('th')) th.style.whiteSpace = 'nowrap';
-    }
-    for (const td of table.querySelectorAll('tbody td')) {
-      td.style.whiteSpace = 'nowrap';
-    }
+  wrap.style.overflowX = 'auto';
+  wrap.style.maxWidth = '100%';
+  wrap.style.minWidth = '0';
+
+  for (const cell of table.querySelectorAll('thead th, tbody td')) {
+    cell.style.whiteSpace = 'nowrap';
   }
+
+  // SL-27 measuring phase: auto + max-content, no min-width:100% (that was stretching cols).
+  table.classList.add('ev-sl-measuring');
+  table.style.tableLayout = 'auto';
+  table.style.width = 'max-content';
+  table.style.minWidth = '0';
+  table.style.maxWidth = 'none';
+  table.querySelector('colgroup')?.remove();
+
+  const ths = [...table.querySelectorAll('thead tr:first-child th')];
+  const n = ths.length;
+  if (!n) {
+    table.classList.remove('ev-sl-measuring');
+    return;
+  }
+  // Prefer max(header, body cells) per column — longest one-line value.
+  const widths = ths.map((th, i) => {
+    let w = Math.ceil(th.getBoundingClientRect().width);
+    for (const td of table.querySelectorAll(`tbody tr:not(.ev-sl-pad) td:nth-child(${i + 1})`)) {
+      if (td.colSpan > 1) continue;
+      w = Math.max(w, Math.ceil(td.getBoundingClientRect().width));
+    }
+    return Math.max(w, 24);
+  });
+  table.classList.remove('ev-sl-measuring');
+
+  const cg = document.createElement('colgroup');
+  cg.innerHTML = widths.map((w) => `<col style="width:${w}px" />`).join('');
+  table.insertBefore(cg, table.firstChild);
+  const sum = widths.reduce((a, b) => a + b, 0);
+  table.style.tableLayout = 'fixed';
+  table.style.width = `${sum}px`;
+  table.style.minWidth = '0';
+  table.style.maxWidth = 'none';
 }
 
 /** @type {ReturnType<typeof mountEvScrollList>|null} */
@@ -789,16 +819,16 @@ function ensureAnimDeskList() {
     {
       key: 'label',
       label: 'Name',
-      width: '16%',
-      className: 'cambio-col-name',
+      fit: 'content',
+      className: 'cambio-col-name ev-sl-col--tight',
       render: (anim) => `<span class="label">${escapeHtml(anim.label)}</span>`
     },
     {
       key: 'live',
       label: 'Live',
-      width: '8%',
+      fit: 'content',
       sortType: 'none',
-      className: 'cambio-col-live',
+      className: 'cambio-col-live ev-sl-col--tight',
       render: (anim) => {
         const liveDisabled = anim.archived ? ' disabled' : '';
         const liveChecked = anim.live && !anim.archived ? ' checked' : '';
@@ -808,7 +838,7 @@ function ensureAnimDeskList() {
     {
       key: 'tier',
       label: 'Tier',
-      width: '14%',
+      fit: 'content',
       render: (anim) => {
         const tierOpts = Object.entries(state.tiers || {})
           .map(([tid, tdef]) => {
@@ -822,7 +852,7 @@ function ensureAnimDeskList() {
     {
       key: 'weight',
       label: 'Weight',
-      width: '10%',
+      fit: 'content',
       sortType: 'number',
       className: 'cambio-col-num',
       render: (anim) => {
@@ -833,7 +863,7 @@ function ensureAnimDeskList() {
     {
       key: 'pct',
       label: '%',
-      width: '8%',
+      fit: 'content',
       sortType: 'number',
       className: 'cambio-col-num',
       render: (anim) => {
@@ -845,9 +875,9 @@ function ensureAnimDeskList() {
     {
       key: 'actions',
       label: 'Actions',
-      width: '44%',
+      fit: 'content',
       sortType: 'none',
-      className: 'cambio-col-actions',
+      className: 'cambio-col-actions ev-sl-col--tight text-end',
       render: (anim) => {
         // Full Edit = open right-rail editor (existed pre-pf-kit / envivo-ui remount; restore + keep visible)
         const canFullEdit =
@@ -1572,30 +1602,30 @@ function ensureEditItemList() {
     {
       key: 'name',
       label: 'Name',
-      width: '36%',
+      fit: 'content',
       sortType: 'string',
       render: (row) => `<span class="cambio-item-name">${escapeHtml(row.name)}</span>`
     },
     {
       key: 'type',
       label: 'Type',
-      width: '16%',
+      fit: 'content',
       sortType: 'string',
       render: (row) => `<span class="text-body-secondary">${escapeHtml(row.type)}</span>`
     },
     {
       key: 'meta',
       label: 'Detail',
-      width: '18%',
+      fit: 'content',
       sortType: 'string',
       render: (row) => `<span class="text-body-secondary">${escapeHtml(row.meta || '—')}</span>`
     },
     {
       key: 'actions',
       label: 'Actions',
-      width: '30%',
+      fit: 'content',
       sortType: 'none',
-      className: 'cambio-col-actions',
+      className: 'cambio-col-actions ev-sl-col--tight text-end',
       render: (row) => {
         let html = `<div class="cambio-row-actions">`;
         html += `<button type="button" class="btn btn-sm btn-outline-dark"${br} data-edit-act="select" data-item-id="${escapeHtml(row.id)}" title="Select on stage">Select</button>`;

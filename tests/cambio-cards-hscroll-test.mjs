@@ -45,9 +45,20 @@ async function measureListScroll(sel) {
     let forced = false;
     let probe = table.querySelector('tbody td');
     const natural = { sw: wrap.scrollWidth, cw: wrap.clientWidth };
-    if (wrap.scrollWidth <= wrap.clientWidth + 1 && probe) {
-      probe.style.minWidth = `${wrap.clientWidth + 120}px`;
-      forced = true;
+    // Need ≥40px scroll room for scrollLeft assertion (tiny natural overflow is not enough).
+    if (wrap.scrollWidth < wrap.clientWidth + 40) {
+      const col = table.querySelector('colgroup col');
+      if (col) {
+        const cur = parseFloat(col.style.width) || 80;
+        col.style.width = `${cur + (wrap.clientWidth + 120 - wrap.scrollWidth)}px`;
+        const cols = [...table.querySelectorAll('colgroup col')];
+        const sum = cols.reduce((a, c) => a + (parseFloat(c.style.width) || 0), 0);
+        table.style.width = `${sum}px`;
+        forced = true;
+      } else if (probe) {
+        probe.style.minWidth = `${wrap.clientWidth + 120}px`;
+        forced = true;
+      }
     }
     const sw = wrap.scrollWidth;
     const cw = wrap.clientWidth;
