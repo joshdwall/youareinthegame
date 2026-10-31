@@ -45,7 +45,7 @@ function deepEq(a, b, keys) {
 async function openCowboyEdit(page) {
   await page.goto(`${raw}/cambio/`, { waitUntil: 'networkidle', timeout: 60000 });
   await page.waitForFunction(() => window.__cambioTest?.getState?.()?.manifest, null, { timeout: 15000 });
-  await page.locator('#animList li[data-id="cowboy"] button', { hasText: 'Edit' }).click();
+  await page.locator('#animList .od-fd-row[data-row-id="cowboy"] button', { hasText: 'Edit' }).click();
   await page.waitForTimeout(500);
   await page.waitForSelector('#selectedControls:not(.hidden)');
 }
@@ -163,7 +163,7 @@ async function runModalIsolation(page, label) {
     `${label}: connector cancel restored full snapshot`);
 
   // Position mode: drag should only change characterAnchor
-  await page.click('#btnEditPosition');
+  await page.click('#btnEditMove');
   const beforePos = await page.evaluate(() => window.__cambioTest.snapshotElement('hat'));
   const hat2 = await page.locator('.cambio-prop[data-element-id="hat"]').boundingBox();
   await page.mouse.move(hat2.x + hat2.width / 2, hat2.y + hat2.height / 2);
@@ -174,7 +174,7 @@ async function runModalIsolation(page, label) {
   const midPos = await page.evaluate(() => window.__cambioTest.snapshotElement('hat'));
   ok(deepEq(beforePos, midPos, ['objectAnchor', 'rotation', 'scale', 'flipX']),
     `${label}: position drag isolated`);
-  await page.click('#btnCancelPosition');
+  await page.click('#btnCancelMove');
   const afterCancelPos = await page.evaluate(() => window.__cambioTest.snapshotElement('hat'));
   ok(deepEq(beforePos, afterCancelPos, ['objectAnchor', 'characterAnchor', 'rotation', 'scale', 'flipX']),
     `${label}: position cancel restored`);
@@ -210,7 +210,9 @@ async function runBadgeChecks(browser) {
         vh: window.innerHeight,
         badgeRight: cs.getPropertyValue('--badge-right').trim(),
         badgeBottom: cs.getPropertyValue('--badge-bottom').trim(),
-        badgeSize: cs.getPropertyValue('--badge-size').trim()
+        badgeSize: cs.getPropertyValue('--badge-size').trim(),
+        pointerEvents: cs.pointerEvents,
+        cursor: cs.cursor
       };
     });
     ok(!!info, `badge present @ ${vp.name}`);
@@ -222,6 +224,9 @@ async function runBadgeChecks(browser) {
     ok(bottomGap >= -2 && bottomGap < 80, `badge near bottom @ ${vp.name} (gap=${bottomGap?.toFixed(1)})`);
     ok(info.x > info.vw * 0.4, `badge on right half @ ${vp.name}`);
     ok(info.y > info.vh * 0.4, `badge on bottom half @ ${vp.name}`);
+    ok(info.pointerEvents === 'none', `badge pointer-events:none @ ${vp.name} (got ${info.pointerEvents})`);
+    ok(!info.cursor || info.cursor === 'default' || info.cursor === 'auto',
+      `badge no pointer cursor @ ${vp.name} (got ${info.cursor})`);
     console.log(`  badge ${vp.name}:`, JSON.stringify(info));
     await page.screenshot({ path: path.join(OUT, `apex-badge-${vp.name}.png`) });
     await page.close();
@@ -244,8 +249,47 @@ async function runBadgeChecks(browser) {
   });
   ok(badgeCambio.badgeRight <= badgeCambio.railLeft + 2,
     `badge clears right rail (badgeRight=${badgeCambio.badgeRight?.toFixed(1)} railLeft=${badgeCambio.railLeft?.toFixed(1)})`);
+  const peCambio = await page.evaluate(() => getComputedStyle(document.querySelector('.spore-sticker')).pointerEvents);
+  ok(peCambio === 'none', `Cambio badge pointer-events:none (got ${peCambio})`);
   await page.screenshot({ path: path.join(OUT, 'cambio-badge-edit.png') });
   await page.close();
+
+  // Click-through: badge must not eat clicks (apex) — elementFromPoint is not the badge;
+  // clicking badge coords must NOT raise character clickCount / pulse as creature.
+  console.log('\n=== Badge non-interactive click-through (apex) ===');
+  const page2 = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+  await page2.goto(`${raw}/`, { waitUntil: 'networkidle', timeout: 60000 });
+  await page2.waitForTimeout(600);
+  const hit = await page2.evaluate(() => {
+    const el = document.querySelector('.spore-sticker');
+    const r = el.getBoundingClientRect();
+    const cx = Math.floor(r.x + r.width / 2);
+    const cy = Math.floor(r.y + r.height / 2);
+    const top = document.elementFromPoint(cx, cy);
+    return {
+      cx, cy,
+      topTag: top?.tagName,
+      topClass: top?.className,
+      isBadge: !!(top && (top.classList?.contains('spore-sticker') || top.id === 'sporeSticker')),
+      pe: getComputedStyle(el).pointerEvents,
+      cursor: getComputedStyle(el).cursor
+    };
+  });
+  ok(hit.pe === 'none', `apex elementFromPoint pe none (${hit.pe})`);
+  ok(!hit.isBadge, `apex elementFromPoint under badge is NOT badge (got ${hit.topTag}.${hit.topClass})`);
+  const before = await page2.evaluate(() => window.app?.getStats?.()?.clickCount ?? window.__yaitgApp?.clickCount ?? null);
+  await page2.mouse.click(hit.cx, hit.cy);
+  await page2.waitForTimeout(200);
+  const after = await page2.evaluate(() => window.app?.getStats?.()?.clickCount ?? window.__yaitgApp?.clickCount ?? null);
+  // If app exposes clickCount, it must not bump from a badge-coord click that hits background
+  // (creature is center; badge is BR). If API missing, pe/elementFromPoint already prove non-interactive.
+  if (before != null && after != null) {
+    ok(after === before, `badge click did not increment creature clickCount (${before}→${after})`);
+  } else {
+    ok(true, `clickCount API absent — pe/elementFromPoint covered (${before})`);
+  }
+  await page2.screenshot({ path: path.join(OUT, 'apex-badge-clickthrough.png') });
+  await page2.close();
 }
 
 const browser = await chromium.launch();

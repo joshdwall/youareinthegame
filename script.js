@@ -100,15 +100,11 @@ class MushroomPlatypusApp {
         // Creature click handler
         this.creature.addEventListener('click', (e) => this.handleCreatureClick(e));
 
-        // Spore sticker click handler
-        if (this.sporeSticker) {
-            this.sporeSticker.addEventListener('click', (e) => this.handleStickerClick(e));
-        }
-
-        // Container click handler for default spores
+        // Spore sticker is decorative (pointer-events:none) — no click handler.
+        // Container click handler for default background spores
         this.container.addEventListener('click', (e) => {
-            // Only handle if not clicking on creature or sticker
-            if (e.target !== this.creature && e.target !== this.sporeSticker) {
+            // Only handle if not clicking on creature
+            if (e.target !== this.creature) {
                 this.handleContainerClick(e);
             }
         });
@@ -161,32 +157,10 @@ class MushroomPlatypusApp {
     }
 
     /**
-     * Handle spore sticker click
-     * @param {MouseEvent} e - Click event
+     * @deprecated Badge is non-interactive (pointer-events:none). Kept as no-op.
      */
-    handleStickerClick(e) {
-        // Debounce rapid clicks
-        const now = Date.now();
-        if (now - this.lastClickTime < this.clickDebounce) {
-            return;
-        }
-        this.lastClickTime = now;
-
-        // Increment click count
-        this.clickCount++;
-
-        // Get click position relative to container
-        const rect = this.container.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-
-        // Delegate to current effect
-        if (this.currentEffect && this.currentEffect.onSporeClick) {
-            this.currentEffect.onSporeClick(x, y);
-        }
-
-        // Console messages for ARG
-        this.checkConsoleMessages();
+    handleStickerClick(_e) {
+        /* no-op */
     }
 
     /**

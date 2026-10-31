@@ -1,6 +1,9 @@
 import { runActivation, previewClick, activate } from '/effects/activation/ActivationEngine.js';
 import { applyElementPlacement, measureCreatureBoxInHost } from '/effects/activation/placementMath.js';
-import { filterByQuery, bindListSearch, bindListFilterClear, updateFilterMeta } from '/cambio/vendor/desk-list.mjs';
+import { escapeHtml } from '/cambio/vendor/pf-kit/helpers/esc.mjs';
+import { mountDeskListCard } from '/cambio/vendor/pf-kit/helpers/desk-page.mjs';
+/** @type {ReturnType<typeof mountDeskListCard>|null} */
+let animDeskList = null;
 /**
  * Cambio admin — Play / Edit with modal pencil editors (enVivo ✎/✓/✕).
  * Modes write only their own fields; Cancel restores a deep snapshot.
@@ -32,7 +35,6 @@ const state = {
 };
 
 const $ = (id) => document.getElementById(id);
-const animList = $('animList');
 const editSection = $('editSection');
 const elementList = $('elementList');
 const overlay = $('overlayLayer');
@@ -256,27 +258,9 @@ async function boot() {
     }
   }
 
+  ensureAnimDeskList();
   renderAnimList();
-  // SITE-HUB desk-list search/clear (shared component contract)
-  bindListSearch($('animSearch'), (q) => {
-    state.animFilter = q || '';
-    renderAnimList();
-  });
-  bindListFilterClear($('animSearchClear'), $('animSearch'));
-  $('btnCreateAnim')?.addEventListener('click', () => {
-    const d = $('createDialog');
-    if (d) { $('createStatus').textContent = ''; d.showModal(); }
-  });
   $('createForm')?.addEventListener('submit', onCreateSubmit);
-  $('btnExportRepo')?.addEventListener('click', async () => {
-    try {
-      saveStatus.textContent = 'Exporting…';
-      const data = await apiJson('/api/cambio/export-to-repo', { method: 'POST', body: '{}' });
-      saveStatus.textContent = data.message || (data.ok ? 'Exported' : 'Export unavailable');
-    } catch (err) {
-      saveStatus.textContent = `Export: ${err.message}`;
-    }
-  });
   $('btnSave').addEventListener('click', savePlacements);
   $('btnExitEdit').addEventListener('click', () => exitEdit());
 
@@ -537,147 +521,226 @@ function resetConnectorsInMode() {
   mountProps(anim.id, { interactive: true });
 }
 
-function renderAnimList() {
-  animList.innerHTML = '';
-  const pcts = livePercents();
-  const all = state.runtimeConfig?.animations || state.manifest.animations || [];
-  const q = state.animFilter || '';
-  const pool = all.filter((a) => a.archived ? !!q.trim() : true);
-  const visible = filterByQuery(pool, q, (a) => `${a.id} ${a.label} ${a.tier || ''}`);
-  updateFilterMeta($('animListMeta'), visible.length, pool.length);
-  for (const anim of visible) {
-    const li = document.createElement('li');
-    li.dataset.id = anim.id;
-    if (anim.archived) li.classList.add('archived');
-    li.innerHTML = `<span class="label">${anim.label}</span>`;
-    const play = document.createElement('button');
-    play.type = 'button';
-    play.className = 'btn primary';
-    play.textContent = 'Play';
-    play.addEventListener('click', () => playAnimation(anim.id));
-    li.appendChild(play);
-    const clickPrev = document.createElement('button');
-    clickPrev.type = 'button';
-    clickPrev.className = 'btn';
-    clickPrev.textContent = 'Click preview';
-    clickPrev.title = 'Preview this animation\'s per-click character effect';
-    clickPrev.addEventListener('click', (e) => {
-      e.stopPropagation();
-      previewClickAnimation(anim.id);
-    });
-    li.appendChild(clickPrev);
-    const canEditPlacement = anim.editable !== false && anim.placementEditable !== false && anim.id !== 'ghost';
-    if (canEditPlacement) {
-      const edit = document.createElement('button');
-      edit.type = 'button';
-      edit.className = 'btn';
-      edit.textContent = 'Edit';
-      edit.addEventListener('click', () => enterEdit(anim.id));
-      li.appendChild(edit);
-    } else if (anim.id === 'ghost') {
-      const note = document.createElement('span');
-      note.style.fontSize = '.7rem';
-      note.style.opacity = '.65';
-      note.textContent = 'placement locked';
-      li.appendChild(note);
+function ensureAnimDeskList() {
+  if (animDeskList) return animDeskList;
+  const host = $('animListHost');
+  if (!host) throw new Error('animListHost missing');
+
+  const extraToolbarHtml =
+    `<button type="button" class="pf-btn pf-btn--secondary pf-btn--desk-sm" id="btnCreateAnim">+ Create</button>` +
+    `<button type="button" class="pf-btn pf-btn--secondary pf-btn--desk-sm" id="btnExportRepo" title="Snapshot KV → git">Export→git</button>`;
+
+  const columns = [
+    { key: 'label', label: 'Name', sortType: 'string' },
+    { key: 'live', label: 'Live', sortType: 'none', className: 'cambio-col-live' },
+    { key: 'tier', label: 'Tier', sortType: 'string' },
+    { key: 'weight', label: 'Weight', sortType: 'number', className: 'cambio-col-num' },
+    { key: 'pct', label: '%', sortType: 'number', className: 'cambio-col-num' },
+    { key: 'actions', label: 'Actions', sortType: 'none', className: 'cambio-col-actions' }
+  ];
+
+  animDeskList = mountDeskListCard(host, {
+    title: 'Animations',
+    searchId: 'animSearch',
+    searchPlaceholder: 'Search animations…',
+    showRefresh: false,
+    extraToolbarHtml,
+    scrollId: 'animList',
+    metaId: 'animListMeta',
+    columns,
+    tableClass: 'cambio-anim-table',
+    minRows: 10,
+    rowClick: 'select',
+    rowKey: (item) => String(item.id),
+    searchText: (item) => `${item.id} ${item.label} ${item.tier || ''}`,
+    emptyHint: 'No animations yet',
+    emptyFilterHint: 'No matches for filter',
+    rowToCells: (anim) => rowCellsHtml(anim),
+    onAfterRender: () => wireAnimListActions()
+  });
+
+  // Create / Export live in the toolbar painted by mountDeskListCard
+  host.addEventListener('click', (ev) => {
+    const t = ev.target;
+    if (!(t instanceof HTMLElement)) return;
+    if (t.id === 'btnCreateAnim' || t.closest?.('#btnCreateAnim')) {
+      const d = $('createDialog');
+      if (d) { $('createStatus').textContent = ''; d.showModal(); }
+      return;
     }
-    if (anim.editable !== false && anim.id !== 'ghost') {
-      const del = document.createElement('button');
-      del.type = 'button';
-      del.className = 'btn';
-      del.textContent = anim.archived ? 'Restore' : 'Archive';
-      del.addEventListener('click', async () => {
-        if (!anim.archived && !confirm(`Archive "${anim.label}"? It will leave the live pool.`)) return;
+    if (t.id === 'btnExportRepo' || t.closest?.('#btnExportRepo')) {
+      void (async () => {
         try {
-          if (anim.archived) {
-            await patchAnimation(anim.id, { archived: false });
-          } else {
-            await apiJson(`/api/cambio/animations/${encodeURIComponent(anim.id)}`, { method: 'DELETE' });
-            const r = await apiJson('/api/cambio/runtime-config');
-            state.runtimeConfig = r.config;
-            syncManifestFromRuntime();
-            renderAnimList();
-          }
-          saveStatus.textContent = anim.archived ? 'Restored' : 'Archived (soft-delete)';
+          saveStatus.textContent = 'Exporting…';
+          const data = await apiJson('/api/cambio/export-to-repo', { method: 'POST', body: '{}' });
+          saveStatus.textContent = data.message || (data.ok ? 'Exported' : 'Export unavailable');
+        } catch (err) {
+          saveStatus.textContent = `Export: ${err.message}`;
+        }
+      })();
+    }
+  });
+
+  return animDeskList;
+}
+
+function rowCellsHtml(anim) {
+  const pcts = livePercents();
+  const weight = anim.weight != null ? anim.weight : effectiveWeight(anim);
+  const pct =
+    anim.live && !anim.archived ? `${(pcts[anim.id] || 0).toFixed(1)}%` : '—';
+  const tierLabel = (state.tiers?.[anim.tier || 'legendary']?.label) || anim.tier || '—';
+  const canEditPlacement =
+    anim.editable !== false && anim.placementEditable !== false && anim.id !== 'ghost';
+  const canArchive = anim.editable !== false && anim.id !== 'ghost';
+
+  const liveDisabled = anim.archived ? ' disabled' : '';
+  const liveChecked = anim.live && !anim.archived ? ' checked' : '';
+
+  let actions =
+    `<button type="button" class="btn primary" data-act="play" data-id="${escapeHtml(anim.id)}">Play</button>` +
+    `<button type="button" class="btn" data-act="click-preview" data-id="${escapeHtml(anim.id)}" title="Preview this animation's per-click character effect">Click preview</button>`;
+  if (canEditPlacement) {
+    actions += `<button type="button" class="btn" data-act="edit" data-id="${escapeHtml(anim.id)}">Edit</button>`;
+  } else if (anim.id === 'ghost') {
+    actions += `<span class="pf-muted" style="font-size:.7rem">placement locked</span>`;
+  }
+  if (canArchive) {
+    actions += `<button type="button" class="btn" data-act="archive" data-id="${escapeHtml(anim.id)}">${
+      anim.archived ? 'Restore' : 'Archive'
+    }</button>`;
+  }
+
+  const tierOpts = Object.entries(state.tiers || {})
+    .map(([tid, tdef]) => {
+      const sel = (anim.tier || 'legendary') === tid ? ' selected' : '';
+      return `<option value="${escapeHtml(tid)}"${sel}>${escapeHtml(tdef.label)} (${tdef.weight})</option>`;
+    })
+    .join('');
+
+  return (
+    `<div class="od-fd-cell" role="cell"><span class="label">${escapeHtml(anim.label)}</span></div>` +
+    `<div class="od-fd-cell cambio-col-live" role="cell">` +
+    `<label class="cambio-live-lab"><input type="checkbox" data-act="live" data-id="${escapeHtml(anim.id)}"${liveChecked}${liveDisabled} /> Live</label>` +
+    `</div>` +
+    `<div class="od-fd-cell" role="cell">` +
+    `<select data-act="tier" data-id="${escapeHtml(anim.id)}" aria-label="Tier">${tierOpts}</select>` +
+    `</div>` +
+    `<div class="od-fd-cell cambio-col-num" role="cell">` +
+    `<input type="number" min="0" step="0.1" data-act="weight" data-id="${escapeHtml(anim.id)}" value="${escapeHtml(String(weight))}" title="Direct weight (overrides tier×multiplier when set)" />` +
+    `</div>` +
+    `<div class="od-fd-cell cambio-col-num" role="cell"><span class="pct">${escapeHtml(pct)}</span></div>` +
+    `<div class="od-fd-cell cambio-col-actions" role="cell"><div class="cambio-row-actions">${actions}</div></div>`
+  );
+}
+
+function wireAnimListActions() {
+  const root = $('animList');
+  if (!root || root.dataset.cambioWired === '1') return;
+  root.dataset.cambioWired = '1';
+
+  root.addEventListener('click', (ev) => {
+    const btn = ev.target.closest?.('[data-act]');
+    if (!btn || !root.contains(btn)) return;
+    if (btn.tagName === 'INPUT' || btn.tagName === 'SELECT') return;
+    const act = btn.getAttribute('data-act');
+    const id = btn.getAttribute('data-id');
+    if (!act || !id) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (act === 'play') void playAnimation(id);
+    else if (act === 'click-preview') void previewClickAnimation(id);
+    else if (act === 'edit') enterEdit(id);
+    else if (act === 'archive') void toggleArchive(id);
+  });
+
+  root.addEventListener('change', (ev) => {
+    const el = ev.target;
+    if (!(el instanceof HTMLElement)) return;
+    const act = el.getAttribute('data-act');
+    const id = el.getAttribute('data-id');
+    if (!act || !id) return;
+    const anim = (state.runtimeConfig?.animations || state.manifest.animations || []).find((a) => a.id === id);
+    if (!anim) return;
+    if (act === 'live' && el instanceof HTMLInputElement) {
+      void (async () => {
+        try {
+          await patchAnimation(id, { live: el.checked });
+          saveStatus.textContent = `${anim.label} live=${el.checked} (immediate)`;
+        } catch (err) {
+          el.checked = !el.checked;
+          saveStatus.textContent = err.message;
+        }
+      })();
+    } else if (act === 'tier' && el instanceof HTMLSelectElement) {
+      void (async () => {
+        try {
+          await patchAnimation(id, { tier: el.value });
+          saveStatus.textContent = `${anim.label} tier=${el.value}`;
+        } catch (err) {
+          saveStatus.textContent = err.message;
+          renderAnimList();
+        }
+      })();
+    } else if (act === 'weight' && el instanceof HTMLInputElement) {
+      void (async () => {
+        const w = Math.max(0, +el.value || 0);
+        try {
+          await patchAnimation(id, { weight: w, multiplier: w });
+          saveStatus.textContent = `${anim.label} weight=${w}`;
         } catch (err) {
           saveStatus.textContent = err.message;
         }
-      });
-      li.appendChild(del);
+      })();
     }
-    const meta = document.createElement('div');
-    meta.className = 'loot-meta';
-    const liveLab = document.createElement('label');
-    const liveCb = document.createElement('input');
-    liveCb.type = 'checkbox';
-    liveCb.checked = !!anim.live && !anim.archived;
-    liveCb.disabled = !!anim.archived;
-    liveCb.addEventListener('change', async () => {
-      try {
-        await patchAnimation(anim.id, { live: liveCb.checked });
-        saveStatus.textContent = `${anim.label} live=${liveCb.checked} (immediate)`;
-      } catch (err) {
-        liveCb.checked = !liveCb.checked;
-        saveStatus.textContent = err.message;
-      }
-    });
-    liveLab.appendChild(liveCb);
-    liveLab.appendChild(document.createTextNode(' Live'));
-    meta.appendChild(liveLab);
+  });
+}
 
-    const tierSel = document.createElement('select');
-    for (const [tid, tdef] of Object.entries(state.tiers || {})) {
-      const opt = document.createElement('option');
-      opt.value = tid;
-      opt.textContent = `${tdef.label} (${tdef.weight})`;
-      if ((anim.tier || 'legendary') === tid) opt.selected = true;
-      tierSel.appendChild(opt);
+async function toggleArchive(id) {
+  const anim = (state.runtimeConfig?.animations || state.manifest.animations || []).find((a) => a.id === id);
+  if (!anim) return;
+  try {
+    if (anim.archived) {
+      await patchAnimation(id, { archived: false });
+      saveStatus.textContent = 'Restored';
+    } else {
+      if (!confirm(`Archive "${anim.label}"? It will leave the live pool.`)) return;
+      await apiJson(`/api/cambio/animations/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const r = await apiJson('/api/cambio/runtime-config');
+      state.runtimeConfig = r.config;
+      syncManifestFromRuntime();
+      renderAnimList();
+      saveStatus.textContent = 'Archived (soft-delete)';
     }
-    tierSel.addEventListener('change', async () => {
-      try {
-        await patchAnimation(anim.id, { tier: tierSel.value });
-        saveStatus.textContent = `${anim.label} tier=${tierSel.value}`;
-      } catch (err) {
-        saveStatus.textContent = err.message;
-        renderAnimList();
-      }
-    });
-    meta.appendChild(tierSel);
-
-    const wLab = document.createElement('label');
-    wLab.appendChild(document.createTextNode('w '));
-    const wIn = document.createElement('input');
-    wIn.type = 'number';
-    wIn.min = '0';
-    wIn.step = '0.1';
-    wIn.value = anim.weight != null ? anim.weight : effectiveWeight(anim);
-    wIn.title = 'Direct weight (overrides tier×multiplier when set)';
-    wIn.addEventListener('change', async () => {
-      const w = Math.max(0, +wIn.value || 0);
-      try {
-        await patchAnimation(anim.id, { weight: w, multiplier: w });
-        saveStatus.textContent = `${anim.label} weight=${w}`;
-      } catch (err) {
-        saveStatus.textContent = err.message;
-      }
-    });
-    wLab.appendChild(wIn);
-    meta.appendChild(wLab);
-
-    const pct = document.createElement('span');
-    pct.className = 'pct';
-    pct.textContent = anim.live && !anim.archived
-      ? `${(pcts[anim.id] || 0).toFixed(1)}%`
-      : '—';
-    meta.appendChild(pct);
-    li.appendChild(meta);
-    animList.appendChild(li);
+  } catch (err) {
+    saveStatus.textContent = err.message;
   }
+}
+
+function markAnimRowActive(animId) {
+  const root = $('animList');
+  if (!root) return;
+  root.querySelectorAll('.od-fd-row[data-row-id]').forEach((row) => {
+    row.classList.toggle('od-fd-row--selected', row.getAttribute('data-row-id') === animId);
+    row.classList.toggle('active', row.getAttribute('data-row-id') === animId);
+  });
+}
+
+function renderAnimList() {
+  ensureAnimDeskList();
+  const all = state.runtimeConfig?.animations || state.manifest.animations || [];
+  const q = state.animFilter || '';
+  // mountDeskListCard owns search; still hide archived unless filtering (component sees all we pass)
+  // Pass full pool; archived rows stay visible so Restore works. Filter text is component-owned.
+  const pool = all.slice();
+  animDeskList.setItems(pool);
   const hint = $('poolHint');
   if (hint) {
+    const pcts = livePercents();
     const parts = Object.entries(pcts).map(([id, p]) => `${id} ${p.toFixed(0)}%`);
     hint.textContent = parts.length ? `Live pool: ${parts.join(' · ')}` : 'No live animations';
   }
+  if (state.selectedAnim?.id) markAnimRowActive(state.selectedAnim.id);
 }
 
 async function onCreateSubmit(ev) {
@@ -1139,7 +1202,7 @@ function enterEdit(animId) {
   syncModeUi();
   mountProps(animId, { interactive: true });
   $('stageHint').textContent = 'Edit: pencil a property · Save placements · Play';
-  [...animList.children].forEach((li) => li.classList.toggle('active', li.dataset.id === animId));
+  markAnimRowActive(animId);
 }
 
 function highlightElementRow(id) {
@@ -1235,7 +1298,7 @@ async function playAnimation(animId) {
     return;
   }
   state.selectedAnim = anim;
-  [...animList.children].forEach((li) => li.classList.toggle('active', li.dataset.id === animId));
+  markAnimRowActive(animId);
   // Clear edit markers; accessories remounted below for flash (shared edit path)
   markerLayer.innerHTML = '';
   $('stageHint').textContent = `Playing ${anim.label}…`;

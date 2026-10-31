@@ -1,14 +1,38 @@
-/* Cambio harness overlays the real public site stage (styles.css). */
+/* Cambio harness — site-hub od-sidebar + desk table (pf-kit pin). */
 
-.cambio-body {
-  /* keep public body sage + fixed canvas; just ensure stacking context */
+/* ── site-hub od-sidebar host (wider so desk TABLE fits) ── */
+.cambio-body.od-body {
+  /* Desk tokens load for the sidebar; public stage keeps sage from styles.css */
+  background-color: #7ab5a0 !important;
+  background-image: none;
+  color: inherit;
 }
 
-/* Kill page scroll chrome from public; harness rails are fixed */
-.cambio-rail {
+.cambio-rail.od-sidebar,
+.od-sidebar.cambio-rail-left {
+  --cambio-sidebar-width: 36rem;
+  width: var(--cambio-sidebar-width);
+  max-width: min(36rem, 48vw);
   position: fixed;
   top: 0;
   bottom: 0;
+  left: 0;
+  z-index: 40;
+  background: var(--color-surface, #161b22);
+  color: var(--color-text-primary, #e8eef7);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0.35rem 0 0.55rem 0.55rem;
+  border-right: 1px solid var(--color-border);
+  box-shadow: 0 0 28px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+}
+
+.cambio-rail-left { left: 0; }
+.cambio-rail-right {
+  position: fixed;
+  top: 0; bottom: 0; right: 0;
   width: min(260px, 22vw);
   z-index: 40;
   background: rgba(36, 52, 71, 0.92);
@@ -19,11 +43,123 @@
   font-family: system-ui, sans-serif;
   pointer-events: auto;
 }
-.cambio-rail-left { left: 0; }
-.cambio-rail-right { right: 0; }
 
-.cambio-header h1 { margin: 0; font-size: 1.25rem; letter-spacing: 0.04em; }
-.cambio-sub { margin: 0.25rem 0 0.85rem; opacity: 0.7; font-size: 0.75rem; }
+.cambio-sidebar-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-right: 0.45rem;
+}
+
+.cambio-anim-list-host {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cambio-anim-list-host .pf-desk-section {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cambio-anim-list-host .pf-desk-section__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cambio-anim-list-host .pf-desk-list-unit {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cambio-anim-list-host .od-rg-pane-scroll {
+  flex: 1 1 auto;
+  min-height: 12rem;
+  max-height: none;
+  overflow: auto;
+}
+
+/* Default TABLE column geometry for Name | Live | Tier | Weight | % | Actions */
+.cambio-anim-table {
+  --od-fd-cols: minmax(0, 1.3fr) 3.6rem minmax(5.5rem, 0.9fr) 4.2rem 3.2rem minmax(11rem, 1.6fr);
+}
+
+.cambio-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  justify-content: flex-end;
+}
+
+.cambio-col-num input[type="number"] {
+  width: 3.6rem;
+  padding: 0.15rem 0.25rem;
+  font-size: 0.72rem;
+  background: var(--color-bg);
+  color: inherit;
+  border: 1px solid var(--color-border);
+}
+
+.cambio-col-live .cambio-live-lab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.cambio-anim-table select {
+  max-width: 100%;
+  font-size: 0.72rem;
+  background: var(--color-bg);
+  color: inherit;
+  border: 1px solid var(--color-border);
+}
+
+.od-sidebar .od-topbar-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0.25rem 0.45rem 0.35rem 0;
+}
+
+.od-sidebar .od-nav {
+  flex: 0 0 auto;
+  max-height: none;
+  overflow: visible;
+  padding-bottom: 0.35rem;
+}
+
+.od-sidebar .od-nav-item.is-active {
+  background: color-mix(in srgb, var(--color-accent, #2dd4bf) 18%, var(--color-surface));
+}
+
+/* Badge clearance uses wider rail */
+:root {
+  --cambio-rail-width: 36rem;
+}
+
+@media (max-width: 1100px) {
+  .cambio-rail.od-sidebar,
+  .od-sidebar.cambio-rail-left {
+    --cambio-sidebar-width: min(32rem, 56vw);
+    max-width: min(32rem, 56vw);
+  }
+  :root { --cambio-rail-width: min(32rem, 56vw); }
+}
+
 .cambio-rail h2 {
   font-size: 0.85rem; margin: 1rem 0 0.45rem;
   text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85;
@@ -159,12 +295,12 @@
 }
 
 @media (max-width: 720px) {
-  .cambio-rail { width: min(200px, 36vw); }
+  .cambio-rail-right { width: min(200px, 36vw); }
 }
 
 /* --- Badge: keep clear of right edit rail when editing --- */
 .cambio-body {
-  --cambio-rail-width: min(260px, 22vw);
+  --cambio-rail-width: 36rem;
   /* Default: sit above left rail footprint only; right offset stays safe-area */
   --badge-right: max(12px, env(safe-area-inset-right, 0px));
   --badge-bottom: max(12px, env(safe-area-inset-bottom, 0px));
@@ -242,7 +378,7 @@
 
 @media (max-width: 720px) {
   .cambio-body {
-    --cambio-rail-width: min(200px, 36vw);
+    --cambio-rail-width: min(32rem, 56vw);
   }
 }
 
@@ -344,3 +480,10 @@
   color: inherit;
 }
 .cambio-dialog input[type="checkbox"] { width: auto; display: inline; }
+
+/* Badge decorative only (apex + Cambio) — never intercept clicks */
+.cambio-body .spore-sticker,
+.cambio-body #sporeSticker {
+  pointer-events: none !important;
+  cursor: default !important;
+}

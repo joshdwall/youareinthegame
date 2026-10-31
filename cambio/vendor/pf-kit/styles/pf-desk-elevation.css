@@ -1,0 +1,96 @@
+/**
+ * pf-desk-elevation — global desk elevation ladder (site-kit SSOT).
+ * Tokens expected on .od-body (operator-tokens) or any host that defines:
+ *   --od-elev-card-*, --od-elev-nest-*, --od-elev-shelf-*
+ * Fallbacks use polarity-safe bg↔surface mixes when tokens missing.
+ *
+ * Ladder: page (--color-bg) → card (.pf-desk-section) → nest (.pf-desk-nested)
+ *       → shelf (.pf-desk-list-unit) → table (--od-fd-* in pf-desk-table.css)
+ */
+
+/* ── Layer 1: desk card ── */
+.od-body .pf-desk-section,
+.pf-desk-section {
+  border-color: var(--od-elev-card-border, var(--color-border-hover, var(--color-border)));
+  background: var(
+    --od-elev-card-bg,
+    color-mix(in srgb, var(--color-surface) 94%, var(--color-bg) 6%)
+  );
+}
+
+.od-body .pf-desk-section__head,
+.pf-desk-section__head {
+  border-bottom-color: var(--od-elev-card-border, var(--color-border));
+  background: var(
+    --od-elev-card-head-bg,
+    color-mix(in srgb, var(--color-surface) 86%, var(--color-bg) 14%)
+  );
+}
+
+.od-body .pf-desk-section__title,
+.pf-desk-section__title {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Layer 2: nested pocket (fieldset or div inside a card) ── */
+.od-body .pf-desk-nested,
+.pf-desk-nested,
+.od-body fieldset.pf-desk-nested,
+fieldset.pf-desk-nested,
+/* OD aliases — Resume Generator / Generate fieldsets (no per-route fills) */
+.od-body .od-rgen-options-fieldset,
+.od-body .od-rgen-generate-fieldset {
+  margin: 0;
+  padding: 0.55rem 0.65rem 0.6rem;
+  border: 1px solid var(--od-elev-nest-border, var(--color-border-hover, var(--color-border)));
+  border-radius: 0;
+  background: var(
+    --od-elev-nest-bg,
+    color-mix(in srgb, var(--color-bg) 52%, var(--color-surface))
+  );
+  box-shadow: none;
+  color: var(--color-text-primary);
+}
+
+.od-body .pf-desk-nested > legend,
+.pf-desk-nested > legend,
+.od-body .pf-desk-nested__legend,
+.pf-desk-nested__legend,
+.od-body .od-rgen-options-legend {
+  padding: 0 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--od-elev-nest-legend, var(--color-text-secondary));
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Layer 3: list shelf (search + table unit) ── */
+.od-body .pf-desk-list-unit,
+.pf-desk-list-unit {
+  border-color: var(--od-elev-shelf-border, color-mix(in srgb, var(--color-accent, #5b8dee) 28%, var(--color-border)));
+  background: var(
+    --od-elev-shelf-bg,
+    color-mix(in srgb, var(--color-accent, #5b8dee) 10%, var(--color-surface))
+  );
+  color: var(--color-text-primary);
+}
+
+.od-body .pf-desk-list-unit > .pf-desk-page-toolbar,
+.od-body .pf-desk-list-unit > .pf-desk-list-toolbar,
+.pf-desk-list-unit > .pf-desk-page-toolbar,
+.pf-desk-list-unit > .pf-desk-list-toolbar {
+  border-bottom-color: var(
+    --od-elev-shelf-toolbar-border,
+    color-mix(in srgb, var(--color-accent, #5b8dee) 18%, var(--color-border))
+  );
+  background: var(
+    --od-elev-shelf-toolbar-bg,
+    color-mix(in srgb, var(--color-accent, #5b8dee) 12%, var(--color-surface))
+  );
+}

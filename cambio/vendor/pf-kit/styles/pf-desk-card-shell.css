@@ -1,0 +1,217 @@
+/**
+ * pf-desk-card-shell — unified desk card + squared control chrome (operator + LAN desks).
+ */
+
+/* ── Squared desk surfaces (overrides theme radius) ── */
+.od-body,
+.od-body .pf-btn,
+.od-body .pf-card,
+.od-body .pf-input,
+.od-body .pf-desk-list-search,
+.od-body .pf-view-toggle,
+.od-body .pf-desk-section,
+.od-body .pf-desk-fold,
+.od-body .pf-capability-badge,
+.od-body .pf-badge,
+.od-body .pf-tag {
+  --pf-shape-radius: 0;
+  --pf-field-radius: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+}
+
+/* Classic raised buttons: darker border, lighter hover */
+.od-body .pf-btn {
+  border-radius: 0;
+  transform: none;
+  font-weight: 500;
+  box-shadow: none;
+}
+
+.od-body .pf-btn.pf-btn--primary {
+  background: color-mix(in srgb, var(--color-surface) 82%, var(--color-bg) 18%);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-hover);
+}
+
+.od-body .pf-btn.pf-btn--primary:hover {
+  background: var(--color-surface);
+  border-color: var(--color-accent-border);
+  color: var(--color-accent);
+  transform: none;
+}
+
+.od-body .pf-btn.pf-btn--secondary {
+  background: color-mix(in srgb, var(--color-surface) 70%, var(--color-bg) 30%);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-hover);
+}
+
+.od-body .pf-btn.pf-btn--secondary:hover {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-hover);
+  transform: none;
+}
+
+.od-body .pf-btn.pf-btn--ghost {
+  border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 88%, var(--color-bg) 12%);
+  border-radius: 0;
+}
+
+.od-body .pf-btn.pf-btn--ghost:hover {
+  background: var(--color-surface);
+  border-color: var(--color-border-hover);
+}
+
+.od-body .pf-view-toggle {
+  border-radius: 0;
+}
+
+.od-body .pf-input,
+.od-body .pf-desk-list-search {
+  border-radius: 0;
+  border: 1px solid var(--color-border-hover);
+  background: color-mix(in srgb, var(--color-surface) 92%, var(--color-bg) 8%);
+}
+
+.od-body .pf-input:focus,
+.od-body .pf-desk-list-search:focus {
+  background: var(--color-surface);
+}
+
+/* ── Unified desk card shell ── */
+.pf-card.pf-card--desk,
+.pf-card.pf-card--desk.pf-desk-section-card {
+  border-radius: 0;
+  overflow: hidden;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 8.5rem;
+  height: 100%;
+}
+
+.pf-card.pf-card--desk:hover,
+.pf-card.pf-card--desk.pf-desk-section-card:hover {
+  transform: none;
+}
+
+.pf-card.pf-card--desk .card-image,
+.pf-card.pf-card--desk .pf-desk-card__hero {
+  height: 3.25rem;
+  min-height: 3.25rem;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--color-surface-2) 80%, var(--color-bg) 20%);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.pf-card.pf-card--desk .card-image img {
+  border-radius: 0;
+}
+
+.pf-tenant-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+}
+
+.pf-tenant-icon svg {
+  width: 1.65rem;
+  height: 1.65rem;
+  display: block;
+}
+
+.pf-card.pf-card--desk .card-body,
+.pf-card.pf-card--desk .pf-desk-card__body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.5rem 0.6rem 0.45rem;
+  min-width: 0;
+}
+
+.pf-desk-card__controls,
+.pf-card.pf-card--desk .pf-desk-site-card__actions {
+  display: flex;
+  flex-wrap: nowrap;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--color-border-hover);
+  margin-top: auto;
+}
+
+.pf-desk-card__controls .pf-btn,
+.pf-card.pf-card--desk .pf-desk-site-card__actions .pf-btn {
+  flex: 1 1 0;
+  justify-content: center;
+  text-align: center;
+  border-radius: 0;
+  border: none;
+  border-right: 1px solid var(--color-border-hover);
+  margin: 0;
+  min-height: 2rem;
+  padding: 0.35rem 0.5rem;
+  background: color-mix(in srgb, var(--color-surface) 78%, var(--color-bg) 22%);
+}
+
+.pf-desk-card__controls .pf-btn:last-child,
+.pf-card.pf-card--desk .pf-desk-site-card__actions .pf-btn:last-child {
+  border-right: none;
+}
+
+.pf-desk-card__controls .pf-btn:hover,
+.pf-card.pf-card--desk .pf-desk-site-card__actions .pf-btn:hover {
+  background: var(--color-surface);
+}
+
+.pf-desk-card__controls .pf-btn.pf-btn--primary,
+.pf-card.pf-card--desk .pf-desk-site-card__actions .pf-btn.pf-btn--primary {
+  color: var(--color-accent);
+}
+
+/* Home section cards: icon left, body right, controls full-width below */
+.pf-card.pf-card--desk.pf-desk-section-card .pf-desk-card__main {
+  display: flex;
+  flex-direction: row;
+  flex: 1 1 auto;
+  align-items: stretch;
+  min-height: 0;
+}
+
+.pf-card.pf-card--desk.pf-desk-section-card .pf-desk-card__hero {
+  flex: 0 0 3.25rem;
+  width: 3.25rem;
+  min-width: 3.25rem;
+  height: auto;
+  min-height: 0;
+  align-self: stretch;
+  border-bottom: none;
+  border-right: 1px solid var(--color-border);
+}
+
+.pf-card.pf-card--desk.pf-desk-section-card .pf-desk-card__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Home / section card body typography */
+.pf-card.pf-card--desk.pf-desk-section-card .pf-desk-section-card__title {
+  font-size: 0.88rem;
+}
+
+.pf-card.pf-card--desk.pf-desk-section-card .pf-desk-section-card__stats {
+  min-height: 2.1rem;
+}
+
+.pf-desk-home-card-grid {
+  align-items: stretch;
+}

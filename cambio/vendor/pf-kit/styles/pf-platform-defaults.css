@@ -1,0 +1,86 @@
+/**
+ * Platform layout rails — NOT per theme pack.
+ * Open Props / MD3 shape scale aligned; values vendored here (no CDN).
+ * Color semantics remain in pf-semantic-tokens.css + pack tokens.css.
+ * SSOT plan: Theme-Parity-Mockup-Readiness-MVP-Plan.md
+ */
+:root {
+  /* Spacing (Open Props–aligned naming; fixed values) */
+  --pf-block-gap: 0.875rem;
+  --pf-section-inset: 1.125rem;
+  --gap: var(--pf-block-gap);
+  --card-pad: var(--pf-section-inset);
+
+  /* Shape SSOT — square by default (0). Rounding only when a look/theme radius token or operator specifies. */
+  --pf-radius-base: 0;
+  --pf-radius-xs: 0;
+  --pf-radius-sm: 0;
+  --pf-radius-md: 0;
+  --pf-radius-lg: 0;
+  --pf-radius-xl: 0;
+  --pf-radius-pill: 999px;
+
+  /* Back-compat: components read --radius-* */
+  --radius-sm: var(--pf-radius-sm);
+  --radius-md: var(--pf-radius-md);
+  --radius-lg: var(--pf-radius-lg);
+  --radius-xl: var(--pf-radius-xl);
+  --pf-shape-radius: var(--pf-radius-base);
+
+  /* Motion */
+  --transition: 0.2s ease;
+  --transition-slow: 0.4s ease;
+
+  /* Shell geometry (layout, not theme color) */
+  --pf-site-chrome-height: 64px;
+  --site-nav-height: var(--pf-site-chrome-height);
+  --site-nav-link-padding-y: 0.65rem;
+  --site-nav-link-padding-x: 2rem;
+  --pf-content-max-width: min(85vw, 1080px);
+  --max-width: var(--pf-content-max-width);
+
+  /* Component shape hooks (reference platform radius) */
+  --pf-dialog-radius-panel: var(--radius-lg);
+  --pf-dialog-radius-control: var(--radius-md);
+  --pf-dialog-radius-close: var(--radius-sm);
+  --pf-dialog-radius-button-primary: var(--radius-sm);
+  --pf-dialog-radius-button-secondary: var(--radius-sm);
+
+  --pf-gallery-radius-panel: 0;
+  --pf-gallery-radius-display: 0;
+  --pf-gallery-radius-thumb: 0;
+  --pf-gallery-radius-nav: 0;
+  --pf-gallery-radius-counter: 0;
+  --pf-gallery-radius-frame: 0;
+}
+
+/*
+ * Anchor defaults — consume semantic --color-link* (never browser blue/purple).
+ * Buttons/components that set their own color keep it via higher specificity.
+ */
+a:any-link {
+  color: var(--color-link);
+}
+a:visited {
+  color: var(--color-link-visited);
+}
+a:hover,
+a:focus-visible {
+  color: var(--color-link-hover);
+}
+a:active {
+  color: var(--color-link-active);
+}
+
+/* Opt-in rounded scale (M3) — set data-pf-shape="rounded" on <html> */
+html[data-pf-shape='rounded'] {
+  --pf-radius-xs: 4px;
+  --pf-radius-sm: 6px;
+  --pf-radius-md: 12px;
+  --pf-radius-lg: 20px;
+  --pf-radius-xl: 32px;
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 32px;
+}

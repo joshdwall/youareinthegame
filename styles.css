@@ -187,8 +187,9 @@ img {
   z-index: var(--badge-z);
   animation: floatWithRotation 4s ease-in-out infinite;
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
-  transition: transform 0.3s ease;
-  cursor: pointer;
+  /* Decorative only — clicks pass through to background (never character / badge actions) */
+  pointer-events: none;
+  cursor: default;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   -khtml-user-select: none;
@@ -202,11 +203,10 @@ img {
   -o-user-drag: none;
   user-drag: none;
   draggable: false;
-  pointer-events: auto;
 }
 
 .spore-sticker:hover {
-  transform: rotate(15deg) scale(1.1);
+  /* no hover affordance — not interactive */
 }
 
 /**

@@ -1,0 +1,96 @@
+/**
+ * Platform semantic tokens — derived from five primitives (recipe v1).
+ * SSOT for --color-* / --font-* / radius rails used by pf-kit and all Recovering sites.
+ * Primitives default here; packs + harness override via --site-primitive-* / harness-bridge.
+ */
+:root {
+  --primitive-background: #0d0f18;
+  --primitive-surface: #13162b;
+  --primitive-primary: #5b8dee;
+  --primitive-secondary: #7aa4f4;
+  --primitive-attention: #f59e0b;
+
+  --color-bg: var(--primitive-background);
+  --color-surface: var(--primitive-surface);
+  --color-surface-2: color-mix(in srgb, var(--primitive-surface) 78%, var(--primitive-primary) 22%);
+
+  /* Ink-on-paper polarity: text mixes toward --site-ink (near-white for dark packs,
+     near-black for light packs). Default white = legacy dark behavior (no regression). */
+  --color-text-primary: color-mix(in srgb, var(--primitive-surface) 12%, var(--site-ink, white) 88%);
+  --color-text-secondary: color-mix(in srgb, var(--primitive-surface) 45%, var(--site-ink, white) 55%);
+  --color-text-muted: color-mix(in srgb, var(--primitive-surface) 70%, var(--site-ink, white) 30%);
+
+  --color-border: color-mix(in srgb, var(--color-text-primary) 7%, transparent);
+  --color-border-hover: color-mix(in srgb, var(--color-text-primary) 16%, transparent);
+
+  /* Chrome (titlebar / top-nav / sidebar) — a SURFACE role, never the accent.
+     Opt into branded chrome per-theme via --site-chrome in tokenExtras. */
+  --color-chrome: var(--site-chrome, var(--color-surface));
+  --color-chrome-text: var(--color-chrome-text-override, var(--color-text-primary));
+  --color-chrome-border: var(--color-border-hover);
+
+  /* In-content card / panel title row (not app chrome) — MD3 surface-container-highest */
+  --color-surface-header: var(--site-surface-header, var(--color-surface-2));
+  --color-surface-header-text: var(--color-text-primary);
+  --color-surface-header-border: var(--color-border);
+
+  --color-accent: var(--primitive-primary);
+  --color-accent-hover: var(--primitive-secondary);
+  --color-accent-muted: color-mix(in srgb, var(--primitive-primary) 10%, transparent);
+  --color-accent-border: color-mix(in srgb, var(--primitive-primary) 20%, transparent);
+  --color-on-accent: color-mix(in srgb, var(--primitive-primary) 15%, white 85%);
+
+  /* Links / URLs — ink-lifted accent (never UA blue/purple). Pack override: --site-link* in tokenExtras. */
+  --color-link: var(
+    --site-link,
+    color-mix(in srgb, var(--color-accent) 55%, var(--site-ink, white) 45%)
+  );
+  --color-link-hover: var(
+    --site-link-hover,
+    color-mix(in srgb, var(--color-accent-hover) 40%, var(--site-ink, white) 60%)
+  );
+  --color-link-visited: var(
+    --site-link-visited,
+    color-mix(in srgb, var(--color-link) 72%, var(--color-text-muted) 28%)
+  );
+  --color-link-active: var(--site-link-active, var(--color-link-hover));
+
+  --color-status-live: #34d399;
+  --color-status-dev: color-mix(in srgb, var(--primitive-attention) 85%, white 15%);
+  --color-status-archived: color-mix(in srgb, var(--color-text-muted) 65%, var(--primitive-surface) 35%);
+  --color-status-live-muted: color-mix(in srgb, var(--color-status-live) 10%, transparent);
+  --color-status-dev-muted: color-mix(in srgb, var(--color-status-dev) 10%, transparent);
+  --color-status-archived-muted: color-mix(in srgb, var(--color-status-archived) 10%, transparent);
+
+  --color-attention: var(--primitive-attention);
+  --color-attention-muted: color-mix(in srgb, var(--primitive-attention) 10%, transparent);
+  --color-attention-border: color-mix(in srgb, var(--primitive-attention) 22%, transparent);
+  --color-danger: #f28b82;
+
+  --color-translator-highlight: var(--color-attention);
+  --color-translator-highlight-muted: var(--color-attention-muted);
+  --color-translator-highlight-border: var(--color-attention-border);
+  --color-recruiter: var(--color-translator-highlight);
+  --color-recruiter-muted: var(--color-translator-highlight-muted);
+  --color-recruiter-border: var(--color-translator-highlight-border);
+
+  --color-overlay-scrim: color-mix(in srgb, var(--primitive-background) 85%, transparent);
+  --color-gallery-backdrop: color-mix(in srgb, var(--primitive-background) 85%, black 15%);
+  --color-elevation-shadow: 0 10px 30px color-mix(in srgb, var(--color-bg) 82%, transparent);
+  --color-on-status-live: color-mix(in srgb, var(--color-status-live) 40%, black 60%);
+  --color-nav-hover-bg: color-mix(in srgb, var(--site-ink, white) 5%, transparent);
+  --color-nav-backdrop: color-mix(in srgb, var(--primitive-background) 88%, transparent);
+  --color-subtle-fill: color-mix(in srgb, var(--site-ink, white) 3%, transparent);
+
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-sans: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+html[data-pf-translator-highlight='recruiter'],
+html[data-lens='recruiter'] {
+  --color-accent: var(--pf-translator-theme-accent, var(--color-attention));
+  --color-accent-hover: color-mix(in srgb, var(--primitive-attention) 70%, white 30%);
+  --color-accent-muted: var(--pf-translator-theme-accent-muted, var(--color-attention-muted));
+  --color-accent-border: var(--pf-translator-theme-accent-border, var(--color-attention-border));
+}

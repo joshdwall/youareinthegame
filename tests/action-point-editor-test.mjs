@@ -73,14 +73,14 @@ ok(result.fire2?.point?.x === 0.11 && result.fire2?.direction === 135, 'cancel r
 // Desk list / sidebar present
 const chrome = await page.evaluate(() => ({
   sidebar: !!document.getElementById('sidebar'),
-  brand: document.getElementById('evSidebarBrand')?.textContent,
+  brand: document.getElementById('cambioSidebarBrand')?.textContent,
   desk: !!document.querySelector('.pf-desk-list-unit'),
   search: !!document.querySelector('.pf-desk-list-search'),
-  meta: !!document.getElementById('animListMeta'),
+  meta: !!document.getElementById('animListHost'),
   actionBtn: !!document.getElementById('btnEditAction')
 }));
 console.log(chrome);
-ok(chrome.sidebar && chrome.brand === 'enVivo', 'enVivo sidebar shell present');
+ok(chrome.sidebar && chrome.brand === 'Cambio', 'site-hub od-sidebar brand is Cambio once');
 ok(chrome.desk && chrome.search, 'SITE-HUB desk list present');
 ok(chrome.actionBtn, 'Action point pencil present');
 

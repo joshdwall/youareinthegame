@@ -1,0 +1,196 @@
+/**
+ * pf-desk-page — page-level toolbars (sites, connectors headers).
+ * Fold toolbars stay column + touch height; page toolbars are compact rows.
+ */
+
+.pf-desk-page-toolbar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+/* Desk buttons in page toolbars — always match PF_BTN_DESK_SM / PRIMARY height */
+.pf-desk-page-toolbar > .pf-btn,
+.pf-desk-page-toolbar .pf-btn.pf-btn--desk-sm {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+}
+
+.pf-desk-page-toolbar .pf-desk-list-search {
+  flex: 1 1 10rem;
+  max-width: 16rem;
+  width: auto;
+  min-height: var(--pf-control-min-height, 1.72rem);
+  font-size: var(--pf-field-font-size, 0.8125rem);
+  padding: var(--pf-field-padding-y, 0.35rem) var(--pf-field-padding-x, 0.55rem);
+}
+
+.pf-desk-page-toolbar .pf-view-toggle {
+  flex-shrink: 0;
+}
+
+.pf-desk-page-toolbar .pf-btn.pf-btn--ghost {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  padding: 0.28rem 0.5rem;
+  min-height: var(--pf-control-min-height, 1.72rem);
+}
+
+html.od-compact .pf-desk-page-toolbar .pf-desk-list-search {
+  flex: 1 1 100%;
+  max-width: none;
+}
+
+html.od-compact .pf-desk-page-toolbar .pf-view-toggle--desktop {
+  display: none;
+}
+
+/* Page chrome (migrated from operator-dashboard.css G4.3) */
+
+html:not(.od-compact):has(.od-body) {
+  height: 100%;
+  overflow: hidden;
+}
+
+.od-body {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 100vh;
+  max-height: 100dvh;
+  overflow: hidden;
+  box-sizing: border-box;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+}
+
+.pf-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.pf-input {
+  font: inherit;
+  font-size: var(--pf-field-font-size, 0.8125rem);
+  padding: var(--pf-field-padding-y, 0.35rem) var(--pf-field-padding-x, 0.55rem);
+  border-radius: var(--pf-field-radius, var(--radius-md));
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  min-height: var(--pf-control-min-height, 1.72rem);
+}
+
+.pf-input:focus {
+  outline: 2px solid var(--color-accent-border);
+  outline-offset: 1px;
+}
+
+select.pf-input {
+  font: inherit;
+  font-size: var(--pf-field-font-size, 0.8125rem);
+  padding: var(--pf-field-padding-y, 0.35rem) var(--pf-field-padding-x, 0.55rem);
+  border-radius: var(--pf-shape-radius, var(--pf-field-radius, var(--radius-md)));
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  min-height: var(--pf-control-min-height, 1.72rem);
+}
+
+/* Squared-off kit surfaces — theme sets --radius-*; desk uses small retro radius */
+.od-body .od-nav-item,
+.od-body .od-user-menu,
+.od-body .od-user-menu-btn {
+  border-radius: var(--radius-sm);
+}
+
+.od-body .od-user-avatar {
+  border-radius: var(--radius-sm);
+}
+
+.od-page-count {
+  margin-left: auto;
+  font-size: 0.72rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.od-page-head__actions {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  margin-left: 0.15rem;
+}
+
+/* Fixed job/progress slot — left of count; reserved width so copy never shifts siblings */
+.od-page-job {
+  margin-left: auto;
+  box-sizing: border-box;
+  min-width: 8rem;
+  max-width: min(20rem, 36vw);
+  min-height: 1.1rem;
+  font-size: 0.72rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+  flex: 0 1 auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.od-page-job + .od-page-count {
+  margin-left: 0;
+}
+
+.od-page-head__titlebar {
+  display: flex;
+  gap: 0.65rem;
+  align-items: baseline;
+  margin-bottom: 0.4rem;
+  min-height: 0;
+}
+
+.od-page-head--compact {
+  margin-bottom: 0.5rem;
+}
+
+.od-list-empty {
+  font-size: 0.82rem;
+  margin: 0.35rem 0;
+}
+
+.od-page-lead--block {
+  text-overflow: unset;
+  overflow: visible;
+  white-space: normal;
+  margin-bottom: 0.35rem;
+}
+
+.od-page-lead {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1 1 auto;
+  line-height: 1.3;
+  font-size: 0.75rem;
+  margin: 0;
+}
+
+.od-page-title,
+.pf-heading {
+  white-space: nowrap;
+  color: var(--color-text-primary);
+  font-weight: 600;
+  font-size: 1.05rem;
+  font-family: var(--font-display);
+  margin: 0;
+}
+
+.pf-muted {
+  color: var(--color-text-muted);
+}

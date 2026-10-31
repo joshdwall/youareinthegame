@@ -1,0 +1,245 @@
+/**
+ * pf-desk-fold — collapsible category sections (operator + LAN desks).
+ * On desktop (html:not(.od-compact)) folds stay open; summary is non-interactive.
+ */
+
+.pf-desk-fold {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface) 92%, var(--color-bg) 8%);
+  margin-bottom: var(--pf-section-gap, 0.65rem);
+}
+
+.pf-desk-fold__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pf-desk-fold__summary::-webkit-details-marker {
+  display: none;
+}
+
+.pf-desk-fold__summary::after {
+  content: '▾';
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  transition: transform 0.15s ease;
+}
+
+.pf-desk-fold:not([open]) .pf-desk-fold__summary::after {
+  transform: rotate(-90deg);
+}
+
+.pf-desk-fold__title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.pf-desk-fold__meta {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pf-desk-fold__body {
+  padding: 0 0.65rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.pf-desk-fold__lead {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}
+
+/* Desk text inputs (search bars) */
+.pf-input,
+.od-list-search,
+.pf-desk-list-search {
+  box-sizing: border-box;
+  width: 100%;
+  font: inherit;
+  font-size: var(--pf-field-font-size, 0.8125rem);
+  padding: var(--pf-field-padding-y, 0.35rem) var(--pf-field-padding-x, 0.55rem);
+  min-height: var(--pf-control-min-height, 1.72rem);
+  border-radius: var(--pf-shape-radius, var(--radius-sm));
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  color: var(--color-text-primary);
+  transition: border-color var(--transition, 0.15s ease), outline-color var(--transition, 0.15s ease);
+}
+
+.pf-input::placeholder,
+.pf-desk-list-search::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.85;
+}
+
+.pf-input:focus,
+.od-list-search:focus,
+.pf-desk-list-search:focus {
+  outline: 2px solid var(--color-accent-border);
+  outline-offset: 1px;
+  border-color: var(--color-accent-border);
+}
+
+/* Section panel — bordered card + title bar (elevation: --od-elev-card-* when set) */
+.pf-desk-section {
+  border: 1px solid var(--od-elev-card-border, var(--color-border));
+  border-radius: var(--pf-shape-radius, var(--radius-sm));
+  background: var(
+    --od-elev-card-bg,
+    color-mix(in srgb, var(--color-surface) 96%, var(--color-bg) 4%)
+  );
+  margin-bottom: var(--pf-section-gap, 0.65rem);
+  overflow: hidden;
+}
+
+.pf-desk-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid var(--od-elev-card-border, var(--color-border));
+  background: var(
+    --od-elev-card-head-bg,
+    color-mix(in srgb, var(--color-surface) 90%, var(--color-bg) 10%)
+  );
+}
+
+.pf-desk-section__title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+/* Corner step badge — default lighter fill (wizard / ordered desk cards) */
+.pf-desk-section__step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 1px solid var(--color-border-hover, var(--color-border));
+  border-radius: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--color-text-secondary);
+  background: color-mix(in srgb, var(--color-surface) 72%, var(--color-bg) 28%);
+  -webkit-font-smoothing: antialiased;
+}
+
+.pf-desk-section__step-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pf-desk-section__meta {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pf-desk-section__toolbar {
+  padding: 0.45rem 0.65rem 0;
+}
+
+.pf-desk-section__body {
+  padding: 0.45rem 0.65rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+/* List search toolbar */
+.od-list-toolbar,
+.pf-desk-list-toolbar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.pf-desk-section__toolbar .pf-desk-list-search,
+.pf-desk-list-toolbar .pf-desk-list-search {
+  flex: 1 1 10rem;
+  max-width: 16rem;
+  width: auto;
+}
+
+html.od-compact .pf-desk-section__toolbar .pf-desk-list-search,
+html.od-compact .pf-desk-list-toolbar .pf-desk-list-search {
+  flex: 1 1 100%;
+  max-width: none;
+  min-height: var(--pf-touch-target-min, 44px);
+}
+
+.od-list-empty,
+.pf-desk-list-empty {
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+/* Desktop — folds always expanded, hide chevron */
+html:not(.od-compact) .pf-desk-fold {
+  border: none;
+  background: transparent;
+  margin-bottom: calc(var(--pf-section-gap) * 1.1);
+}
+
+html:not(.od-compact) .pf-desk-fold__summary {
+  pointer-events: none;
+  padding: 0 0 0.4rem;
+  cursor: default;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 0.45rem;
+}
+
+html:not(.od-compact) .pf-desk-fold__summary::after {
+  display: none;
+}
+
+html:not(.od-compact) .pf-desk-fold__body {
+  padding: 0;
+}
+
+html.od-compact .pf-desk-fold__summary {
+  min-height: 44px;
+}

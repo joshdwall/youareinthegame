@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>site-hub default — od-sidebar + mountDeskListCard</title>
+  <link rel="stylesheet" href="/cambio/vendor/pf-kit/themes/bs-desk-dark/tokens.css" />
+  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-semantic-tokens.css" />
+  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-platform-defaults.css" />
+  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-desk-shell.css" />
+  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-desk-table.css" />
+  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-desk-controls.css" />
+  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-desk-fold.css" />
+  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-desk-elevation.css" />
+  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-desk-card-shell.css" />
+  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-desk-page.css" />
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body.od-body { display: flex; background: var(--color-bg, #0d1117); color: var(--color-text-primary); }
+    /* Default od-sidebar width (15.5rem) for reference; Cambio overrides wider */
+    .demo-main { flex: 1; padding: 1rem; }
+    .demo-note { font-size: .85rem; opacity: .75; margin-bottom: 1rem; }
+  </style>
+</head>
+<body class="od-body">
+  <aside class="od-sidebar" id="sidebar" aria-label="Demo">
+    <div class="od-sidebar-nav-head">
+      <strong class="od-topbar-title" id="demoBrand">Cambio</strong>
+    </div>
+    <nav class="od-sidebar-nav" aria-label="Primary">
+      <button type="button" class="od-nav-item is-active">Animations</button>
+    </nav>
+    <div class="od-sidebar-body" style="flex:1;min-height:0;display:flex;flex-direction:column;padding:.5rem;">
+      <div id="listHost" style="flex:1;min-height:0;"></div>
+    </div>
+  </aside>
+  <main class="demo-main">
+    <p class="demo-note">Canonical site-hub defaults: <code>od-sidebar</code> (15.5rem) + <code>mountDeskListCard</code> TABLE. Pin site-hub-v2026.10.09.</p>
+  </main>
+  <script type="module">
+    import { mountDeskListCard } from '/cambio/vendor/pf-kit/helpers/desk-page.mjs';
+    const host = document.getElementById('listHost');
+    const cols = [
+      { key: 'label', label: 'Name', sortType: 'string' },
+      { key: 'live', label: 'Live', sortType: 'none' },
+      { key: 'tier', label: 'Tier', sortType: 'string' },
+      { key: 'weight', label: 'Weight', sortType: 'number' },
+      { key: 'pct', label: '%', sortType: 'number' },
+      { key: 'actions', label: 'Actions', sortType: 'none' }
+    ];
+    const items = [
+      { id: 'cowboy', label: 'Cowboy', live: true, tier: 'Legendary', weight: 3, pct: '75.0%' },
+      { id: 'ghost', label: 'Ghost', live: true, tier: 'Common', weight: 1, pct: '25.0%' }
+    ];
+    const api = mountDeskListCard(host, {
+      title: 'Animations',
+      searchId: 'demoSearch',
+      searchPlaceholder: 'Search animations…',
+      showRefresh: false,
+      scrollId: 'demoList',
+      metaId: 'demoMeta',
+      columns: cols,
+      minRows: 10,
+      rowClick: 'select',
+      rowKey: (i) => i.id,
+      searchText: (i) => `${i.id} ${i.label}`,
+      emptyHint: 'No animations yet',
+      rowToCells: (a) =>
+        `<div class="od-fd-cell" role="cell"><span class="label">${a.label}</span></div>` +
+        `<div class="od-fd-cell" role="cell"><input type="checkbox" ${a.live ? 'checked' : ''} /> Live</div>` +
+        `<div class="od-fd-cell" role="cell">${a.tier}</div>` +
+        `<div class="od-fd-cell" role="cell">${a.weight}</div>` +
+        `<div class="od-fd-cell" role="cell">${a.pct}</div>` +
+        `<div class="od-fd-cell" role="cell"><button type="button" class="pf-btn pf-btn--secondary pf-btn--desk-sm">Play</button> ` +
+        `<button type="button" class="pf-btn pf-btn--secondary pf-btn--desk-sm">Click preview</button> ` +
+        `<button type="button" class="pf-btn pf-btn--secondary pf-btn--desk-sm">Edit</button> ` +
+        `<button type="button" class="pf-btn pf-btn--secondary pf-btn--desk-sm">Archive</button></div>`
+    });
+    api.setItems(items);
+    // Widen for fair comparison of table (document the override Cambio uses)
+    document.querySelector('.od-sidebar').style.width = '36rem';
+    document.querySelector('.od-sidebar').style.maxWidth = '48vw';
+  </script>
+</body>
+</html>

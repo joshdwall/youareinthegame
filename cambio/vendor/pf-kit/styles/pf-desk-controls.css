@@ -1,0 +1,360 @@
+/**
+ * pf-desk-controls — compact squared inputs, buttons, list-search (operator + LAN desks).
+ * SSOT height: --pf-desk-control-h (1.35rem) — matches API/Secrets key card reference.
+ * Requires .od-body ancestor + pf-desk-card-shell.css for radius zero.
+ */
+
+.od-body {
+  --pf-desk-control-h: 1.35rem;
+  --pf-control-min-height: var(--pf-desk-control-h);
+  --pf-field-font-size: 0.72rem;
+  --pf-field-padding-x: 0.45rem;
+}
+
+/* ── Single-line fields (not textareas) ── */
+.od-body :is(input.pf-input, select.pf-input, .pf-desk-list-search) {
+  box-sizing: border-box;
+  min-height: var(--pf-desk-control-h);
+  height: var(--pf-desk-control-h);
+  padding: 0 var(--pf-field-padding-x);
+  font-size: var(--pf-field-font-size);
+  line-height: var(--pf-desk-control-h);
+}
+
+.od-body textarea.pf-input {
+  box-sizing: border-box;
+  min-height: auto;
+  height: auto;
+  line-height: 1.35;
+  padding: var(--pf-field-padding-y, 0.35rem) var(--pf-field-padding-x);
+  font-size: var(--pf-field-font-size);
+}
+
+/* ── Desk action buttons (default row height) ── */
+.od-body .pf-btn {
+  box-sizing: border-box;
+  min-height: var(--pf-desk-control-h);
+  height: var(--pf-desk-control-h);
+  padding: 0 0.65rem;
+  font-size: var(--pf-field-font-size);
+  line-height: 1;
+  white-space: nowrap;
+  transform: none;
+}
+
+.od-body .pf-btn.pf-btn--desk-sm,
+.od-body .pf-btn.od-btn-sm {
+  padding: 0 0.45rem;
+}
+
+.od-body .pf-btn.pf-btn--segment,
+.od-body .view-toggle-btn {
+  min-height: var(--pf-desk-control-h);
+  height: var(--pf-desk-control-h);
+  padding: 0 0.55rem;
+  font-size: var(--pf-field-font-size);
+}
+
+/* Home / site launcher card footers — taller tap bar (exception) */
+.pf-desk-card__controls .pf-btn,
+.pf-card.pf-card--desk .pf-desk-site-card__actions .pf-btn {
+  min-height: 2rem;
+  height: auto;
+  padding: 0.35rem 0.5rem;
+  font-size: inherit;
+}
+
+/* Legacy token alias — keycard + nested panels reference --od-api-control-h */
+.od-body .od-api-keycard,
+.od-body .od-api-keys-panel {
+  --od-api-control-h: var(--pf-desk-control-h);
+}
+
+/* ── Desk badge / chip primitive (renderDeskBadge SSOT) ── */
+.od-body .pf-desk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.4rem;
+  height: 1.05rem;
+  line-height: 1.05rem;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 0;
+  border: 1px solid var(--color-border-hover);
+  background: color-mix(in srgb, var(--color-surface) 84%, var(--color-bg) 16%);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.od-body .pf-desk-badge--accent {
+  border-color: var(--color-accent-border);
+  color: var(--color-accent);
+  background: var(--color-accent-muted);
+}
+.od-body .pf-desk-badge--ok {
+  border-color: color-mix(in srgb, var(--color-ok, #3fb950) 60%, var(--color-border) 40%);
+  color: var(--color-ok, #3fb950);
+}
+.od-body .pf-desk-badge--warn {
+  border-color: color-mix(in srgb, var(--color-warn, #d29922) 60%, var(--color-border) 40%);
+  color: var(--color-warn, #d29922);
+}
+.od-body .pf-desk-badge--err {
+  border-color: color-mix(in srgb, var(--color-err, #f85149) 60%, var(--color-border) 40%);
+  color: var(--color-err, #f85149);
+}
+
+/* ── Filter tag chips (renderDeskListToolbar / links filter SSOT) ── */
+.od-body .od-tag-bar {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.3rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.15rem 0 0.25rem;
+}
+
+.od-body .od-tag-chip {
+  flex: 0 0 auto;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  padding: 0.2rem 0.45rem;
+  cursor: pointer;
+  text-transform: lowercase;
+}
+
+.od-body .od-tag-chip--active {
+  border-color: var(--color-accent-border);
+  background: var(--color-accent-muted);
+  color: var(--color-accent);
+}
+
+/* ── Desk banner (flash / error / degraded — renderDeskBanner SSOT) ── */
+.od-body .pf-desk-banner {
+  box-sizing: border-box;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.75rem;
+  border: 1px solid var(--color-border-hover);
+  border-left-width: 3px;
+  background: color-mix(in srgb, var(--color-surface) 90%, var(--color-bg) 10%);
+  color: var(--color-text-secondary);
+}
+.od-body .pf-desk-banner--ok { border-left-color: var(--color-ok, #3fb950); }
+.od-body .pf-desk-banner--warn { border-left-color: var(--color-warn, #d29922); }
+.od-body .pf-desk-banner--err {
+  border-left-color: var(--color-err, #f85149);
+  color: var(--color-text-primary);
+}
+
+/* ── List unit: search toolbar + table as one bordered control ──
+ * Polarity-safe blue shelf (accent + surface). Search + × + Refresh ONE row.
+ * Filter uses desk field tokens so light mode stays readable.
+ */
+.pf-desk-list-unit {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  border: 1px solid var(--od-elev-shelf-border, color-mix(in srgb, var(--color-accent, #5b8dee) 28%, var(--color-border)));
+  border-radius: var(--pf-radius-sm, 4px);
+  overflow: hidden;
+  background: var(--od-elev-shelf-bg, color-mix(in srgb, var(--color-accent, #5b8dee) 10%, var(--color-surface)));
+  color: var(--color-text-primary);
+}
+
+.pf-desk-list-unit > .pf-desk-page-toolbar,
+.pf-desk-list-unit > .pf-desk-list-toolbar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  margin: 0;
+  padding: 0.28rem 0.35rem;
+  gap: 0.3rem;
+  border-bottom: 1px solid var(--od-elev-shelf-toolbar-border, color-mix(in srgb, var(--color-accent, #5b8dee) 18%, var(--color-border)));
+  background: var(--od-elev-shelf-toolbar-bg, color-mix(in srgb, var(--color-accent, #5b8dee) 12%, var(--color-surface)));
+  flex-shrink: 0;
+}
+
+.pf-desk-list-unit .pf-desk-list-search {
+  flex: 1 1 auto;
+  max-width: none;
+  min-width: 0;
+  width: auto;
+  color: var(--color-text-primary);
+  background: var(--od-desk-field-bg, var(--color-surface-2, var(--color-surface)));
+  border-color: var(--od-desk-field-border, var(--color-border-hover));
+}
+
+.pf-desk-list-unit .pf-desk-list-search:focus {
+  background: var(--od-desk-field-bg-focus, var(--color-surface));
+}
+
+.pf-desk-list-unit .pf-desk-list-clear,
+.pf-desk-list-unit .pf-desk-list-refresh,
+.pf-desk-list-unit .pf-btn {
+  flex: 0 0 auto;
+  flex-shrink: 0;
+}
+
+.pf-desk-list-unit .pf-desk-list-clear {
+  min-width: 1.6rem;
+  padding: 0 0.35rem;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+/* Compact viewport must NOT force search full-width inside a list unit (that wraps buttons). */
+html.od-compact .pf-desk-list-unit .pf-desk-list-search {
+  flex: 1 1 auto;
+  max-width: none;
+  width: auto;
+}
+
+.pf-desk-list-unit .od-rg-pane-scroll,
+.pf-desk-list-unit .od-fd-table {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.pf-desk-list-unit .od-fd-table {
+  border: none;
+  border-radius: 0;
+}
+
+.pf-desk-list-unit .od-rg-pane-scroll {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* Sticky column header — recessed vs filter strip; secondary ink (dark + light) */
+.pf-desk-list-unit .od-fd-table__head {
+  padding: 0 0.5rem;
+  height: 1.25rem;
+  min-height: 1.25rem;
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+  align-items: center;
+  align-content: center;
+  background: color-mix(in srgb, var(--color-bg) 28%, var(--color-surface));
+  color: var(--color-text-secondary);
+  border-bottom-color: color-mix(in srgb, var(--color-accent, #5b8dee) 16%, var(--color-border));
+}
+
+/* ── List card row-click / default visual select ── */
+.od-body .od-fd-table .od-fd-row:not(.od-fd-row--empty):not(.od-fd-row--hint):not(.od-fd-row-detail) {
+  cursor: pointer;
+}
+.od-body .od-fd-row--clickable { cursor: pointer; }
+.od-body .od-fd-row--clickable:hover,
+.od-body .od-fd-row--open {
+  background: color-mix(in srgb, var(--color-surface) 86%, var(--color-accent-muted) 14%);
+}
+.od-body .od-fd-row--selected,
+.od-body .od-fd-row--selected:nth-child(even) {
+  background: color-mix(in srgb, var(--color-accent, #5b8dee) 18%, var(--color-surface) 82%);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--color-accent, #5b8dee) 72%, var(--color-surface) 28%);
+  outline: 1px solid color-mix(in srgb, var(--color-accent, #5b8dee) 35%, transparent);
+  outline-offset: -1px;
+}
+.od-body .od-fd-row--selected:hover,
+.od-body .od-fd-row--selected:nth-child(even):hover {
+  background: color-mix(in srgb, var(--color-accent, #5b8dee) 24%, var(--color-surface) 76%);
+}
+.od-body .od-fd-row-detail {
+  display: block;
+  grid-template-columns: none;
+  cursor: default;
+  background: color-mix(in srgb, var(--color-surface) 94%, var(--color-bg) 6%);
+  border-top: 1px dashed var(--color-border);
+}
+.od-body .od-fd-row-detail .od-fd-cell--detail {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* ── Details modal (openDeskDetailModal SSOT) ──
+   Centered pf-dialog body layout for any "details / inspect" popup. */
+.od-body .pf-desk-detail-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.od-body .pf-desk-detail-card {
+  margin: 0;
+}
+.od-body .pf-desk-detail-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.od-body .pf-desk-detail-row {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, auto) minmax(0, 1fr);
+  gap: 0.35rem 0.75rem;
+  align-items: baseline;
+  padding: 0.22rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 45%, transparent);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+.od-body .pf-desk-detail-row:last-child {
+  border-bottom: none;
+}
+.od-body .pf-desk-detail-row__label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.od-body .pf-desk-detail-row__value {
+  overflow-wrap: anywhere;
+}
+.od-body .pf-desk-detail-media {
+  border: 1px solid var(--color-border);
+  border-radius: var(--pf-radius-sm, 4px);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-surface) 85%, var(--color-bg) 15%);
+}
+.od-body .pf-desk-detail-media img,
+.od-body .pf-desk-detail-media iframe {
+  display: block;
+  width: 100%;
+  max-height: 46vh;
+  border: none;
+}
+.od-body .pf-desk-detail-media img {
+  object-fit: contain;
+}
+.od-body .pf-desk-detail-text {
+  margin: 0;
+  max-height: 40vh;
+  overflow: auto;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--pf-radius-sm, 4px);
+  background: color-mix(in srgb, var(--color-surface) 90%, var(--color-bg) 10%);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.od-body .pf-desk-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.1rem;
+}

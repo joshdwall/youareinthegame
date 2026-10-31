@@ -5,15 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <title>Cambio — You Are In The Game (admin)</title>
   <!-- Real public site styles = background stage (float, sage, creature) -->
-  <link rel="stylesheet" href="/styles.css?v=oa-1" />
-  <link rel="stylesheet" href="/cambio/cambio.css?v=oa-1" />
-  <link rel="stylesheet" href="/cambio/vendor/pf-desk-list.css?v=1" />
-  <link rel="stylesheet" href="/cambio/vendor/envivo-sidebar.css?v=1" />
+  <link rel="stylesheet" href="/styles.css?v=sh1" />
+  <!-- site-hub pf-kit (pinned tag site-hub-v2026.10.09) — assemble-style vendor -->
+  <link rel="stylesheet" href="/cambio/vendor/pf-kit/themes/bs-desk-dark/tokens.css?v=sh1" />
+  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-semantic-tokens.css?v=sh1" />
+  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-platform-defaults.css?v=sh1" />
+  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-desk-shell.css?v=sh1" />
+  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-desk-fold.css?v=sh1" />
+  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-desk-elevation.css?v=sh1" />
+  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-desk-controls.css?v=sh1" />
+  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-desk-table.css?v=sh1" />
+  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-desk-card-shell.css?v=sh1" />
+  <link rel="stylesheet" href="/cambio/vendor/pf-kit/styles/pf-desk-page.css?v=sh1" />
+  <link rel="stylesheet" href="/cambio/cambio.css?v=sh1" />
   <link rel="stylesheet" href="/effects/spore/ghost/effect.css" />
   <link rel="stylesheet" href="/effects/spore/finale.css" />
-  <link rel="stylesheet" href="/effects/activation/activation.css?v=oa-1" />
+  <link rel="stylesheet" href="/effects/activation/activation.css?v=sh1" />
 </head>
-<body class="cambio-body">
+<body class="cambio-body od-body">
   <!-- Real site stage (same markup shape as apex index.html) -->
   <div class="container" id="siteStage">
     <div class="creature-rig" id="creatureRig">
@@ -25,83 +34,53 @@
     <div id="lightningFlash" class="lightning-flash" hidden></div>
   </div>
 
-  <!-- Harness overlays — far left / far right; character stays clear -->
-  <aside class="sidebar sidebar-fixed border-end cambio-rail cambio-rail-left" id="sidebar" data-ev-bulk-top="1">
-    <div class="sidebar-header">
-      <button class="header-toggler" type="button" id="evSidebarToggle" aria-label="Toggle sidebar" title="Toggle sidebar">
-        <span class="header-toggler-icon" aria-hidden="true"></span>
-      </button>
-      <strong class="sidebar-brand-full" id="evSidebarBrand">enVivo</strong>
+  <!-- site-hub od-sidebar shell (pf-desk-shell) — ONE title: Cambio -->
+  <aside class="od-sidebar cambio-rail cambio-rail-left" id="sidebar" aria-label="Cambio">
+    <div class="od-sidebar-nav-head">
+      <strong class="od-topbar-title" id="cambioSidebarBrand">Cambio</strong>
     </div>
-    <ul class="sidebar-nav" id="evNav">
-      <li class="nav-item">
-        <button class="nav-link" type="button" data-feature="overview" title="Overview">
-          <span class="ev-nav-label">Overview</span>
-        </button>
-      </li>
-      <li class="nav-group show" data-has-submenu="1" data-parent="yaitg">
-        <div class="ev-nav-parent-row">
-          <button class="nav-link ev-nav-parent active" type="button" data-feature="cambio" title="Cambio">
-            <span class="ev-nav-label">Cambio</span>
-          </button>
-        </div>
-        <ul class="nav-group-items compact">
-          <li class="nav-item"><span class="nav-link ev-nav-static">You Are In The Game</span></li>
-        </ul>
-      </li>
-    </ul>
+    <nav class="od-nav" id="cambioNav" aria-label="Cambio sections">
+      <div class="od-nav-group">
+        <button type="button" class="od-nav-item is-active" data-feature="animations" title="Animations">Animations</button>
+      </div>
+    </nav>
     <div class="cambio-sidebar-body" id="cambioPanel">
-    <header class="cambio-header">
-      <h1>Cambio</h1>
-      <p class="cambio-sub">Admin · Access-gated · public site unchanged</p>
-    </header>
-    <section class="pf-desk-list-unit" id="animListUnit">
-      <h2>Animations</h2>
-      <div class="pf-desk-list-toolbar">
-        <input type="search" id="animSearch" class="pf-input pf-desk-list-search cambio-search" placeholder="Search animations…" autocomplete="off" />
-        <button type="button" class="pf-btn pf-desk-list-clear" id="animSearchClear" title="Clear">×</button>
-        <span class="pf-desk-list-meta" id="animListMeta"></span>
-      </div>
-      <div class="cambio-create-row">
-        <button type="button" class="btn" id="btnCreateAnim">+ Create</button>
-        <button type="button" class="btn" id="btnExportRepo" title="Snapshot KV → git">Export→git</button>
-      </div>
-      <ul id="animList" class="cambio-list pf-desk-list-scroll"></ul>
+      <!-- mountDeskListCard host (site-hub helpers/desk-page.mjs) -->
+      <div id="animListHost" class="cambio-anim-list-host"></div>
       <p id="poolHint" class="cambio-status" style="font-size:.75rem"></p>
-    </section>
-    <dialog id="createDialog" class="cambio-dialog">
-      <form method="dialog" id="createForm">
-        <h3>Create animation</h3>
-        <label>Name <input name="label" required maxlength="48" /></label>
-        <label>Type
-          <select name="type">
-            <option value="character-overlay-activation" selected>character-overlay activation</option>
-          </select>
-        </label>
-        <label>Tier
-          <select name="tier">
-            <option value="common">Common (100)</option>
-            <option value="uncommon">Uncommon (40)</option>
-            <option value="rare">Rare (10)</option>
-            <option value="legendary" selected>Legendary (1)</option>
-          </select>
-        </label>
-        <label>Multiplier <input name="multiplier" type="number" min="0" step="0.1" value="1" /></label>
-        <label>Live <input name="live" type="checkbox" checked /></label>
-        <label>Element assets (webp/png)
-          <input name="files" type="file" accept="image/webp,image/png,image/jpeg" multiple />
-        </label>
-        <div class="ie-actions">
-          <button value="cancel" class="btn">Cancel</button>
-          <button value="ok" class="btn primary" id="btnCreateSubmit">Create</button>
-        </div>
-        <p id="createStatus" class="cambio-status"></p>
-      </form>
-    </dialog>
-    <p id="stageHint" class="stage-hint-rail">Select Play or Edit</p>
-    <footer class="cambio-foot">
-      <a href="https://youareinthegame.com" target="_blank" rel="noopener">Open public site</a>
-    </footer>
+      <dialog id="createDialog" class="cambio-dialog">
+        <form method="dialog" id="createForm">
+          <h3>Create animation</h3>
+          <label>Name <input name="label" required maxlength="48" /></label>
+          <label>Type
+            <select name="type">
+              <option value="character-overlay-activation" selected>character-overlay activation</option>
+            </select>
+          </label>
+          <label>Tier
+            <select name="tier">
+              <option value="common">Common (100)</option>
+              <option value="uncommon">Uncommon (40)</option>
+              <option value="rare">Rare (10)</option>
+              <option value="legendary" selected>Legendary (1)</option>
+            </select>
+          </label>
+          <label>Multiplier <input name="multiplier" type="number" min="0" step="0.1" value="1" /></label>
+          <label>Live <input name="live" type="checkbox" checked /></label>
+          <label>Element assets (webp/png)
+            <input name="files" type="file" accept="image/webp,image/png,image/jpeg" multiple />
+          </label>
+          <div class="ie-actions">
+            <button value="cancel" class="btn">Cancel</button>
+            <button value="ok" class="btn primary" id="btnCreateSubmit">Create</button>
+          </div>
+          <p id="createStatus" class="cambio-status"></p>
+        </form>
+      </dialog>
+      <p id="stageHint" class="stage-hint-rail">Select Play or Edit</p>
+      <footer class="cambio-foot">
+        <a href="https://youareinthegame.com" target="_blank" rel="noopener">Open public site</a>
+      </footer>
     </div>
   </aside>
 

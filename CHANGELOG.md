@@ -7,6 +7,13 @@ SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.co
 
 ## 2026-10-30
 
+### Changed
+- **Cambio consumes site-hub components directly (no look-alikes).** Deleted vendored imitation `cambio/vendor/{desk-list.mjs,envivo-sidebar.css,pf-desk-list.css}`. Pin `site-hub-v2026.10.09` (rev `830a4b88508ddd266eab6cfa543118a859179384`) via `scripts/sync-site-hub-pf-kit.mjs` → `cambio/vendor/pf-kit/` (assemble-style). Menu = real `od-sidebar` (brand **Cambio** once, wider `--cambio-sidebar-width: 36rem`). Animation list = `mountDeskListCard` default TABLE (Name, Live, Tier, Weight, %, Actions) with component search/scroll. Checkpoint `checkpoint-2026-10-30-pre-sitehub-consume`. Plan req: *Cambio must consume site-hub components directly; no re-implementations.* Screenshots: `capture/sitehub-vs-cambio/`.
+
+### Fixed
+- **“Now with Spores!” badge is non-interactive** on apex/www and Cambio: `pointer-events: none`, no pointer cursor / hover affordance; sticker click handler removed. Clicks pass through to the background (normal background spore) — never a character click or badge action. Playwright coverage in `tests/cambio-modal-badge-test.mjs`. Backlog: dedicated badge animation sequence (future).
+
+
 ### Added
 - **Loot table + IMMEDIATE live CRUD.** Weighted pick on public click threshold (`chance = weight / sum`); launch cowboy **3** / ghost **1** → **75/25**. Runtime config in KV `cambio:runtime-config` (git seed fallback). Public `GET /api/animations` (~15s cache). Access CRUD: `/api/cambio/runtime-config`, `/api/cambio/animations`, `/api/cambio/animations/:id`, `/api/cambio/assets` (R2 `youareinthegame-assets`, quota warn 60% / block 80%), `/api/cambio/export-to-repo`. Cambio: searchable list, Live checkbox (immediate), tier/weight/live %, Create / Archive; ghost placement locked. Public apex runs ActivationEngine for cowboy (parity with Cambio); ghost climax unchanged. Checkpoint `checkpoint-2026-10-30-pre-loot-table` @ `b533e72`. Tests: `tests/loot-table-weights.test.mjs` (400 sims ±5%), `tests/loot-public-activation-test.mjs`.
 
