@@ -10,7 +10,7 @@ SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.co
 - **Bug:** Collapsing/expanding the Cambio hamburger mutated `body.sidebar-narrow` / `body.cambio-sidebar-collapsed` and zeroed `--cambio-rail-width`, so the live youareinthegame.com stage under the harness reflowed (badge clearance, layout). Cambio is an overlay harness — one UI must not affect the page behind.
 - **Fix:** `#cambioRoot` hosts all CoreUI/enVivo chrome (`sidebar-overlaid` fixed overlay). Sidebar state is `data-sidebar-collapsed` on `#cambioRoot` + `#sidebar.hide` only — never body/html. Collapse slides/hides the overlay (`transform`/`visibility`); no page width/margin/transform/canvas/resize. CoreUI + enVivo CSS scoped under `#cambioRoot` via `cambio/vendor/scoped/*` (`scripts/scope-cambio-vendor-css.mjs`). Public stage firewall locks `#siteStage` layout to match apex.
 - Checkpoint `checkpoint-2026-10-30-pre-cambio-isolate`. Playwright `tests/cambio-overlay-isolation-test.mjs` (rects/styles/canvas identical expanded↔collapsed; matches public; no resize; clicks work). Screenshots `/workspace/capture/cambio-isolate/` and `/workspace/cambio-isolate-shots/`.
-- YAITG commit/deploy: _(filled after ship)_.
+- YAITG `656b38b` → CF Pages deploy `3d34a618-7275-4c8b-94a4-610ea81bc41f` (production aliases: apex, www, app).
 
 ## 2026-10-30 (America/Chicago) — Cambio full Edit + sidebar hamburger
 
