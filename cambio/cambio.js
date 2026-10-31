@@ -4,6 +4,8 @@ import { escapeHtml } from '/cambio/vendor/envivo-ui/desk-list.mjs';
 import { mountEvScrollList } from '/cambio/vendor/envivo-ui/ev-scroll-list/mount.mjs';
 /** @type {ReturnType<typeof mountEvScrollList>|null} */
 let animDeskList = null;
+/** @type {ReturnType<typeof mountEvScrollList>|null} */
+let editItemList = null;
 /**
  * Cambio admin — Play / Edit with modal pencil editors (enVivo ✎/✓/✕).
  * Modes write only their own fields; Cancel restores a deep snapshot.
@@ -265,6 +267,7 @@ async function boot() {
   ensureAnimDeskList();
   renderAnimList();
   wireSidebarToggle();
+  wireEditSidebarToggle();
   $('createForm')?.addEventListener('submit', onCreateSubmit);
   $('btnSave').addEventListener('click', savePlacements);
   $('btnExitEdit').addEventListener('click', () => exitEdit());
@@ -1423,6 +1426,235 @@ function syncRotationControls(deg) {
   $('rotationNum').value = String(deg);
 }
 
+
+/** Build flat item rows for the edit mountEvScrollList (overlays, object actions, effects). */
+function buildEditItems(anim) {
+  const items = [];
+  if (!anim) return items;
+  const place = ensureAnimPlacement(anim.id);
+  for (const el of anim.elements || []) {
+    items.push({
+      kind: 'element',
+      id: `element:${el.id}`,
+      elementId: el.id,
+      name: elementLabel(el.id),
+      type: 'Overlay',
+      meta: el.anchor || '—',
+      live: true
+    });
+    const st = place.elements?.[el.id];
+    for (const act of st?.objectActions || []) {
+      items.push({
+        kind: 'action',
+        id: `action:${el.id}:${act.type || 'fire'}`,
+        elementId: el.id,
+        actionType: act.type || 'fire',
+        name: `${elementLabel(el.id)} · ${act.type || 'fire'}`,
+        type: 'Action',
+        meta: act.pattern || act.type || 'fire',
+        live: Array.isArray(act.appliesTo) ? act.appliesTo.includes('activation') : true
+      });
+    }
+  }
+  if (anim.clickEffect) {
+    const ce = anim.clickEffect;
+    items.push({
+      kind: 'effect',
+      id: 'effect:clickEffect',
+      elementId: null,
+      name: ce.type === 'composite-spores' || ce.type === 'spores' ? 'Click spores' : 'Click effect',
+      type: 'Effect',
+      meta: ce.type || '—',
+      live: true,
+      effect: ce
+    });
+  }
+  return items;
+}
+
+function selectEditItem(item) {
+  if (!item || !state.selectedAnim) return;
+  if (state.activeMode) cancelMode();
+  if (item.kind === 'element' || item.kind === 'action') {
+    state.selectedElementId = item.elementId;
+    highlightElementRow(item.elementId);
+    refreshViews();
+    mountProps(state.selectedAnim.id, { interactive: true });
+    if (item.kind === 'action') {
+      // Focus action-point editor for this element (does not start mode until pencil)
+      selectedControls?.classList.remove('hidden');
+    }
+  } else if (item.kind === 'effect') {
+    // Effect rows do not select a stage overlay; keep current element selection
+    refreshViews();
+  }
+}
+
+function isEditSidebarCollapsed() {
+  const root = $('cambioRoot');
+  return root?.dataset?.editSidebarCollapsed === '1';
+}
+
+function setEditSidebarVisible(show, { persist = false } = {}) {
+  const visible = Boolean(show);
+  const root = $('cambioRoot');
+  if (root) root.dataset.editSidebarCollapsed = visible ? '0' : '1';
+  const side = $('editSection');
+  if (side && !side.classList.contains('hidden')) {
+    side.classList.toggle('hide', !visible);
+    side.classList.toggle('show', visible);
+  }
+  const tog = $('evEditSidebarToggle');
+  if (tog) {
+    tog.setAttribute('aria-expanded', visible ? 'true' : 'false');
+    tog.title = visible ? 'Collapse edit sidebar' : 'Expand edit sidebar';
+  }
+  const reopen = $('cambioEditSidebarReopen');
+  if (reopen) reopen.setAttribute('aria-hidden', visible ? 'true' : 'false');
+}
+
+function wireEditSidebarToggle() {
+  const toggle = (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    if (!state.editMode) return;
+    setEditSidebarVisible(isEditSidebarCollapsed());
+  };
+  $('evEditSidebarToggle')?.addEventListener('click', toggle);
+  $('cambioEditSidebarReopen')?.addEventListener('click', toggle);
+}
+
+function ensureEditItemList() {
+  const host = $('editItemListHost');
+  if (!host) return null;
+  if (editItemList) return editItemList;
+
+  const br = ' style="border-radius:0"';
+  const columns = [
+    {
+      key: 'name',
+      label: 'Name',
+      width: '36%',
+      sortType: 'string',
+      render: (row) => `<span class="cambio-item-name">${escapeHtml(row.name)}</span>`
+    },
+    {
+      key: 'type',
+      label: 'Type',
+      width: '16%',
+      sortType: 'string',
+      render: (row) => `<span class="text-body-secondary">${escapeHtml(row.type)}</span>`
+    },
+    {
+      key: 'meta',
+      label: 'Detail',
+      width: '18%',
+      sortType: 'string',
+      render: (row) => `<span class="text-body-secondary">${escapeHtml(row.meta || '—')}</span>`
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      width: '30%',
+      sortType: 'none',
+      className: 'cambio-col-actions',
+      render: (row) => {
+        let html = `<div class="cambio-row-actions">`;
+        html += `<button type="button" class="btn btn-sm btn-outline-dark"${br} data-edit-act="select" data-item-id="${escapeHtml(row.id)}" title="Select on stage">Select</button>`;
+        if (row.kind === 'action') {
+          html += `<button type="button" class="btn btn-sm btn-outline-dark"${br} data-edit-act="edit-action" data-item-id="${escapeHtml(row.id)}" title="Edit action point">Edit</button>`;
+          html += `<button type="button" class="btn btn-sm btn-outline-dark"${br} data-edit-act="delete-action" data-item-id="${escapeHtml(row.id)}" title="Remove action">Delete</button>`;
+        } else if (row.kind === 'element') {
+          html += `<button type="button" class="btn btn-sm btn-outline-dark"${br} data-edit-act="edit-element" data-item-id="${escapeHtml(row.id)}" title="Edit placement">Edit</button>`;
+        }
+        html += `</div>`;
+        return html;
+      }
+    }
+  ];
+
+  const detailHost = $('editItemDetailHost');
+  editItemList = mountEvScrollList(host, {
+    title: 'Items',
+    searchPlaceholder: 'Search items…',
+    searchFields: ['name', 'type', 'meta', 'elementId'],
+    columns,
+    minRows: 6,
+    maxHeightCss: 'min(40vh, 22rem)',
+    emptyHtml: `<tr><td colspan="4" class="ev-hint">No items</td></tr>`,
+    rowKey: (item) => String(item.id),
+    detailHost,
+    selectedId: state.selectedElementId ? `element:${state.selectedElementId}` : null,
+    onSelect: (row) => selectEditItem(row),
+    renderDetail: (row) => {
+      const br2 = ' style="border-radius:0"';
+      return `<strong class="me-2">${escapeHtml(row.name)}</strong><span class="text-body-secondary me-2">${escapeHtml(row.type)}</span>` +
+        `<button type="button" class="btn btn-sm btn-outline-dark"${br2} data-edit-act="select" data-item-id="${escapeHtml(row.id)}">Select</button>`;
+    },
+    afterPaint: () => wireEditItemListActions()
+  });
+
+  host.addEventListener('click', (ev) => {
+    const btn = ev.target?.closest?.('[data-edit-act]');
+    if (!btn || !host.contains(btn)) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    handleEditItemAction(btn.getAttribute('data-edit-act'), btn.getAttribute('data-item-id'));
+  });
+
+  return editItemList;
+}
+
+function wireEditItemListActions() {
+  /* click delegated on host in ensureEditItemList */
+}
+
+function handleEditItemAction(act, itemId) {
+  if (!act || !itemId || !state.selectedAnim) return;
+  const items = buildEditItems(state.selectedAnim);
+  const row = items.find((r) => r.id === itemId);
+  if (!row) return;
+  if (act === 'select' || act === 'edit-element') {
+    selectEditItem(row);
+    if (act === 'edit-element') selectedControls?.classList.remove('hidden');
+    return;
+  }
+  if (act === 'edit-action') {
+    selectEditItem(row);
+    // Open action pencil mode for this element only
+    const btn = $('btnEditAction');
+    if (btn) btn.click();
+    return;
+  }
+  if (act === 'delete-action') {
+    const place = ensureAnimPlacement(state.selectedAnim.id);
+    const st = place.elements?.[row.elementId];
+    if (!st) return;
+    const before = st.objectActions || [];
+    st.objectActions = before.filter((a) => (a.type || 'fire') !== (row.actionType || 'fire'));
+    state.dirty = true;
+    saveStatus.textContent = `Removed ${row.actionType || 'action'} from ${elementLabel(row.elementId)} (Save placements to persist)`;
+    refreshEditItemList(state.selectedAnim.id);
+    refreshViews();
+    mountProps(state.selectedAnim.id, { interactive: true });
+  }
+}
+
+function refreshEditItemList(animId) {
+  const anim =
+    state.selectedAnim?.id === animId
+      ? state.selectedAnim
+      : (state.runtimeConfig?.animations || state.manifest?.animations || []).find((a) => a.id === animId);
+  if (!anim) return;
+  ensureEditItemList();
+  const items = buildEditItems(anim);
+  editItemList?.setItems?.(items);
+  if (state.selectedElementId && editItemList?.select) {
+    try { editItemList.select(`element:${state.selectedElementId}`); } catch { /* ignore */ }
+  }
+  wireEditItemListActions();
+}
+
 function enterEdit(animId) {
   const pool = state.runtimeConfig?.animations || state.manifest?.animations || [];
   const anim = pool.find((a) => a.id === animId) || state.manifest?.animations?.find((a) => a.id === animId);
@@ -1437,45 +1669,49 @@ function enterEdit(animId) {
   state.connectorPick = null;
   document.body.classList.remove('picking-character', 'picking-object');
   document.body.classList.add('cambio-editing');
-  editSection.classList.remove('hidden');
-  $('editTitle').textContent = anim.label;
+  const root = $('cambioRoot');
+  if (root) {
+    root.dataset.editing = '1';
+    root.dataset.editSidebarCollapsed = '0';
+  }
+  editSection.classList.remove('hidden', 'hide');
+  editSection.classList.add('show');
+  $('editTitle').textContent = anim.label || animId;
   const place = ensureAnimPlacement(animId);
   transitionSelect.innerHTML = '';
-  for (const t of anim.transitionsAvailable || ['none']) {
+  for (const tr of anim.transitionsAvailable || ['none']) {
     const opt = document.createElement('option');
-    opt.value = t;
-    opt.textContent = t;
-    if ((place.transitionId || 'lightning') === t) opt.selected = true;
+    opt.value = tr;
+    opt.textContent = tr;
+    if ((place.transitionId || 'lightning') === tr) opt.selected = true;
     transitionSelect.appendChild(opt);
   }
-  elementList.innerHTML = '';
-  for (const el of anim.elements) {
+  for (const el of anim.elements || []) {
     if (!place.elements[el.id]) place.elements[el.id] = defaultElementState(anim, el);
     else place.elements[el.id] = migrateElement(place.elements[el.id]);
-    const li = document.createElement('li');
-    li.className = 'el-row' + (state.selectedElementId === el.id ? ' selected' : '');
-    li.dataset.elementId = el.id;
-    li.innerHTML = `<span class="label">${elementLabel(el.id)} → ${el.anchor}</span>`;
-    li.addEventListener('click', () => {
-      if (state.activeMode) cancelMode();
-      state.selectedElementId = el.id;
-      highlightElementRow(el.id);
-      refreshViews();
-      mountProps(animId, { interactive: true });
-    });
-    elementList.appendChild(li);
   }
+  setEditSidebarVisible(true, { persist: false });
+  ensureEditItemList();
+  refreshEditItemList(animId);
+  highlightElementRow(state.selectedElementId);
   refreshViews();
   syncModeUi();
   mountProps(animId, { interactive: true });
-  $('stageHint').textContent = 'Edit: pencil a property · Save placements · Play';
+  $('stageHint').textContent = 'Edit: select an item · pencil a property · Save placements · Play';
   markAnimRowActive(animId);
 }
 
 function highlightElementRow(id) {
-  [...elementList.querySelectorAll('.el-row')].forEach((li) => {
-    li.classList.toggle('selected', li.dataset.elementId === id);
-  });
+  if (editItemList?.select) {
+    const key = id ? `element:${id}` : null;
+    try { editItemList.select(key); } catch { /* ignore */ }
+  }
+  // Legacy ul fallback (removed from DOM after edit-sidebar wave)
+  if (elementList) {
+    [...elementList.querySelectorAll('.el-row')].forEach((li) => {
+      li.classList.toggle('selected', li.dataset.elementId === id);
+    });
+  }
 }
 
 function exitEdit() {
@@ -1484,7 +1720,15 @@ function exitEdit() {
   state.selectedElementId = null;
   state.connectorPick = null;
   document.body.classList.remove('picking-character', 'picking-object', 'cambio-editing');
+  const root = $('cambioRoot');
+  if (root) {
+    root.dataset.editing = '0';
+    root.dataset.editSidebarCollapsed = '1';
+  }
   editSection.classList.add('hidden');
+  editSection.classList.remove('hide', 'show');
+  const reopen = $('cambioEditSidebarReopen');
+  if (reopen) reopen.setAttribute('aria-hidden', 'true');
   selectedControls.classList.add('hidden');
   if (state.selectedAnim?.preloadedAccessories) {
     mountProps(state.selectedAnim.id, { interactive: false, visible: true });

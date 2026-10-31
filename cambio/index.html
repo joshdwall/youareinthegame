@@ -8,10 +8,10 @@
   <link rel="stylesheet" href="/styles.css?v=ev1" />
   <!-- CoreUI + enVivo scoped under #cambioRoot — must not paint the public stage -->
   <link rel="stylesheet" href="/cambio/vendor/scoped/coreui.scoped.css?v=iso1" />
-  <link rel="stylesheet" href="/cambio/vendor/scoped/envivo-tokens.scoped.css?v=envivo-sz1" />
-  <link rel="stylesheet" href="/cambio/vendor/scoped/ev-scroll-list.scoped.css?v=envivo-sz1" data-ev-skin="ev-scroll-list" />
-  <link rel="stylesheet" href="/cambio/vendor/scoped/sidebar-shell.scoped.css?v=envivo-sz1" />
-  <link rel="stylesheet" href="/cambio/cambio.css?v=envivo-sz1" />
+  <link rel="stylesheet" href="/cambio/vendor/scoped/envivo-tokens.scoped.css?v=edit-sb3" />
+  <link rel="stylesheet" href="/cambio/vendor/scoped/ev-scroll-list.scoped.css?v=edit-sb3" data-ev-skin="ev-scroll-list" />
+  <link rel="stylesheet" href="/cambio/vendor/scoped/sidebar-shell.scoped.css?v=edit-sb3" />
+  <link rel="stylesheet" href="/cambio/cambio.css?v=edit-sb3" />
   <link rel="stylesheet" href="/effects/spore/ghost/effect.css" />
   <link rel="stylesheet" href="/effects/spore/finale.css" />
   <link rel="stylesheet" href="/effects/activation/activation.css?v=ev1" />
@@ -29,7 +29,7 @@
   </div>
 
   <!-- Cambio harness overlay — all CoreUI/enVivo state scoped here; sibling of stage, not a layout parent -->
-  <div id="cambioRoot" class="cambio-root ev-compact" data-ui-base="coreui-bootstrap5" data-coreui-theme="dark" data-ev-theme="dark" data-ev-sidebar-theme="follow" data-sidebar-collapsed="0">
+  <div id="cambioRoot" class="cambio-root ev-compact" data-ui-base="coreui-bootstrap5" data-coreui-theme="dark" data-ev-theme="dark" data-ev-sidebar-theme="follow" data-sidebar-collapsed="0" data-edit-sidebar-collapsed="1" data-editing="0">
   <button type="button" class="header-toggler" id="cambioSidebarReopen" aria-label="Expand sidebar" title="Expand sidebar">
     <span class="header-toggler-icon" aria-hidden="true"></span>
   </button>
@@ -124,9 +124,18 @@
     </div>
   </div>
 
-  <aside class="cambio-rail cambio-rail-right hidden" id="editSection">
-    <h2>Edit · <span id="editTitle"></span></h2>
-
+  <button type="button" class="header-toggler" id="cambioEditSidebarReopen" aria-label="Expand edit sidebar" title="Expand edit sidebar" aria-hidden="true">
+    <span class="header-toggler-icon" aria-hidden="true"></span>
+  </button>
+  <!-- enVivo CoreUI sidebar (end) — edit overlay; collapse only slides/hides this layer -->
+  <div class="sidebar sidebar-fixed sidebar-overlaid sidebar-end border-start cambio-rail cambio-rail-right hidden" id="editSection" aria-label="Edit animation">
+    <div class="sidebar-header">
+      <button class="header-toggler" type="button" id="evEditSidebarToggle" aria-label="Toggle edit sidebar" title="Collapse edit sidebar">
+        <span class="header-toggler-icon" aria-hidden="true"></span>
+      </button>
+      <strong class="sidebar-brand-full" id="editTitle"></strong>
+    </div>
+    <div class="cambio-sidebar-body" id="editPanel">
     <!-- Transition: view + pencil → dropdown + ✓/✕ -->
     <div class="ie-row" id="transitionRow" data-mode="transition">
       <div class="ie-view">
@@ -166,7 +175,9 @@
       </div>
     </div>
 
-    <ul id="elementList" class="cambio-list"></ul>
+    <!-- mountEvScrollList — animation items (overlays, actions, effects) -->
+    <div id="editItemDetailHost" class="cambio-anim-detail d-none"></div>
+    <div id="editItemListHost" class="cambio-edit-item-list-host"></div>
 
     <div id="selectedControls" class="selected-controls hidden">
       <h3 id="selectedLabel">Object</h3>
@@ -271,9 +282,10 @@
       <button type="button" id="btnExitEdit" class="btn">Done</button>
     </div>
     <p id="saveStatus" class="cambio-status" aria-live="polite"></p>
-  </aside>
+    </div>
+  </div>
   </div><!-- /#cambioRoot -->
 
-  <script type="module" src="/cambio/cambio.js?v=envivo-sz1"></script>
+  <script type="module" src="/cambio/cambio.js?v=edit-sb3"></script>
 </body>
 </html>

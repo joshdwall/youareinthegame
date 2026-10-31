@@ -33,7 +33,7 @@
  * Toggler in left rail slot; brand at expanded-sidebar center — never overlapping.
  * (apps/envivo-dashboard/shell.css #sidebar .sidebar-header*)
  */
-#cambioRoot #sidebar .sidebar-header{
+#cambioRoot #sidebar .sidebar-header,#cambioRoot #editSection .sidebar-header{
   flex: 0 0 auto;
   display: flex;
   align-items: center;
@@ -49,7 +49,7 @@
   color: var(--ev-sidebar-fg, var(--ev-text)) !important;
 }
 
-#cambioRoot #sidebar .sidebar-header .header-toggler{
+#cambioRoot #sidebar .sidebar-header .header-toggler,#cambioRoot #editSection .sidebar-header .header-toggler{
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
@@ -71,7 +71,7 @@
   z-index: 2;
 }
 
-#cambioRoot #sidebar .sidebar-header .header-toggler-icon{
+#cambioRoot #sidebar .sidebar-header .header-toggler-icon,#cambioRoot #editSection .sidebar-header .header-toggler-icon{
   display: block !important;
   width: 1.15rem;
   height: 2px;
@@ -85,7 +85,7 @@
     0 5px 0 currentColor;
 }
 
-#cambioRoot #sidebar .sidebar-header .sidebar-brand-full{
+#cambioRoot #sidebar .sidebar-header .sidebar-brand-full,#cambioRoot #editSection .sidebar-header .sidebar-brand-full{
   position: absolute;
   left: var(--ev-rail-brand-x);
   top: 50%;
