@@ -48,6 +48,9 @@
 
       <!-- Site settings (live KV — no redeploy) -->
       <div class="cambio-site-settings" id="siteSettings">
+        <div class="card">
+          <div class="card-header py-2 px-3"><strong class="small text-uppercase">Site settings</strong></div>
+          <div class="card-body py-2 px-3 cambio-settings-compact">
         <div class="ie-row" id="clickThresholdRow" data-mode="clickThreshold">
           <div class="ie-view">
             <span class="ie-label">Click threshold</span>
@@ -85,6 +88,8 @@
             </div>
           </div>
         </div>
+          </div><!-- /.card-body -->
+        </div><!-- /.card -->
       </div>
 
       <p id="poolHint" class="cambio-status" style="font-size:.75rem"></p>
@@ -136,6 +141,10 @@
       <strong class="sidebar-brand-full" id="editTitle"></strong>
     </div>
     <div class="cambio-sidebar-body" id="editPanel">
+    <!-- Animation settings (compact CoreUI card) -->
+    <div class="card cambio-edit-settings-card" id="editAnimSettings">
+      <div class="card-header py-2 px-3"><strong class="small text-uppercase">Animation</strong></div>
+      <div class="card-body py-2 px-3 cambio-settings-compact">
     <!-- Transition: view + pencil → dropdown + ✓/✕ -->
     <div class="ie-row" id="transitionRow" data-mode="transition">
       <div class="ie-view">
@@ -174,13 +183,16 @@
         </div>
       </div>
     </div>
+      </div><!-- /.card-body -->
+    </div><!-- /#editAnimSettings -->
 
     <!-- mountEvScrollList — animation items (overlays, actions, effects) -->
     <div id="editItemDetailHost" class="cambio-anim-detail d-none"></div>
     <div id="editItemListHost" class="cambio-edit-item-list-host"></div>
 
-    <div id="selectedControls" class="selected-controls hidden">
-      <h3 id="selectedLabel">Object</h3>
+    <div id="selectedControls" class="selected-controls card hidden">
+      <div class="card-header py-2 px-3"><h3 id="selectedLabel" class="mb-0 small text-uppercase">Object</h3></div>
+      <div class="card-body py-2 px-3 cambio-settings-compact">
 
       <!-- Connector -->
       <div class="ie-row" data-mode="connector">
@@ -275,6 +287,7 @@
           </div>
         </div>
       </div>
+      </div><!-- /.card-body -->
     </div>
 
     <div class="cambio-actions">
@@ -286,6 +299,6 @@
   </div>
   </div><!-- /#cambioRoot -->
 
-  <script type="module" src="/cambio/cambio.js?v=edit-sb3"></script>
+  <script type="module" src="/cambio/cambio.js?v=cards-hscroll1"></script>
 </body>
 </html>

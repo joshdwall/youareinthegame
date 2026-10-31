@@ -141,6 +141,27 @@
 .cambio-anim-list-host .ev-desk-list__scroll,
 .cambio-anim-list-host .table-responsive {
   max-height: min(70vh, 36rem);
+  overflow-x: auto !important;
+  overflow-y: auto;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Content-sized table → horizontal scroll when wider than rail (keep nowrap cells) */
+#cambioRoot .cambio-anim-list-host table.table,
+#cambioRoot .cambio-edit-item-list-host table.table {
+  width: max-content !important;
+  min-width: 100%;
+  max-width: none !important;
+  table-layout: auto !important;
+}
+
+#cambioRoot .cambio-edit-item-list-host .ev-desk-list__scroll,
+#cambioRoot .cambio-edit-item-list-host .table-responsive {
+  overflow-x: auto !important;
+  overflow-y: auto;
+  max-width: 100%;
+  min-width: 0;
 }
 
 @media (max-width: 1100px) {
@@ -207,6 +228,110 @@
 .cambio-field select, .cambio-field input[type="number"] {
   padding: 0.35rem; border-radius: 6px; border: 1px solid #3d4f63;
   background: #1a2430; color: #fff;
+}
+
+/* Compact CoreUI settings cards — inputs content-width, flex-wrap rows */
+#cambioRoot .cambio-settings-compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.55rem;
+  align-items: flex-start;
+}
+#cambioRoot .cambio-settings-compact > .ie-row {
+  flex: 0 1 auto;
+  margin: 0;
+  padding: 0.2rem 0.3rem;
+  border-bottom: none;
+  max-width: 100%;
+}
+#cambioRoot .cambio-settings-compact .ie-label {
+  flex: 0 0 auto;
+  margin-right: 0.25rem;
+  font-size: 0.66rem;
+}
+#cambioRoot .cambio-settings-compact .ie-view {
+  flex-wrap: nowrap;
+  gap: 0.25rem;
+}
+#cambioRoot .cambio-settings-compact .ie-value {
+  flex: 0 1 auto;
+  font-size: 0.75rem;
+  word-break: normal;
+  white-space: nowrap;
+}
+#cambioRoot .cambio-settings-compact .ie-edit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.45rem;
+}
+#cambioRoot .cambio-settings-compact .ie-edit.hidden {
+  display: none !important;
+}
+#cambioRoot .cambio-settings-compact .cambio-field {
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 0;
+  width: auto;
+  max-width: 100%;
+  font-size: 0.72rem;
+}
+#cambioRoot .cambio-settings-compact .cambio-field input[type="number"] {
+  width: 6ch;
+  min-width: 6ch;
+  max-width: 8ch;
+  padding: 0.2rem 0.3rem;
+  flex: 0 0 auto;
+}
+#cambioRoot .cambio-settings-compact .cambio-field select {
+  width: auto;
+  max-width: 12rem;
+  padding: 0.2rem 0.35rem;
+  flex: 0 0 auto;
+}
+#cambioRoot .cambio-settings-compact .cambio-field input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  flex: 0 0 auto;
+}
+#cambioRoot .cambio-settings-compact .cambio-field input[type="range"] {
+  width: 7.5rem;
+  max-width: 40vw;
+  flex: 0 1 auto;
+}
+#cambioRoot .cambio-settings-compact .ie-actions {
+  margin-top: 0;
+  margin-left: auto;
+}
+#cambioRoot .cambio-settings-compact .cambio-status {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 0.66rem;
+}
+#cambioRoot .cambio-site-settings > .card,
+#cambioRoot .cambio-edit-settings-card,
+#cambioRoot .selected-controls.card {
+  margin: 0.3rem 0;
+  flex: 0 0 auto;
+}
+#cambioRoot .cambio-sidebar-body > .card > .card-header,
+#cambioRoot .cambio-site-settings .card-header,
+#cambioRoot .selected-controls.card > .card-header {
+  padding: 0.3rem 0.55rem;
+  font-size: 0.72rem;
+}
+#cambioRoot .selected-controls.card #selectedLabel {
+  font-size: 0.72rem;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.9;
+}
+#cambioRoot .selected-controls.card > .card-body {
+  /* keep compact flex from .cambio-settings-compact */
 }
 .rot-row { display: flex; align-items: center; gap: 0.35rem; }
 .rot-row input[type="range"] { flex: 1; }

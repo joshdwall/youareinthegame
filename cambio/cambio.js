@@ -2,6 +2,38 @@ import { runActivation, previewClick, activate } from '/effects/activation/Activ
 import { applyElementPlacement, measureCreatureBoxInHost } from '/effects/activation/placementMath.js';
 import { escapeHtml } from '/cambio/vendor/envivo-ui/desk-list.mjs';
 import { mountEvScrollList } from '/cambio/vendor/envivo-ui/ev-scroll-list/mount.mjs';
+
+/** Allow mountEvScrollList tables to scroll horizontally when content > rail (enVivo autofit shrinks otherwise). */
+function enableCambioListHScroll(host) {
+  if (!host) return;
+  const wrap = host.querySelector('.table-responsive, .ev-desk-list__scroll');
+  const table = host.querySelector('table.table');
+  if (wrap) {
+    wrap.style.overflowX = 'auto';
+    wrap.style.maxWidth = '100%';
+    wrap.style.minWidth = '0';
+    // Stop enVivo autofit RO from re-forcing width:100% / fixed cols (clips instead of scroll).
+    if (wrap._evSlFitRo) {
+      try { wrap._evSlFitRo.disconnect(); } catch {}
+      wrap._evSlFitRo = null;
+    }
+  }
+  if (table) {
+    table.style.tableLayout = 'auto';
+    table.style.width = 'max-content';
+    table.style.minWidth = '100%';
+    table.style.maxWidth = 'none';
+    table.querySelector('colgroup')?.remove();
+    const thead = table.querySelector('thead');
+    if (thead) {
+      for (const th of thead.querySelectorAll('th')) th.style.whiteSpace = 'nowrap';
+    }
+    for (const td of table.querySelectorAll('tbody td')) {
+      td.style.whiteSpace = 'nowrap';
+    }
+  }
+}
+
 /** @type {ReturnType<typeof mountEvScrollList>|null} */
 let animDeskList = null;
 /** @type {ReturnType<typeof mountEvScrollList>|null} */
@@ -868,7 +900,11 @@ function ensureAnimDeskList() {
       { label: '+ Create', attrs: 'id="btnCreateAnim"' },
       { label: 'Export→git', attrs: 'id="btnExportRepo" title="Snapshot KV → git"' }
     ],
-    afterPaint: () => wireAnimListActions()
+    afterPaint: () => {
+      enableCambioListHScroll(host);
+      requestAnimationFrame(() => enableCambioListHScroll(host));
+      wireAnimListActions();
+    }
   });
 
   // Give the painted card an id tests / markAnimRowActive can find
@@ -881,10 +917,12 @@ function ensureAnimDeskList() {
     if (root) root.id = 'animList';
   };
   stamp();
+  enableCambioListHScroll(host);
   const _set = animDeskList.setItems.bind(animDeskList);
   animDeskList.setItems = (items) => {
     _set(items);
     stamp();
+    enableCambioListHScroll(host);
     wireAnimListActions();
   };
 
@@ -1591,8 +1629,13 @@ function ensureEditItemList() {
       return `<strong class="me-2">${escapeHtml(row.name)}</strong><span class="text-body-secondary me-2">${escapeHtml(row.type)}</span>` +
         `<button type="button" class="btn btn-sm btn-outline-dark"${br2} data-edit-act="select" data-item-id="${escapeHtml(row.id)}">Select</button>`;
     },
-    afterPaint: () => wireEditItemListActions()
+    afterPaint: () => {
+      enableCambioListHScroll(host);
+      requestAnimationFrame(() => enableCambioListHScroll(host));
+      wireEditItemListActions();
+    }
   });
+  enableCambioListHScroll(host);
 
   host.addEventListener('click', (ev) => {
     const btn = ev.target?.closest?.('[data-edit-act]');

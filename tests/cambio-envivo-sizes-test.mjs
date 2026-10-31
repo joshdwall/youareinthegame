@@ -3,7 +3,7 @@
  * - header toggler/brand do not overlap
  * - single-row cells (nowrap), square buttons (border-radius 0)
  * - font sizes / row height match enVivo fixture
- * - no horizontal overflow in the list table
+ * - list wrap allows horizontal scroll (overflow-x auto); cells stay nowrap
  * Isolation (body classes / stage) stays intact.
  */
 import { chromium } from 'playwright';
@@ -72,6 +72,7 @@ async function measureList(page) {
     };
     const scroll = host.querySelector('.table-responsive, .ev-desk-list__scroll') || table.parentElement;
     const overflowX = scroll ? scroll.scrollWidth - scroll.clientWidth : 0;
+    const overflowXStyle = scroll ? getComputedStyle(scroll).overflowX : null;
     const cells = [...row.querySelectorAll('td')].map((td) => {
       const s = getComputedStyle(td);
       return {
@@ -96,6 +97,7 @@ async function measureList(page) {
         : null,
       titleFont: title ? getComputedStyle(title).fontSize : null,
       overflowX,
+      overflowXStyle,
       wraps,
       cells,
       vars: {
@@ -158,7 +160,8 @@ near(cambioHeader.header.h, envivoHeader.header.h, 2, 'header height vs enVivo')
 ok(!cambioList.err, 'Cambio list measurable');
 ok(cambioList.wraps === false, 'Cambio cells nowrap (single row)');
 ok(cambioList.btn?.radius === '0px', `Cambio btn border-radius 0 (got ${cambioList.btn?.radius})`);
-ok(cambioList.overflowX <= 2, `Cambio list no horizontal overflow (scrollΔ=${cambioList.overflowX})`);
+ok(cambioList.overflowXStyle === 'auto' || cambioList.overflowXStyle === 'scroll',
+  `Cambio list wrap overflow-x auto/scroll (got ${cambioList.overflowXStyle})`);
 
 // Font sizes: match enVivo computed (or CSS vars)
 near(parseFloat(cambioList.rowFont), parseFloat(envivoList.rowFont), 0.5, 'row font-size vs enVivo');
