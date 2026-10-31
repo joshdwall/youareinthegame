@@ -10,7 +10,7 @@ SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.co
 - **Ask:** Extend the main Cambio sidebar style (CoreUI `#sidebar`, hamburger + title, compact sizes, scoped CSS, overlay-only) to the full Edit panel; title = animation name. List animation items (overlays, object actions/action points, effects) via the same `mountEvScrollList` with enVivo defaults (single-row, square buttons, fonts) and per-row Select/Edit/Delete; row select = stage select. Keep per-setting pencils ✓/✕ isolated.
 - **Fix:** `#editSection` is now `sidebar sidebar-fixed sidebar-overlaid sidebar-end` with the same header chrome as `#sidebar` (shell rules broadened to `#editSection`). Right rail collapses via `#cambioRoot[data-edit-sidebar-collapsed]` + `.hide`/`.show` (CoreUI overlaid end needs `.show` or negative `margin-right` pushes it off-screen). Items mount in `#editItemListHost` through `mountEvScrollList` (`buildEditItems` / `selectEditItem` / `refreshEditItemList`). Transition + Preview object actions pencils remain above the list and stay mode-scoped.
 - Checkpoint `checkpoint-2026-10-30-pre-cambio-editor-sidebar`. Playwright `tests/cambio-edit-sidebar-test.mjs` (header height/fonts match main; item list; select→stage; collapse overlay-only; isolation still green). Screenshots `/workspace/capture/cambio-edit-sidebar/` and `/workspace/cambio-edit-sidebar-shots/`.
-- YAITG `COMMIT` → CF Pages deploy `DEPLOY` (production aliases: apex, www, app).
+- YAITG `6b685fa` → CF Pages deploy `d46c029a-1bea-4a1a-b0c2-057854393896` (production aliases: apex, www, app).
 
 ## 2026-10-30 (America/Chicago) — Cambio enVivo header spacing + compact scroll-list defaults
 
