@@ -8,7 +8,7 @@ SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.co
 ## 2026-10-30
 
 ### Changed
-- **Live click threshold + dark→light reset fade (KV, no redeploy).** Was build-time `GHOST_CONFIG.LIGHTNING` MIN=**5** / MAX=**10**; now `runtime-config.settings.clickThresholdMin/Max` default **3** / **5** (≈half, floor 3). Public `/api/animations` serves `settings` (~15s cache). Cambio left-rail pencils ✎/✓/✕. Composite path no longer snaps sage — restores SporeBaseEffect `background-color` transition (`stormResetDurationMs`, default **1500**); activation flash stays instant. Playwright: `tests/live-settings-fade-test.mjs` (luminance samples over time).
+- **Live click threshold + dark→light reset fade (KV, no redeploy).** Was build-time `GHOST_CONFIG.LIGHTNING` MIN=**5** / MAX=**10**; now `runtime-config.settings.clickThresholdMin/Max` default **3** / **5** (≈half, floor 3). Public `/api/animations` serves `settings` (~15s cache). Cambio left-rail pencils ✎/✓/✕. Composite path no longer snaps sage — restores SporeBaseEffect `background-color` transition (`stormResetDurationMs`, default **1500**); activation flash stays instant. Playwright: `tests/live-settings-fade-test.mjs` (luminance samples over time). YAITG `74f357d` → CF Pages deploy `5bb82aa6-29ef-4788-a3b2-aa447e495642` (production). Live KV edit verified: settings 4/4/900 → API without redeploy; restored to 3/5/1500.
 
 
 ### Changed
