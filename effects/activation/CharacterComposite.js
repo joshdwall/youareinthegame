@@ -1,3 +1,5 @@
+import { elementWidthPx } from './placementMath.js';
+
 /**
  * Build a composited character (base + overlay elements at placements).
  * Used for mini spore replicas (base + overlays, scaled down).
@@ -36,8 +38,7 @@ export function buildCharacterComposite({ baseSrc, elements = [], box, scale = 1
     const ca = st.characterAnchor || { x: 0.5, y: 0.5 };
     const oa = st.objectAnchor || { x: 0.5, y: 0.5 };
     const rot = st.rotation || 0;
-    const elScale = st.scale || 0.3;
-    const w = elScale * box.width * scale;
+    const w = elementWidthPx(st, box.width) * scale;
     const img = document.createElement('img');
     img.className = 'activation-composite-el';
     img.dataset.elementId = el.id;

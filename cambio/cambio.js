@@ -1,4 +1,6 @@
-import { runActivation } from '/effects/activation/ActivationEngine.js';
+import { runActivation, previewClick, activate } from '/effects/activation/ActivationEngine.js';
+import { applyElementPlacement, measureCreatureBoxInHost } from '/effects/activation/placementMath.js';
+import { filterByQuery, bindListSearch, bindListFilterClear, updateFilterMeta } from '/cambio/vendor/desk-list.mjs';
 /**
  * Cambio admin — Play / Edit with modal pencil editors (enVivo ✎/✓/✕).
  * Modes write only their own fields; Cancel restores a deep snapshot.
@@ -17,12 +19,16 @@ const state = {
   selectedElementId: null,
   dirty: false,
   animFilter: '',
-  /** null | 'connector' | 'rotation' | 'move' | 'size' | 'transition' */
+  /** null | 'connector' | 'rotation' | 'move' | 'size' | 'transition' | 'action' */
   activeMode: null,
   /** Deep clone of element (or transitionId) when mode opened */
   modeSnapshot: null,
   /** null | 'object' | 'character' — only while activeMode === 'connector' */
-  connectorPick: null
+  connectorPick: null,
+  /** null | 'point' | 'direction' — while activeMode === 'action' */
+  actionPick: null,
+  /** Working fire action while editing */
+  actionDraft: null
 };
 
 const $ = (id) => document.getElementById(id);
@@ -155,8 +161,11 @@ async function loadJson(url) {
 
 function migrateElement(raw) {
   if (!raw || typeof raw !== 'object') return null;
+  const actions = Array.isArray(raw.objectActions)
+    ? raw.objectActions.map((a) => ({ ...a, point: a.point ? { x: +a.point.x, y: +a.point.y } : { x: 0.5, y: 0.5 } }))
+    : undefined;
   if (raw.characterAnchor && raw.objectAnchor) {
-    return {
+    const out = {
       objectAnchor: { x: +raw.objectAnchor.x, y: +raw.objectAnchor.y },
       characterAnchor: { x: +raw.characterAnchor.x, y: +raw.characterAnchor.y },
       rotation: Number.isFinite(+raw.rotation) ? +raw.rotation : (+raw.rotationDeg || 0),
@@ -164,8 +173,10 @@ function migrateElement(raw) {
       transition: raw.transition ?? null,
       flipX: !!raw.flipX
     };
+    if (actions) out.objectActions = actions;
+    return out;
   }
-  return {
+  const out = {
     objectAnchor: { x: 0.5, y: 0.5 },
     characterAnchor: { x: +raw.x || 0.5, y: +raw.y || 0.5 },
     rotation: +raw.rotationDeg || +raw.rotation || 0,
@@ -173,6 +184,8 @@ function migrateElement(raw) {
     transition: raw.transition ?? null,
     flipX: !!raw.flipX
   };
+  if (actions) out.objectActions = actions;
+  return out;
 }
 
 function migratePlacements(data) {
@@ -244,10 +257,12 @@ async function boot() {
   }
 
   renderAnimList();
-  $('animSearch')?.addEventListener('input', (e) => {
-    state.animFilter = e.target.value || '';
+  // SITE-HUB desk-list search/clear (shared component contract)
+  bindListSearch($('animSearch'), (q) => {
+    state.animFilter = q || '';
     renderAnimList();
   });
+  bindListFilterClear($('animSearchClear'), $('animSearch'));
   $('btnCreateAnim')?.addEventListener('click', () => {
     const d = $('createDialog');
     if (d) { $('createStatus').textContent = ''; d.showModal(); }
@@ -289,6 +304,10 @@ async function boot() {
   $('btnSaveSize').addEventListener('click', () => commitMode());
   $('btnCancelSize').addEventListener('click', () => cancelMode());
   $('scaleSlider').addEventListener('input', onScaleInput);
+
+  $('btnEditAction').addEventListener('click', () => enterMode('action'));
+  $('btnSaveAction').addEventListener('click', () => commitMode());
+  $('btnCancelAction').addEventListener('click', () => cancelMode());
 
   creature.addEventListener('pointerdown', onCreaturePointerDown);
   window.addEventListener('resize', () => {
@@ -333,10 +352,21 @@ function enterMode(mode) {
     state.modeSnapshot = deepClone(st);
   }
   state.connectorPick = mode === 'connector' ? 'object' : null;
+  state.actionPick = mode === 'action' ? 'point' : null;
+  state.actionDraft = null;
   document.body.classList.toggle('picking-character', false);
   document.body.classList.toggle('picking-object', mode === 'connector');
   if (mode === 'connector') {
     connectorHint.textContent = `Click a connector point on the ${selectedLabel()}.`;
+  }
+  if (mode === 'action') {
+    const st = currentElement();
+    const existing = (st?.objectActions || []).find((a) => a.type === 'fire') || null;
+    state.actionDraft = existing
+      ? { ...existing, point: { ...existing.point } }
+      : { type: 'fire', point: { x: 0.5, y: 0.5 }, direction: 0, pattern: 'alternate', rate: 3.2, jitter: 0.5, appliesTo: ['spore', 'activation'] };
+    const ah = $('actionHint');
+    if (ah) ah.textContent = `Click the muzzle on the ${selectedLabel()}.`;
   }
   if (mode === 'move') {
     const st = currentElement();
@@ -352,11 +382,19 @@ function enterMode(mode) {
 
 function commitMode() {
   if (!state.activeMode) return;
-  // Working values already written into state; just clear mode.
-  // Isolation: writers only touch their fields while mode is active.
+  // Isolation: action mode writes ONLY objectActions on commit.
+  if (state.activeMode === 'action' && state.actionDraft) {
+    const st = currentElement();
+    if (st) {
+      const others = (st.objectActions || []).filter((a) => a.type !== 'fire');
+      st.objectActions = [...others, { ...state.actionDraft, point: { ...state.actionDraft.point } }];
+    }
+  }
   state.activeMode = null;
   state.modeSnapshot = null;
   state.connectorPick = null;
+  state.actionPick = null;
+  state.actionDraft = null;
   document.body.classList.remove('picking-character', 'picking-object');
   markDirty();
   syncModeUi();
@@ -369,6 +407,8 @@ function cancelMode() {
     state.activeMode = null;
     state.modeSnapshot = null;
     state.connectorPick = null;
+    state.actionPick = null;
+    state.actionDraft = null;
     document.body.classList.remove('picking-character', 'picking-object');
     syncModeUi();
     return;
@@ -387,6 +427,8 @@ function cancelMode() {
   state.activeMode = null;
   state.modeSnapshot = null;
   state.connectorPick = null;
+  state.actionPick = null;
+  state.actionDraft = null;
   document.body.classList.remove('picking-character', 'picking-object');
   syncModeUi();
   refreshViews();
@@ -410,6 +452,7 @@ function syncModeUi() {
   overlay.classList.toggle('mode-move', mode === 'move');
   overlay.classList.toggle('mode-rotation', mode === 'rotation');
   overlay.classList.toggle('mode-connector', mode === 'connector');
+  overlay.classList.toggle('mode-action', mode === 'action');
 }
 
 function refreshViews() {
@@ -437,6 +480,13 @@ function refreshViews() {
   }
   $('sizeView').textContent = Number(st.scale || 0.3).toFixed(2);
   $('scaleSlider').value = String(st.scale || 0.3);
+  const av = $('actionView');
+  if (av) {
+    const fire = (st.objectActions || []).find((a) => a.type === 'fire');
+    av.textContent = fire
+      ? `fire @ (${(+fire.point?.x || 0).toFixed(2)},${(+fire.point?.y || 0).toFixed(2)}) → ${Math.round(+fire.direction || 0)}°`
+      : 'none';
+  }
 }
 
 function onTransitionChange() {
@@ -490,13 +540,11 @@ function resetConnectorsInMode() {
 function renderAnimList() {
   animList.innerHTML = '';
   const pcts = livePercents();
-  const q = (state.animFilter || '').trim().toLowerCase();
   const all = state.runtimeConfig?.animations || state.manifest.animations || [];
-  const visible = all.filter((a) => {
-    if (a.archived && !q) return false;
-    if (!q) return true;
-    return `${a.id} ${a.label} ${a.tier || ''}`.toLowerCase().includes(q);
-  });
+  const q = state.animFilter || '';
+  const pool = all.filter((a) => a.archived ? !!q.trim() : true);
+  const visible = filterByQuery(pool, q, (a) => `${a.id} ${a.label} ${a.tier || ''}`);
+  updateFilterMeta($('animListMeta'), visible.length, pool.length);
   for (const anim of visible) {
     const li = document.createElement('li');
     li.dataset.id = anim.id;
@@ -508,6 +556,16 @@ function renderAnimList() {
     play.textContent = 'Play';
     play.addEventListener('click', () => playAnimation(anim.id));
     li.appendChild(play);
+    const clickPrev = document.createElement('button');
+    clickPrev.type = 'button';
+    clickPrev.className = 'btn';
+    clickPrev.textContent = 'Click preview';
+    clickPrev.title = 'Preview this animation\'s per-click character effect';
+    clickPrev.addEventListener('click', (e) => {
+      e.stopPropagation();
+      previewClickAnimation(anim.id);
+    });
+    li.appendChild(clickPrev);
     const canEditPlacement = anim.editable !== false && anim.placementEditable !== false && anim.id !== 'ghost';
     if (canEditPlacement) {
       const edit = document.createElement('button');
@@ -686,14 +744,7 @@ async function onCreateSubmit(ev) {
 
 
 function creatureBoxInRig() {
-  const rig = creatureRig.getBoundingClientRect();
-  const r = creature.getBoundingClientRect();
-  return {
-    left: r.left - rig.left,
-    top: r.top - rig.top,
-    width: r.width,
-    height: r.height
-  };
+  return measureCreatureBoxInHost(creature, creatureRig);
 }
 
 function defaultElementState(anim, el) {
@@ -709,21 +760,14 @@ function defaultElementState(anim, el) {
 }
 
 function applyPropTransform(img, st) {
-  const oa = st.objectAnchor || { x: 0.5, y: 0.5 };
-  const rot = st.rotation || 0;
-  const flips = st.flipX ? ' scaleX(-1)' : '';
-  img.style.transformOrigin = `${oa.x * 100}% ${oa.y * 100}%`;
-  img.style.transform = `translate(${-oa.x * 100}%, ${-oa.y * 100}%) rotate(${rot}deg)${flips}`;
+  // Kept for callers that only need transform refresh after scale/rot edit;
+  // position uses shared applyElementPlacement (SSOT with public apex).
+  const box = creatureBoxInRig();
+  applyElementPlacement(img, st, box);
 }
 
 function positionProp(img, st) {
-  const box = creatureBoxInRig();
-  const ca = st.characterAnchor || { x: 0.5, y: 0.5 };
-  const w = (st.scale || 0.3) * box.width;
-  img.style.left = `${box.left + ca.x * box.width}px`;
-  img.style.top = `${box.top + ca.y * box.height}px`;
-  img.style.width = `${w}px`;
-  applyPropTransform(img, st);
+  applyElementPlacement(img, st, creatureBoxInRig());
 }
 
 function mountProps(animId, { interactive = false, visible = true } = {}) {
@@ -765,8 +809,12 @@ function mountProps(animId, { interactive = false, visible = true } = {}) {
       (
         (state.activeMode === 'connector' && state.connectorPick === 'object' && el.id === state.selectedElementId) ||
         (state.activeMode === 'move' && el.id === state.selectedElementId) ||
+        (state.activeMode === 'action' && el.id === state.selectedElementId) ||
         (!state.activeMode && interactive)
       );
+    if (state.activeMode === 'action' && el.id === state.selectedElementId) {
+      img.classList.add('picking-action');
+    }
     img.style.pointerEvents = allowPropPe ? 'auto' : 'none';
 
     positionProp(img, st);
@@ -779,6 +827,9 @@ function mountProps(animId, { interactive = false, visible = true } = {}) {
     }
     if (state.activeMode === 'rotation') {
       renderRotateHandle(animId, state.selectedElementId);
+    }
+    if (state.activeMode === 'action') {
+      renderActionMarkers(animId, state.selectedElementId);
     }
   }
 }
@@ -804,6 +855,33 @@ function renderMarkers(animId, elementId) {
   objM.style.top = `${box.top + ca.y * box.height}px`;
   objM.style.boxShadow = '0 0 0 2px #fff, 0 0 8px rgba(0,0,0,.45), 3px 3px 0 #4a9eff';
   markerLayer.appendChild(objM);
+}
+
+
+function renderActionMarkers(animId, elementId) {
+  markerLayer.querySelectorAll('.cambio-marker.action-point, .cambio-marker.action-dir').forEach((n) => n.remove());
+  const img = overlay.querySelector(`[data-element-id="${elementId}"]`);
+  const draft = state.actionDraft;
+  if (!img || !draft?.point) return;
+  const rect = img.getBoundingClientRect();
+  const rig = creatureRig.getBoundingClientRect();
+  const px = rect.left - rig.left + draft.point.x * rect.width;
+  const py = rect.top - rig.top + draft.point.y * rect.height;
+  const pt = document.createElement('div');
+  pt.className = 'cambio-marker action-point';
+  pt.style.left = `${px}px`;
+  pt.style.top = `${py}px`;
+  markerLayer.appendChild(pt);
+  const dir = document.createElement('div');
+  dir.className = 'cambio-marker action-dir';
+  dir.style.left = `${px}px`;
+  dir.style.top = `${py}px`;
+  const st = ensureAnimPlacement(animId).elements[elementId] || {};
+  let deg = +draft.direction || 0;
+  if (st.flipX) deg = 180 - deg;
+  deg = deg + (+st.rotation || 0);
+  dir.style.transform = `rotate(${deg}deg)`;
+  markerLayer.appendChild(dir);
 }
 
 function renderRotateHandle(animId, elementId) {
@@ -859,6 +937,54 @@ function bindPropPointer(img, animId, elementId) {
       highlightElementRow(elementId);
       refreshViews();
       mountProps(animId, { interactive: true });
+      return;
+    }
+
+    // Action point: click muzzle (normalized on object), then direction
+    if (state.activeMode === 'action') {
+      const rect = img.getBoundingClientRect();
+      const nx = Math.max(0, Math.min(1, (e.clientX - rect.left) / Math.max(1, rect.width)));
+      const ny = Math.max(0, Math.min(1, (e.clientY - rect.top) / Math.max(1, rect.height)));
+      if (state.actionPick === 'point' || !state.actionDraft) {
+        if (!state.actionDraft) {
+          state.actionDraft = { type: 'fire', point: { x: nx, y: ny }, direction: 0, pattern: 'alternate', rate: 3.2, jitter: 0.5, appliesTo: ['spore', 'activation'] };
+        } else {
+          state.actionDraft.point = { x: nx, y: ny };
+        }
+        state.actionPick = 'direction';
+        const ah = $('actionHint');
+        if (ah) ah.textContent = 'Click or drag to set fire direction, then ✓.';
+        renderActionMarkers(animId, elementId);
+        const move = (ev) => {
+          const dx = ev.clientX - (rect.left + state.actionDraft.point.x * rect.width);
+          const dy = ev.clientY - (rect.top + state.actionDraft.point.y * rect.height);
+          let deg = (Math.atan2(dy, dx) * 180) / Math.PI;
+          const st = currentElement() || {};
+          // Convert screen deg → element-local (undo rotation/flip)
+          deg = deg - (+st.rotation || 0);
+          if (st.flipX) deg = 180 - deg;
+          state.actionDraft.direction = Math.round(((deg % 360) + 360) % 360);
+          if (state.actionDraft.direction > 180) state.actionDraft.direction -= 360;
+          renderActionMarkers(animId, elementId);
+        };
+        const up = () => {
+          window.removeEventListener('pointermove', move);
+          window.removeEventListener('pointerup', up);
+        };
+        window.addEventListener('pointermove', move);
+        window.addEventListener('pointerup', up);
+        return;
+      }
+      // Second click sets direction
+      const dx = e.clientX - (rect.left + state.actionDraft.point.x * rect.width);
+      const dy = e.clientY - (rect.top + state.actionDraft.point.y * rect.height);
+      let deg = (Math.atan2(dy, dx) * 180) / Math.PI;
+      const st = currentElement() || {};
+      deg = deg - (+st.rotation || 0);
+      if (st.flipX) deg = 180 - deg;
+      state.actionDraft.direction = Math.round(((deg % 360) + 360) % 360);
+      if (state.actionDraft.direction > 180) state.actionDraft.direction -= 360;
+      renderActionMarkers(animId, elementId);
       return;
     }
 
@@ -1066,6 +1192,41 @@ function compositeElementsFor(animId) {
  * the same mountProps placement path as edit mode (no duplicate base character).
  * Mini spores remain small base+overlay composites.
  */
+/**
+ * Preview the per-click character burst for an animation (clickEffect).
+ * Editable later via manifest; default = mini composite replicas or ghost spores.
+ */
+function previewClickAnimation(animId) {
+  const anim = (state.runtimeConfig?.animations || state.manifest.animations || [])
+    .find((a) => a.id === animId);
+  if (!anim) return;
+  const container = $('siteStage');
+  const rect = container.getBoundingClientRect();
+  // Spawn near creature center
+  const cbox = creature.getBoundingClientRect();
+  const x = cbox.left + cbox.width / 2 - rect.left;
+  const y = cbox.top + cbox.height / 2 - rect.top;
+  const elements = (anim.elements || []).map((el) => {
+    const place = state.placements?.byAnimation?.[animId]?.elements?.[el.id];
+    return {
+      id: el.id,
+      src: el.src.startsWith('/') ? el.src : '/' + el.src.replace(/^\//, ''),
+      placement: place
+    };
+  });
+  const result = previewClick({
+    container,
+    creature,
+    animation: anim,
+    compositeElements: elements,
+    x,
+    y,
+    sporeHost: container,
+    fallback: null
+  });
+  $('stageHint').textContent = `Click preview: ${anim.label} (${result?.type || 'ok'})`;
+}
+
 async function playAnimation(animId) {
   const anim = state.manifest.animations.find((a) => a.id === animId);
   if (!anim) return;
@@ -1084,7 +1245,7 @@ async function playAnimation(animId) {
   try {
     if (anim.playMode === 'legacy-ghost' || anim.id === 'ghost') {
       overlay.innerHTML = '';
-      await runActivation({
+      await activate({
         container,
         creature,
         creatureRig,
@@ -1098,7 +1259,7 @@ async function playAnimation(animId) {
     // Mount accessories with the EXACT edit-mode placement path, then flicker that host.
     mountProps(animId, { interactive: false, visible: true });
     const elements = compositeElementsFor(animId);
-    await runActivation({
+    await activate({
       container,
       creature,
       creatureRig,
@@ -1162,13 +1323,17 @@ async function savePlacements() {
 /** Test helpers exposed for Playwright */
 window.__cambioTest = {
   runActivationPlay: (id) => playAnimation(id),
+  previewClick: (id) => previewClickAnimation(id),
   compositeElementsFor,
 
   getState: () => state,
+  enterEdit,
   mountProps,
   creatureBoxInRig,
   enterMode,
   commitMode,
+  cancelMode,
+  getActionDraft: () => state.actionDraft,
   cancelMode,
   elementLabel,
   selectElement(id) {

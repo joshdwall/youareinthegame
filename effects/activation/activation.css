@@ -21,3 +21,20 @@
 .activation-spore {
   will-change: transform, opacity, left, top;
 }
+
+/* objectActions: fire muzzle flash / streak */
+.activation-muzzle-flash {
+  border-radius: 40% 60% 50% 50%;
+  background: radial-gradient(circle at 30% 50%, #fff7c2 0%, #ffb347 35%, #ff6a00 70%, transparent 100%);
+  box-shadow: 0 0 6px 2px rgba(255, 180, 40, 0.85);
+  opacity: 0;
+  transition: opacity 40ms linear;
+}
+.activation-muzzle-flash.is-on { opacity: 1; }
+.activation-muzzle-streak {
+  background: linear-gradient(90deg, rgba(255,230,150,0.95), rgba(255,120,40,0.35), transparent);
+  border-radius: 1px;
+  opacity: 0;
+  transition: opacity 30ms linear;
+}
+.activation-muzzle-streak.is-on { opacity: 1; }

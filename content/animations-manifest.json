@@ -18,7 +18,10 @@
       "placementEditable": false,
       "tier": "legendary",
       "multiplier": 1,
-      "weight": 1
+      "weight": 1,
+      "clickEffect": {
+        "type": "ghost-spores"
+      }
     },
     {
       "id": "cowboy",
@@ -65,8 +68,13 @@
       "placementEditable": true,
       "tier": "legendary",
       "multiplier": 3,
-      "weight": 3
+      "weight": 3,
+      "clickEffect": {
+        "type": "composite-spores",
+        "count": 16,
+        "scale": 0.18
+      }
     }
   ],
-  "updatedAt": "2026-10-30T23:45:00.000Z"
+  "updatedAt": "2026-10-31T00:30:00.000Z"
 }

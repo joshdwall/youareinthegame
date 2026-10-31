@@ -9,6 +9,8 @@
 import { FireworkManager } from '../spore/finale.js';
 import { GHOST_CONFIG } from '../spore/ghost/config.js';
 import { buildCharacterComposite, measureCreatureBox } from './CharacterComposite.js';
+import { runObjectActions } from './objectActions.js';
+import { resolveClickEffect } from './clickEffect.js';
 
 const loadedSheets = new Set();
 
@@ -33,7 +35,33 @@ async function ensureStylesheet(href) {
   });
 }
 
+/**
+ * Preload stylesheets + images used by activation. Call at cycle start so
+ * threshold activate() can flash overlay from frame one with no await gap.
+ */
+export async function preloadActivationAssets(urls = []) {
+  await Promise.all([
+    ensureStylesheet(GHOST_CONFIG.STYLESHEETS.EFFECT),
+    ensureStylesheet(GHOST_CONFIG.STYLESHEETS.FINALE),
+    ensureStylesheet('/effects/activation/activation.css')
+  ]);
+  const unique = [...new Set((urls || []).filter(Boolean))];
+  await Promise.all(unique.map((src) => new Promise((resolve) => {
+    const img = new Image();
+    img.onload = img.onerror = () => {
+      // decode when available so first paint is not blank
+      if (img.decode) {
+        img.decode().then(resolve).catch(resolve);
+      } else {
+        resolve();
+      }
+    };
+    img.src = src;
+  })));
+}
+
 function bodyFlash(classExtra = '') {
+
   const el = document.createElement('div');
   el.className = `lightning-flash${classExtra ? ' ' + classExtra : ''}`;
   document.body.appendChild(el);
@@ -63,15 +91,21 @@ export async function runActivation(opts) {
     composite = null,
     flashHost = null,
     spore = {},
-    signal = null
+    signal = null,
+    assetsPreloaded = false
   } = opts;
 
   if (!container || !creature) throw new Error('activation: container and creature required');
   const flashParent = creatureRig || container;
 
-  await ensureStylesheet(GHOST_CONFIG.STYLESHEETS.EFFECT);
-  await ensureStylesheet(GHOST_CONFIG.STYLESHEETS.FINALE);
-  await ensureStylesheet('/effects/activation/activation.css');
+  // Stylesheets + images must be ready BEFORE first flash frame.
+  // Cycle-start prepareUpcoming calls preloadActivationAssets; skip awaits at threshold.
+  if (!assetsPreloaded) {
+    const urls = profile === 'composite' && composite
+      ? [composite.baseSrc, ...(composite.elements || []).map((e) => e.src)]
+      : [GHOST_CONFIG.ASSETS.OVERLAY_IMAGE];
+    await preloadActivationAssets(urls);
+  }
 
   const timers = new Set();
   const track = (id) => { timers.add(id); return id; };
@@ -208,17 +242,7 @@ export async function runActivation(opts) {
     return { ok: false, aborted: true };
   }
 
-  // Preload composite assets so mini spores aren't 0×0 / blank on first paint
-  if (profile === 'composite' && composite) {
-    const urls = [composite.baseSrc, ...(composite.elements || []).map((e) => e.src)].filter(Boolean);
-    await Promise.all(urls.map((src) => new Promise((resolve) => {
-      const img = new Image();
-      img.onload = img.onerror = () => resolve();
-      img.src = src;
-    })));
-  }
-
-  // Spores — same spawn origin + FireworkManager launch path for ghost and composite
+  // Spores — assets already preloaded before flash (cycle start or activate entry)
   const fw = GHOST_CONFIG.FIREWORKS;
   const launchX = window.innerWidth / 2 + fw.LAUNCH_OFFSET_X;
   const launchY = window.innerHeight / 2 + fw.LAUNCH_OFFSET_Y;
@@ -255,6 +279,14 @@ export async function runActivation(opts) {
         node.style.zIndex = '25';
         node.style.opacity = '1';
         node.style.overflow = 'visible';
+        const sporeIndex = sporeInst?.id ?? Math.floor(Math.random() * 1000);
+        const ctrl = runObjectActions({
+          root: node,
+          elements: composite.elements || [],
+          target: 'spore',
+          sporeIndex
+        });
+        node.__actionStop = ctrl.stop;
         return node;
       }
     };
@@ -280,11 +312,151 @@ export async function runActivation(opts) {
   try { fireworkManager?.destroy?.(); } catch (_) { /* ignore */ }
   fireworkManager = null;
   cleanupFlashLayer();
-  sporeHost.querySelectorAll('.activation-spore, .firework-spore').forEach((n) => n.remove());
+  sporeHost.querySelectorAll('.activation-spore, .firework-spore, .activation-click-spore').forEach((n) => {
+    try { n.__actionStop?.(); } catch (_) {}
+    n.remove();
+  });
   flashParent.querySelectorAll('.activation-flash-layer, #effectOverlay').forEach((n) => n.remove());
   container.querySelectorAll('.activation-flash-layer, #effectOverlay').forEach((n) => n.remove());
 
   return { ok: true };
 }
 
-export default { runActivation };
+
+/**
+ * Alias: full threshold activation for an animation.
+ * Same as runActivation — prefer this name at call sites that pair with previewClick.
+ */
+export async function activate(opts) {
+  return runActivation(opts);
+}
+
+/**
+ * Per-click preview burst for the upcoming animation (character clicks only).
+ * Background clicks should keep using plain/default spores.
+ *
+ * @param {object} opts
+ * @param {HTMLElement} opts.container
+ * @param {HTMLElement} opts.creature
+ * @param {object} opts.animation - animation def (with optional clickEffect)
+ * @param {Array} [opts.compositeElements] - [{id,src,placement}] for composite-spores
+ * @param {number} opts.x - click x relative to container
+ * @param {number} opts.y - click y relative to container
+ * @param {HTMLElement} [opts.sporeHost]
+ * @param {function} [opts.fallback] - called for ghost-spores (e.g. effect.createSporeExplosion)
+ */
+export function previewClick(opts) {
+  const {
+    container,
+    creature,
+    animation,
+    compositeElements = [],
+    x,
+    y,
+    sporeHost = container,
+    fallback = null
+  } = opts;
+
+  const fx = resolveClickEffect(animation);
+
+  if (fx.type === 'ghost-spores' || fx.type === 'image-spores') {
+    if (typeof fallback === 'function') {
+      fallback(x, y);
+      return { ok: true, type: fx.type, via: 'fallback' };
+    }
+    // Minimal image burst if no fallback provided
+    const img = fx.sporeImage || '/effects/spore/ghost/img/mushroom-platypus-ghost-spores.png';
+    spawnImageBurst(sporeHost, x, y, img, fx.count || 16);
+    return { ok: true, type: fx.type, via: 'image' };
+  }
+
+  // composite-spores: mini replicas of base + accessories
+  const box = measureCreatureBox(creature, container);
+  const charBox = { width: box.width, height: box.height };
+  const count = fx.count || 16;
+  const baseScale = fx.scale || 0.18;
+  const layers = 2;
+  const perLayer = Math.max(1, Math.floor(count / layers));
+
+  for (let layer = 0; layer < layers; layer++) {
+    const layerRadius = (layer + 1) * 60;
+    for (let i = 0; i < perLayer; i++) {
+      const scale = baseScale * (0.75 + Math.random() * 0.5);
+      const node = buildCharacterComposite({
+        baseSrc: creature.getAttribute('src') || '/img/mushroom-platypus.png',
+        elements: compositeElements,
+        box: charBox,
+        scale
+      });
+      node.classList.add('spore', 'activation-click-spore');
+      node.style.position = 'absolute';
+      node.style.pointerEvents = 'none';
+      node.style.zIndex = '20';
+      node.style.overflow = 'visible';
+
+      const baseAngle = (Math.PI * 2 * i) / perLayer;
+      const angle = baseAngle + (Math.random() - 0.5) * 0.3;
+      const velocity = layerRadius + Math.random() * 50;
+      const tx = Math.cos(angle) * velocity;
+      const ty = Math.sin(angle) * velocity;
+      const rotation = 360 + Math.random() * 720;
+      node.style.setProperty('--tx', tx + 'px');
+      node.style.setProperty('--ty', ty + 'px');
+      node.style.setProperty('--rotation', rotation + 'deg');
+
+      const w = charBox.width * scale;
+      const h = charBox.height * scale;
+      node.style.left = (x - w / 2) + 'px';
+      node.style.top = (y - h / 2) + 'px';
+
+      const delay = layer * 0.08 + i * 0.02;
+      const duration = 0.6 + Math.random() * 0.4;
+      node.style.animation = `explode ${duration}s ease-out ${delay}s forwards`;
+
+      const ctrl = runObjectActions({
+        root: node,
+        elements: compositeElements,
+        target: 'spore',
+        sporeIndex: layer * perLayer + i
+      });
+      node.__actionStop = ctrl.stop;
+      sporeHost.appendChild(node);
+      setTimeout(() => {
+        try { node.__actionStop?.(); } catch (_) {}
+        node.remove();
+      }, (duration + delay) * 1000 + 50);
+    }
+  }
+  return { ok: true, type: 'composite-spores' };
+}
+
+function spawnImageBurst(host, x, y, src, count) {
+  const layers = 2;
+  const perLayer = Math.max(1, Math.floor(count / layers));
+  const sw = 76, sh = 50;
+  for (let layer = 0; layer < layers; layer++) {
+    const layerRadius = (layer + 1) * 60;
+    for (let i = 0; i < perLayer; i++) {
+      const spore = document.createElement('img');
+      spore.src = src;
+      spore.className = 'spore';
+      spore.draggable = false;
+      const baseAngle = (Math.PI * 2 * i) / perLayer;
+      const angle = baseAngle + (Math.random() - 0.5) * 0.3;
+      const velocity = layerRadius + Math.random() * 50;
+      spore.style.setProperty('--tx', Math.cos(angle) * velocity + 'px');
+      spore.style.setProperty('--ty', Math.sin(angle) * velocity + 'px');
+      spore.style.setProperty('--rotation', (360 + Math.random() * 720) + 'deg');
+      spore.style.left = (x - sw / 2) + 'px';
+      spore.style.top = (y - sh / 2) + 'px';
+      const delay = layer * 0.08 + i * 0.02;
+      const duration = 0.6 + Math.random() * 0.4;
+      spore.style.animation = `explode ${duration}s ease-out ${delay}s forwards`;
+      host.appendChild(spore);
+      setTimeout(() => spore.remove(), (duration + delay) * 1000 + 50);
+    }
+  }
+}
+
+export { resolveClickEffect };
+export default { runActivation, activate, previewClick, resolveClickEffect, preloadActivationAssets };

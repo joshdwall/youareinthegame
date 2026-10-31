@@ -5,11 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <title>Cambio — You Are In The Game (admin)</title>
   <!-- Real public site styles = background stage (float, sage, creature) -->
-  <link rel="stylesheet" href="/styles.css?v=loot-1" />
-  <link rel="stylesheet" href="/cambio/cambio.css?v=loot-1" />
+  <link rel="stylesheet" href="/styles.css?v=oa-1" />
+  <link rel="stylesheet" href="/cambio/cambio.css?v=oa-1" />
+  <link rel="stylesheet" href="/cambio/vendor/pf-desk-list.css?v=1" />
+  <link rel="stylesheet" href="/cambio/vendor/envivo-sidebar.css?v=1" />
   <link rel="stylesheet" href="/effects/spore/ghost/effect.css" />
   <link rel="stylesheet" href="/effects/spore/finale.css" />
-  <link rel="stylesheet" href="/effects/activation/activation.css?v=loot-1" />
+  <link rel="stylesheet" href="/effects/activation/activation.css?v=oa-1" />
 </head>
 <body class="cambio-body">
   <!-- Real site stage (same markup shape as apex index.html) -->
@@ -24,19 +26,47 @@
   </div>
 
   <!-- Harness overlays — far left / far right; character stays clear -->
-  <aside class="cambio-rail cambio-rail-left" id="cambioPanel">
+  <aside class="sidebar sidebar-fixed border-end cambio-rail cambio-rail-left" id="sidebar" data-ev-bulk-top="1">
+    <div class="sidebar-header">
+      <button class="header-toggler" type="button" id="evSidebarToggle" aria-label="Toggle sidebar" title="Toggle sidebar">
+        <span class="header-toggler-icon" aria-hidden="true"></span>
+      </button>
+      <strong class="sidebar-brand-full" id="evSidebarBrand">enVivo</strong>
+    </div>
+    <ul class="sidebar-nav" id="evNav">
+      <li class="nav-item">
+        <button class="nav-link" type="button" data-feature="overview" title="Overview">
+          <span class="ev-nav-label">Overview</span>
+        </button>
+      </li>
+      <li class="nav-group show" data-has-submenu="1" data-parent="yaitg">
+        <div class="ev-nav-parent-row">
+          <button class="nav-link ev-nav-parent active" type="button" data-feature="cambio" title="Cambio">
+            <span class="ev-nav-label">Cambio</span>
+          </button>
+        </div>
+        <ul class="nav-group-items compact">
+          <li class="nav-item"><span class="nav-link ev-nav-static">You Are In The Game</span></li>
+        </ul>
+      </li>
+    </ul>
+    <div class="cambio-sidebar-body" id="cambioPanel">
     <header class="cambio-header">
       <h1>Cambio</h1>
       <p class="cambio-sub">Admin · Access-gated · public site unchanged</p>
     </header>
-    <section>
+    <section class="pf-desk-list-unit" id="animListUnit">
       <h2>Animations</h2>
-      <input type="search" id="animSearch" class="cambio-search" placeholder="Search animations…" autocomplete="off" />
+      <div class="pf-desk-list-toolbar">
+        <input type="search" id="animSearch" class="pf-input pf-desk-list-search cambio-search" placeholder="Search animations…" autocomplete="off" />
+        <button type="button" class="pf-btn pf-desk-list-clear" id="animSearchClear" title="Clear">×</button>
+        <span class="pf-desk-list-meta" id="animListMeta"></span>
+      </div>
       <div class="cambio-create-row">
         <button type="button" class="btn" id="btnCreateAnim">+ Create</button>
         <button type="button" class="btn" id="btnExportRepo" title="Snapshot KV → git">Export→git</button>
       </div>
-      <ul id="animList" class="cambio-list"></ul>
+      <ul id="animList" class="cambio-list pf-desk-list-scroll"></ul>
       <p id="poolHint" class="cambio-status" style="font-size:.75rem"></p>
     </section>
     <dialog id="createDialog" class="cambio-dialog">
@@ -72,6 +102,7 @@
     <footer class="cambio-foot">
       <a href="https://youareinthegame.com" target="_blank" rel="noopener">Open public site</a>
     </footer>
+    </div>
   </aside>
 
   <aside class="cambio-rail cambio-rail-right hidden" id="editSection">
@@ -177,6 +208,22 @@
           </div>
         </div>
       </div>
+
+      <!-- Action point (muzzle / direction for objectActions) -->
+      <div class="ie-row" data-mode="action">
+        <div class="ie-view">
+          <span class="ie-label">Action point</span>
+          <span class="ie-value" id="actionView">—</span>
+          <button type="button" class="ie-btn" id="btnEditAction" title="Edit action point" aria-label="Edit action point">✎</button>
+        </div>
+        <div class="ie-edit hidden">
+          <p id="actionHint" class="cambio-status">Click the muzzle on the object, then click/drag to set direction.</p>
+          <div class="ie-actions">
+            <button type="button" class="ie-btn ie-save" id="btnSaveAction" title="Save">✓</button>
+            <button type="button" class="ie-btn ie-cancel" id="btnCancelAction" title="Cancel">✕</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="cambio-actions">
@@ -186,6 +233,6 @@
     <p id="saveStatus" class="cambio-status" aria-live="polite"></p>
   </aside>
 
-  <script type="module" src="/cambio/cambio.js?v=loot-1"></script>
+  <script type="module" src="/cambio/cambio.js?v=oa-1"></script>
 </body>
 </html>

@@ -1,14 +1,28 @@
 /**
- * Public apex: on ghost climax, pick from loot table and run ActivationEngine.
+ * Public apex: pick upcoming animation at cycle START (page load + after each
+ * activation reset). Character clicks before threshold use that animation's
+ * clickEffect. Threshold fires activate(upcoming) IMMEDIATELY — no blank
+ * ghost pre-flash, no await fetch/decode at threshold time.
  */
 import { pickAnimation } from '../loot/LootTable.js';
-import { runActivation } from '../../effects/activation/ActivationEngine.js';
+import {
+  activate,
+  previewClick,
+  resolveClickEffect,
+  preloadActivationAssets
+} from '../../effects/activation/ActivationEngine.js';
 import { mountOverlayProps } from '../../effects/activation/mountOverlayProps.js';
 
 let cachedConfig = null;
 let cacheAt = 0;
-let lastPickedId = null;
 const CACHE_MS = 15_000;
+
+/** @type {{ id: string, anim: object, prepared?: object } | null} */
+let upcoming = null;
+let lastPickedId = null;
+
+/** Prepared payload for the current upcoming (placements, elements, urls). */
+let prepared = null;
 
 export async function fetchAnimationConfig(force = false) {
   const now = Date.now();
@@ -27,7 +41,7 @@ export async function fetchAnimationConfig(force = false) {
   return cachedConfig;
 }
 
-function forceIdFromQuery() {
+export function forceIdFromQuery() {
   try {
     const u = new URL(location.href);
     const id = u.searchParams.get('force');
@@ -39,6 +53,138 @@ function forceIdFromQuery() {
   } catch {
     return null;
   }
+}
+
+export function getUpcoming() {
+  return upcoming;
+}
+
+export function getPrepared() {
+  return prepared;
+}
+
+export function setUpcomingForTests(pick) {
+  upcoming = pick;
+  if (pick?.id) lastPickedId = pick.id;
+  prepared = null;
+}
+
+function resolveForcePick(config) {
+  const forceId = forceIdFromQuery();
+  if (!forceId || !config?.animations) return null;
+  const anim = config.animations.find((a) => a.id === forceId);
+  return anim ? { id: forceId, anim } : null;
+}
+
+function isGhostPick(pick) {
+  return !pick || pick.id === 'ghost' || pick.anim?.playMode === 'legacy-ghost';
+}
+
+function placementsFor(config, animId) {
+  return config?.placementsByAnimation?.[animId]?.elements || {};
+}
+
+async function loadPlacementsFallback(animId) {
+  try {
+    const placeRes = await fetch('/content/cambio-placements.json');
+    if (placeRes.ok) {
+      const pj = await placeRes.json();
+      return pj?.byAnimation?.[animId]?.elements || {};
+    }
+  } catch (_) {}
+  return {};
+}
+
+function buildCompositeElements(anim, placementsById) {
+  return (anim.elements || []).map((el) => ({
+    id: el.id,
+    src: el.src.startsWith('/') || el.src.startsWith('http')
+      ? el.src
+      : '/' + el.src.replace(/^\//, ''),
+    placement: placementsById[el.id] || el.placement
+  }));
+}
+
+function assetUrls(anim, compositeElements, creature) {
+  const urls = [];
+  if (creature?.getAttribute?.('src')) urls.push(creature.getAttribute('src'));
+  else urls.push('/img/mushroom-platypus.png');
+  for (const el of compositeElements || []) {
+    if (el.src) urls.push(el.src);
+  }
+  for (const el of anim?.elements || []) {
+    const src = el.src?.startsWith('/') || el.src?.startsWith('http')
+      ? el.src
+      : '/' + (el.src || '').replace(/^\//, '');
+    if (src) urls.push(src);
+  }
+  return [...new Set(urls.filter(Boolean))];
+}
+
+/**
+ * Resolve placements + preload images/CSS for the upcoming animation.
+ * Must finish before threshold so activate() is synchronous-start.
+ */
+export async function prepareUpcoming(creature) {
+  prepared = null;
+  if (!upcoming || isGhostPick(upcoming)) {
+    prepared = { kind: 'ghost', ready: true };
+    exposeUpcoming();
+    return prepared;
+  }
+  const config = cachedConfig;
+  let placementsById = placementsFor(config, upcoming.id);
+  if (!Object.keys(placementsById).length) {
+    placementsById = await loadPlacementsFallback(upcoming.id);
+  }
+  const compositeElements = buildCompositeElements(upcoming.anim, placementsById);
+  const elements = (upcoming.anim.elements || []).map((el) => ({
+    ...el,
+    placement: placementsById[el.id]
+  }));
+  const urls = assetUrls(upcoming.anim, compositeElements, creature);
+  await preloadActivationAssets(urls);
+  prepared = {
+    kind: 'composite',
+    ready: true,
+    id: upcoming.id,
+    anim: upcoming.anim,
+    placementsById,
+    elements,
+    compositeElements,
+    urls
+  };
+  exposeUpcoming();
+  return prepared;
+}
+
+/**
+ * Pick (or re-pick) the upcoming animation for this cycle + preload its assets.
+ */
+export async function pickUpcoming({ forceRefresh = false, creature = null } = {}) {
+  const config = await fetchAnimationConfig(forceRefresh);
+  const forced = resolveForcePick(config);
+  if (forced) {
+    upcoming = forced;
+    lastPickedId = forced.id;
+  } else if (!config) {
+    upcoming = { id: 'ghost', anim: { id: 'ghost', playMode: 'legacy-ghost' } };
+  } else {
+    const pick = pickAnimation(config, { lastId: lastPickedId });
+    upcoming = pick || { id: 'ghost', anim: { id: 'ghost', playMode: 'legacy-ghost' } };
+    lastPickedId = upcoming.id;
+  }
+  exposeUpcoming();
+  const cre = creature || (typeof document !== 'undefined' ? document.getElementById('mainCreature') : null);
+  await prepareUpcoming(cre);
+  return upcoming;
+}
+
+function exposeUpcoming() {
+  try {
+    window.__yaitgUpcoming = upcoming;
+    window.__yaitgPrepared = prepared;
+  } catch (_) {}
 }
 
 export function ensurePublicOverlayDom(creature) {
@@ -62,66 +208,85 @@ export function ensurePublicOverlayDom(creature) {
   overlay.id = 'overlayLayer';
   overlay.className = 'public-overlay';
   overlay.setAttribute('aria-hidden', 'true');
+  overlay.style.opacity = '0';
   rig.appendChild(overlay);
   return { rig, overlay, creature };
 }
 
 /**
- * Hook SporeBaseEffect climax → loot pick → ActivationEngine when non-ghost.
- * Ghost keeps the existing FireworkManager climax for pixel parity.
+ * Hook SporeBaseEffect:
+ * - pick + preload upcoming at install (cycle start)
+ * - character click spores → previewClick(upcoming)
+ * - threshold → IMMEDIATE activate(upcoming) for composites (no ghost pre-sequence)
+ * - ghost keeps original triggerLightningReset timing
  */
 export function installThresholdLootHook(effect) {
   if (!effect || effect.__lootHooked) return;
   effect.__lootHooked = true;
 
+  const origTrigger = effect.triggerLightningReset.bind(effect);
   const origEnd = effect.endLightningSequence.bind(effect);
+  const origCreate = effect.createSporeExplosion.bind(effect);
 
-  effect.endLightningSequence = async function patchedEnd() {
-    const config = await fetchAnimationConfig();
-    const forceId = forceIdFromQuery();
-    let pick = null;
-    if (forceId && config?.animations) {
-      const anim = config.animations.find((a) => a.id === forceId);
-      if (anim) pick = { id: forceId, anim };
+  effect.createSporeExplosion = function patchedCreate(x, y) {
+    const up = upcoming;
+    if (!up?.anim) return origCreate(x, y);
+    const fx = resolveClickEffect(up.anim);
+    if (fx.type === 'ghost-spores' || fx.type === 'image-spores') {
+      return origCreate(x, y);
     }
-    if (!pick && config) {
-      pick = pickAnimation(config, { lastId: lastPickedId });
-    }
-    if (!pick || pick.id === 'ghost' || pick.anim?.playMode === 'legacy-ghost') {
-      lastPickedId = 'ghost';
-      return origEnd();
+    const placementsById = prepared?.placementsById || placementsFor(cachedConfig, up.id);
+    const elements = prepared?.compositeElements || buildCompositeElements(up.anim, placementsById);
+    return previewClick({
+      container: this.container,
+      creature: this.creature,
+      animation: up.anim,
+      compositeElements: elements,
+      x,
+      y,
+      sporeHost: this.container,
+      fallback: (xx, yy) => origCreate(xx, yy)
+    });
+  };
+
+  /**
+   * Threshold entry — composites activate IMMEDIATELY (same moment as ghost would
+   * start its first flash). Ghost keeps the original lightning→spores path.
+   */
+  effect.triggerLightningReset = async function patchedTrigger() {
+    if (this.lightningSequenceActive || this.finaleInProgress) return;
+
+    const pick = resolveForcePick(cachedConfig) || upcoming;
+    if (isGhostPick(pick)) {
+      return origTrigger();
     }
 
-    lastPickedId = pick.id;
-    const CONFIG = this.getConfig();
+    // --- Composite: immediate simultaneous flash+overlay (no blank pre-flash) ---
+    this.clearAllTimers?.();
+    this.lightningSequenceActive = true;
+    this.finaleInProgress = true;
     this.hideOverlay?.();
 
     const creature = this.creature;
     const container = this.container;
+    const CONFIG = this.getConfig();
     const { rig, overlay } = ensurePublicOverlayDom(creature);
 
-    let placementsById = {};
-    try {
-      if (config.placementsByAnimation?.[pick.id]?.elements) {
-        placementsById = config.placementsByAnimation[pick.id].elements;
-      } else {
-        const placeRes = await fetch('/content/cambio-placements.json');
-        if (placeRes.ok) {
-          const pj = await placeRes.json();
-          placementsById = pj?.byAnimation?.[pick.id]?.elements || {};
-        }
-      }
-    } catch (_) {}
+    // Ensure prepared (should already be ready from cycle start)
+    if (!prepared?.ready || prepared.id !== pick.id || prepared.kind !== 'composite') {
+      upcoming = pick;
+      await prepareUpcoming(creature);
+    }
+    const prep = prepared;
+    const placementsById = prep.placementsById || {};
+    const elements = prep.elements || [];
 
-    const elements = (pick.anim.elements || []).map((el) => ({
-      ...el,
-      placement: placementsById[el.id]
-    }));
-
+    // Mount accessories NOW (assets already decoded) — opacity 0 until engine flashes
     mountOverlayProps(overlay, { creature, creatureRig: rig, elements, placementsById });
+    overlay.style.opacity = '0';
 
     try {
-      await runActivation({
+      await activate({
         container,
         creature,
         creatureRig: rig,
@@ -130,20 +295,17 @@ export function installThresholdLootHook(effect) {
         flashHost: overlay,
         composite: {
           baseSrc: creature.getAttribute('src') || '/img/mushroom-platypus.png',
-          elements: elements.map((el) => ({
-            id: el.id,
-            src: el.src.startsWith('/') || el.src.startsWith('http')
-              ? el.src
-              : '/' + el.src.replace(/^\//, ''),
-            placement: placementsById[el.id] || el.placement
-          }))
+          elements: prep.compositeElements || buildCompositeElements(pick.anim, placementsById)
         },
-        spore: { count: 8, scale: 0.32, durationMs: 1800, spreadPx: 140 }
+        spore: { count: 8, scale: 0.32, durationMs: 1800, rangePx: 140 },
+        assetsPreloaded: true
       });
     } catch (err) {
       console.error('composite activation failed; falling back to ghost', err);
       overlay.innerHTML = '';
-      return origEnd();
+      this.lightningSequenceActive = false;
+      this.finaleInProgress = false;
+      return origTrigger();
     }
 
     overlay.innerHTML = '';
@@ -159,9 +321,51 @@ export function installThresholdLootHook(effect) {
     if (container && CONFIG?.VISUALS?.BACKGROUND_COLOR) {
       container.style.backgroundColor = CONFIG.VISUALS.BACKGROUND_COLOR;
     }
+
+    upcoming = null;
+    prepared = null;
+    await pickUpcoming({ forceRefresh: true, creature });
   };
 
-  fetchAnimationConfig().catch(() => {});
+  // Ghost climax end: after fireworks path, pick next upcoming (+ preload)
+  effect.endLightningSequence = function patchedEnd() {
+    const pick = resolveForcePick(cachedConfig) || upcoming;
+    // If somehow composite reached here, do nothing (trigger already handled)
+    if (!isGhostPick(pick)) {
+      return;
+    }
+    lastPickedId = 'ghost';
+    origEnd();
+    // Pick next after a short delay so finaleComplete can run; also hook onFinaleComplete
+  };
+
+  const origFinale = effect.onFinaleComplete?.bind(effect);
+  if (origFinale) {
+    effect.onFinaleComplete = async function patchedFinale() {
+      await origFinale();
+      upcoming = null;
+      prepared = null;
+      await pickUpcoming({ creature: this.creature });
+    };
+  }
+
+  // Cycle start: pick + preload now (and ensure overlay DOM for composites)
+  (async () => {
+    await pickUpcoming({ creature: effect.creature });
+    if (!isGhostPick(upcoming) && effect.creature) {
+      ensurePublicOverlayDom(effect.creature);
+    }
+  })().catch(() => {});
 }
 
-export default { fetchAnimationConfig, installThresholdLootHook, ensurePublicOverlayDom };
+export default {
+  fetchAnimationConfig,
+  installThresholdLootHook,
+  ensurePublicOverlayDom,
+  pickUpcoming,
+  prepareUpcoming,
+  getUpcoming,
+  getPrepared,
+  setUpcomingForTests,
+  forceIdFromQuery
+};

@@ -1,0 +1,97 @@
+/**
+ * SSOT: place overlay elements on the rendered character box.
+ *
+ * Coordinate system (both Cambio edit-mode and public apex MUST use this):
+ * - box = creature getBoundingClientRect relative to the overlay host (rig)
+ * - characterAnchor {x,y} in [0,1+] of character box (attachment point)
+ * - objectAnchor {x,y} in [0,1] of the element image (pivot)
+ * - scale = element width as a FRACTION OF CHARACTER WIDTH
+ *   (NOT multiplied by defaultWidthFrac again — when creating defaults,
+ *    set scale = el.defaultWidthFrac; after edit, scale IS the width fraction)
+ * - rotation degrees; flipX boolean
+ *
+ * Size:  w = scale * box.width
+ * Pos:   left/top = box origin + characterAnchor * box size
+ * Xform: translate(-objectAnchor%) rotate(deg) [scaleX(-1)]
+ */
+
+export function measureCreatureBoxInHost(creatureEl, hostEl) {
+  const host = hostEl.getBoundingClientRect();
+  const r = creatureEl.getBoundingClientRect();
+  return {
+    left: r.left - host.left,
+    top: r.top - host.top,
+    width: r.width,
+    height: r.height
+  };
+}
+
+export function defaultObjectAnchor() {
+  return { x: 0.5, y: 0.5 };
+}
+
+/**
+ * Resolve width in px from placement scale (width-fraction of character).
+ * @param {object} st - placement state
+ * @param {number} characterWidthPx
+ * @param {number} [fallbackScale=0.3]
+ */
+export function elementWidthPx(st, characterWidthPx, fallbackScale = 0.3) {
+  const scale = Number.isFinite(st?.scale) ? st.scale : fallbackScale;
+  return scale * characterWidthPx;
+}
+
+/**
+ * Apply left/top/width/transform to an absolutely-positioned element image.
+ * Matches Cambio edit-mode positionProp + applyPropTransform exactly.
+ * @returns {{ width: number, ca: object, oa: object, scale: number }}
+ */
+export function applyElementPlacement(img, st, box) {
+  const ca = st?.characterAnchor || { x: 0.5, y: 0.5 };
+  const oa = st?.objectAnchor || defaultObjectAnchor();
+  const scale = Number.isFinite(st?.scale) ? st.scale : 0.3;
+  const w = scale * box.width;
+  const rot = st?.rotation || 0;
+  const flips = st?.flipX ? ' scaleX(-1)' : '';
+
+  img.style.position = 'absolute';
+  img.style.left = `${box.left + ca.x * box.width}px`;
+  img.style.top = `${box.top + ca.y * box.height}px`;
+  img.style.width = `${w}px`;
+  img.style.height = 'auto';
+  img.style.transformOrigin = `${oa.x * 100}% ${oa.y * 100}%`;
+  img.style.transform = `translate(${-oa.x * 100}%, ${-oa.y * 100}%) rotate(${rot}deg)${flips}`;
+
+  return { width: w, ca, oa, scale };
+}
+
+/**
+ * Compute expected element bounding box (approx, height from natural aspect if known).
+ * Used by parity tests. If naturalW/H unknown, height ≈ width (conservative).
+ */
+export function expectedElementRect(st, box, naturalW = 0, naturalH = 0) {
+  const scale = Number.isFinite(st?.scale) ? st.scale : 0.3;
+  const width = scale * box.width;
+  const ca = st?.characterAnchor || { x: 0.5, y: 0.5 };
+  const oa = st?.objectAnchor || defaultObjectAnchor();
+  const aspect = naturalW > 0 && naturalH > 0 ? naturalH / naturalW : 1;
+  const height = width * aspect;
+  const attachX = box.left + ca.x * box.width;
+  const attachY = box.top + ca.y * box.height;
+  return {
+    left: attachX - oa.x * width,
+    top: attachY - oa.y * height,
+    width,
+    height,
+    attachX,
+    attachY
+  };
+}
+
+export default {
+  measureCreatureBoxInHost,
+  defaultObjectAnchor,
+  elementWidthPx,
+  applyElementPlacement,
+  expectedElementRect
+};

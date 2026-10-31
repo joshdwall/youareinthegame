@@ -1,0 +1,74 @@
+/* enVivo sidebar shell (visual parity subset for Cambio host) */
+#sidebar.sidebar {
+  display: flex;
+  flex-direction: column;
+  background: #1e2430;
+  color: #e8ecf2;
+  border-right: 1px solid rgba(255,255,255,.08);
+}
+#sidebar .sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+  min-height: 48px;
+}
+#sidebar .sidebar-brand-full {
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+}
+#sidebar .header-toggler {
+  width: 28px; height: 28px;
+  border: 0; background: transparent; color: inherit; cursor: pointer;
+  display: grid; place-items: center;
+}
+#sidebar .header-toggler-icon {
+  width: 16px; height: 2px; background: currentColor; position: relative; display: block;
+}
+#sidebar .header-toggler-icon::before,
+#sidebar .header-toggler-icon::after {
+  content: ''; position: absolute; left: 0; width: 16px; height: 2px; background: currentColor;
+}
+#sidebar .header-toggler-icon::before { top: -5px; }
+#sidebar .header-toggler-icon::after { top: 5px; }
+#sidebar .sidebar-nav {
+  list-style: none; margin: 0; padding: 0.4rem 0.35rem;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+#sidebar .nav-item, #sidebar .nav-group { margin: 0; }
+#sidebar .nav-link {
+  display: flex; align-items: center; gap: 0.4rem;
+  width: 100%; border: 0; background: transparent; color: #c9d2e0;
+  text-align: left; padding: 0.45rem 0.55rem; border-radius: 6px; cursor: pointer;
+  font: inherit;
+}
+#sidebar .nav-link:hover { background: rgba(255,255,255,.06); color: #fff; }
+#sidebar .nav-link.active { background: rgba(74,158,255,.22); color: #fff; }
+#sidebar .nav-group-items { list-style: none; margin: 0; padding: 0 0 0 0.6rem; }
+#sidebar .ev-nav-static {
+  display: block; padding: 0.25rem 0.55rem; font-size: 0.75rem; opacity: 0.7;
+}
+#sidebar .cambio-sidebar-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.75rem;
+  color: #1a1a1a;
+  background: #f3f1ea;
+}
+#sidebar .cambio-header h1 { color: #1a1a1a; }
+.cambio-marker.action-point {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #ff6a00; box-shadow: 0 0 0 2px #fff, 0 0 8px rgba(255,100,0,.7);
+  position: absolute; transform: translate(-50%,-50%); pointer-events: none; z-index: 5;
+}
+.cambio-marker.action-dir {
+  width: 36px; height: 2px; background: #ff6a00;
+  position: absolute; transform-origin: 0 50%; pointer-events: none; z-index: 5;
+  box-shadow: 0 0 4px rgba(255,100,0,.6);
+}
+.overlay.mode-action .cambio-prop.picking-action {
+  outline: 2px dashed #ff6a00;
+  cursor: crosshair;
+}

@@ -8,12 +8,14 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs",
-    "verify": "node tests/verify-yaitg-session-roll.mjs && node tests/verify-yaitg-animation-preview.mjs && node tests/loot-table-weights.test.mjs",
+    "verify": "node tests/verify-yaitg-session-roll.mjs && node tests/verify-yaitg-animation-preview.mjs && node tests/loot-table-weights.test.mjs && node tests/placement-math.test.mjs",
     "test": "npm run verify",
     "dev": "npm run build && npx wrangler pages dev dist",
     "compare:staging": "node scripts/compare-staging.mjs",
     "test:click": "node tests/click-test.mjs",
-    "test:loot": "node tests/loot-table-weights.test.mjs"
+    "test:loot": "node tests/loot-table-weights.test.mjs",
+    "test:placement": "node tests/placement-parity-test.mjs",
+    "test:upcoming": "node tests/upcoming-clickeffect-test.mjs"
   },
   "devDependencies": {
     "playwright": "^1.48.0"

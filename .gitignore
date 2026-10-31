@@ -5,3 +5,5 @@ dist/
 .env*
 .harness/
 capture/yaitg-activation/
+# Playwright / local artifacts
+test-results/

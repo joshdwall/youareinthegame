@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 2,
-  "updatedAt": "2026-10-30T22:16:03.402Z",
+  "schemaVersion": 1,
+  "updatedAt": "2026-10-31T00:25:12.597Z",
   "byAnimation": {
     "cowboy": {
       "transitionId": "lightning",
@@ -8,14 +8,14 @@
         "hat": {
           "objectAnchor": {
             "x": 0.5,
-            "y": 0.5
+            "y": 0.9
           },
           "characterAnchor": {
-            "x": 0.48798449304854485,
-            "y": -0.07305050626728364
+            "x": 0.85,
+            "y": -0.14999995246583483
           },
           "rotation": 0,
-          "scale": 1.05,
+          "scale": 0.55,
           "transition": null,
           "flipX": false
         },
@@ -25,8 +25,8 @@
             "y": 0.5
           },
           "characterAnchor": {
-            "x": 0.4949264790076918,
-            "y": 0.7959222378465736
+            "x": 0.5,
+            "y": 0.56
           },
           "rotation": 0,
           "scale": 0.38,
@@ -35,41 +35,67 @@
         },
         "pistolL": {
           "objectAnchor": {
-            "x": 0.5599375681293318,
-            "y": 0.3445842106358893
+            "x": 0.5,
+            "y": 0.5
           },
           "characterAnchor": {
-            "x": 0.0024783024801600623,
-            "y": 0.46025228913769484
+            "x": 0.14,
+            "y": 0.72
           },
           "rotation": -20,
           "scale": 0.28,
           "transition": null,
-          "flipX": false
+          "flipX": false,
+          "objectActions": [
+            {
+              "type": "fire",
+              "point": {
+                "x": 0.08,
+                "y": 0.32
+              },
+              "direction": 180,
+              "pattern": "alternate",
+              "rate": 3.2,
+              "jitter": 0.5,
+              "appliesTo": [
+                "spore",
+                "activation"
+              ]
+            }
+          ]
         },
         "pistolR": {
           "objectAnchor": {
-            "x": 0.321173542793166,
-            "y": 0.479040138779011
+            "x": 0.5,
+            "y": 0.5
           },
           "characterAnchor": {
-            "x": 0.9365892226504277,
-            "y": 0.4912562212983778
+            "x": 0.86,
+            "y": 0.72
           },
           "rotation": 20,
           "scale": 0.28,
           "transition": null,
-          "flipX": false
+          "flipX": false,
+          "objectActions": [
+            {
+              "type": "fire",
+              "point": {
+                "x": 0.92,
+                "y": 0.32
+              },
+              "direction": 0,
+              "pattern": "alternate",
+              "rate": 3.2,
+              "jitter": 0.5,
+              "appliesTo": [
+                "spore",
+                "activation"
+              ]
+            }
+          ]
         }
       }
     }
-  },
-  "_checkpoint": {
-    "tag": "checkpoint-2026-10-30-cowboy-placed",
-    "capturedAt": "2026-10-30T22:23:00-05:00",
-    "kvKey": "cambio:placements",
-    "kvBackupKey": "cambio:placements:backup:2026-10-30-cowboy-placed",
-    "kvNamespaceId": "384434fdf4f241be872e33e6c5fcbff3",
-    "note": "Operator-approved cowboy placements SSOT after manual Cambio placement."
   }
 }

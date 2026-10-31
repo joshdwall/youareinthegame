@@ -1,0 +1,49 @@
+/* SITE-HUB desk list (subset) — searchable scrollable list unit */
+.pf-desk-list-unit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.pf-desk-list-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.pf-desk-list-search,
+.pf-input.pf-desk-list-search {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid rgba(0,0,0,.18);
+  border-radius: 6px;
+  background: #fff;
+  font: inherit;
+}
+.pf-desk-list-search:focus {
+  outline: 2px solid #4a9eff;
+  outline-offset: 1px;
+}
+.pf-desk-list-clear,
+.pf-btn {
+  border: 1px solid rgba(0,0,0,.15);
+  background: #f4f4f4;
+  border-radius: 6px;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  line-height: 1.2;
+}
+.pf-desk-list-meta {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+.pf-desk-list-scroll {
+  overflow: auto;
+  max-height: min(52vh, 480px);
+  min-height: 120px;
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 8px;
+  background: rgba(255,255,255,.55);
+}
