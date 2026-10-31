@@ -12,9 +12,12 @@ import {
   preloadActivationAssets
 } from '../../effects/activation/ActivationEngine.js';
 import { mountOverlayProps } from '../../effects/activation/mountOverlayProps.js';
+import { fadeStormResetToLight } from '../../effects/activation/fadeStormReset.js';
 
 let cachedConfig = null;
 let cacheAt = 0;
+/** @type {object | null} */
+let hookedEffect = null;
 const CACHE_MS = 15_000;
 
 /** @type {{ id: string, anim: object, prepared?: object } | null} */
@@ -163,6 +166,7 @@ export async function prepareUpcoming(creature) {
  */
 export async function pickUpcoming({ forceRefresh = false, creature = null } = {}) {
   const config = await fetchAnimationConfig(forceRefresh);
+  applyClickThresholdFromConfig(hookedEffect || (typeof window !== 'undefined' ? window.__yaitgEffect : null), config);
   const forced = resolveForcePick(config);
   if (forced) {
     upcoming = forced;
@@ -220,9 +224,19 @@ export function ensurePublicOverlayDom(creature) {
  * - threshold → IMMEDIATE activate(upcoming) for composites (no ghost pre-sequence)
  * - ghost keeps original triggerLightningReset timing
  */
+
+/** Apply live click-threshold settings onto the SporeBaseEffect instance. */
+export function applyClickThresholdFromConfig(effect, config) {
+  if (!effect?.applyLiveClickThreshold) return;
+  const settings = config?.settings || cachedConfig?.settings;
+  if (settings) effect.applyLiveClickThreshold(settings);
+}
+
 export function installThresholdLootHook(effect) {
   if (!effect || effect.__lootHooked) return;
   effect.__lootHooked = true;
+  hookedEffect = effect;
+  applyClickThresholdFromConfig(effect, cachedConfig);
 
   const origTrigger = effect.triggerLightningReset.bind(effect);
   const origEnd = effect.endLightningSequence.bind(effect);
@@ -313,13 +327,24 @@ export function installThresholdLootHook(effect) {
     overlay.classList.remove('activation-flash-host');
 
     this.clickCount = 0;
+    applyClickThresholdFromConfig(this, cachedConfig);
     this.calculateResetThreshold?.();
     this.lightningSequenceActive = false;
     this.finaleInProgress = false;
     this.stormLevel = 0;
-    this.updateStormVisuals?.();
-    if (container && CONFIG?.VISUALS?.BACKGROUND_COLOR) {
-      container.style.backgroundColor = CONFIG.VISUALS.BACKGROUND_COLOR;
+    // Gradual dark→light (prior SporeBaseEffect fade); flash at activation stays instant
+    const fadeMs = Number.isFinite(this.__liveStormResetMs)
+      ? this.__liveStormResetMs
+      : (CONFIG?.ANIMATIONS?.STORM_RESET_DURATION || 1500);
+    fadeStormResetToLight(container, {
+      durationMs: fadeMs,
+      backgroundColor: CONFIG?.VISUALS?.BACKGROUND_COLOR || '#7ab5a0'
+    });
+    if (this.creature) {
+      this.creature.className = this.creature.className.replace(/storm-level-\d+/g, '');
+    }
+    if (this.effectOverlay) {
+      this.effectOverlay.className = this.effectOverlay.className.replace(/storm-level-\d+/g, '');
     }
 
     upcoming = null;
@@ -360,6 +385,7 @@ export function installThresholdLootHook(effect) {
 
 export default {
   fetchAnimationConfig,
+  applyClickThresholdFromConfig,
   installThresholdLootHook,
   ensurePublicOverlayDom,
   pickUpcoming,

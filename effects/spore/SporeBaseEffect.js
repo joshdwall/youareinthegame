@@ -5,6 +5,7 @@
  */
 
 import { FireworkManager } from './finale.js';
+import { fadeStormResetToLight } from '../activation/fadeStormReset.js';
 
 /**
  * Base class for spore effects with storm and lightning mechanics
@@ -392,11 +393,20 @@ class SporeBaseEffect {
             requestAnimationFrame(() => {
                 finalFlash.style.opacity = '0';
 
-                // Reset storm
+                // Reset storm — gradual dark→light fade (not an abrupt snap)
                 this.stormLevel = 0;
-                this.updateStormVisuals();
-                this.container.style.transition = `background-color ${CONFIG.ANIMATIONS.STORM_RESET_DURATION}ms ease-out`;
-                this.container.style.backgroundColor = CONFIG.VISUALS.BACKGROUND_COLOR;
+                const durationMs = Number.isFinite(this.__liveStormResetMs)
+                  ? this.__liveStormResetMs
+                  : CONFIG.ANIMATIONS.STORM_RESET_DURATION;
+                fadeStormResetToLight(this.container, {
+                  durationMs,
+                  backgroundColor: CONFIG.VISUALS.BACKGROUND_COLOR
+                });
+                // Clear storm classes without snapping background (fade owns bg)
+                this.creature.className = this.creature.className.replace(/storm-level-\d+/g, '');
+                if (this.effectOverlay) {
+                    this.effectOverlay.className = this.effectOverlay.className.replace(/storm-level-\d+/g, '');
+                }
             });
 
             // Cleanup
@@ -505,8 +515,36 @@ class SporeBaseEffect {
      */
     calculateResetThreshold() {
         const CONFIG = this.getConfig();
-        const range = CONFIG.LIGHTNING.MAX_CLICKS - CONFIG.LIGHTNING.MIN_CLICKS;
-        this.resetThreshold = this.clickCount + Math.floor(Math.random() * (range + 1)) + CONFIG.LIGHTNING.MIN_CLICKS;
+        // Live KV settings (via /api/animations) override build-time GHOST_CONFIG when set.
+        const min = Number.isFinite(this.__liveClickMin)
+          ? this.__liveClickMin
+          : CONFIG.LIGHTNING.MIN_CLICKS;
+        const max = Number.isFinite(this.__liveClickMax)
+          ? this.__liveClickMax
+          : CONFIG.LIGHTNING.MAX_CLICKS;
+        const lo = Math.max(3, Math.floor(min));
+        const hi = Math.max(lo, Math.floor(max));
+        const range = hi - lo;
+        this.resetThreshold = this.clickCount + Math.floor(Math.random() * (range + 1)) + lo;
+    }
+
+    /**
+     * Apply live click-threshold settings from runtime config (no redeploy).
+     * @param {{ clickThresholdMin?: number, clickThresholdMax?: number } | null} settings
+     */
+    applyLiveClickThreshold(settings) {
+        if (!settings || typeof settings !== 'object') return;
+        let min = Number(settings.clickThresholdMin);
+        let max = Number(settings.clickThresholdMax);
+        if (!Number.isFinite(min)) min = this.getConfig().LIGHTNING.MIN_CLICKS;
+        if (!Number.isFinite(max)) max = this.getConfig().LIGHTNING.MAX_CLICKS;
+        this.__liveClickMin = Math.max(3, Math.floor(min));
+        this.__liveClickMax = Math.max(this.__liveClickMin, Math.floor(max));
+        let fadeMs = Number(settings.stormResetDurationMs);
+        if (!Number.isFinite(fadeMs) || fadeMs < 200) {
+            fadeMs = this.getConfig().ANIMATIONS.STORM_RESET_DURATION;
+        }
+        this.__liveStormResetMs = Math.floor(fadeMs);
     }
 
     /**

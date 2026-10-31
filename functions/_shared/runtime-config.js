@@ -22,6 +22,13 @@ export const BUILTIN_SEED = {
     legendary: { label: 'Legendary', weight: 1 }
   },
   flags: { noRepeatTwice: false },
+  settings: {
+    // Was build-time GHOST_CONFIG LIGHTNING MIN=5 MAX=10; live defaults half (min floor 3).
+    clickThresholdMin: 3,
+    clickThresholdMax: 5,
+    // Dark→light background fade on reset (was ANIMATIONS.STORM_RESET_DURATION 1500). Flash stays instant.
+    stormResetDurationMs: 1500
+  },
   seasons: [],
   animations: [
     {
@@ -71,11 +78,34 @@ export const BUILTIN_SEED = {
 export function normalizeConfig(raw) {
   const base = raw && typeof raw === 'object' ? raw : {};
   const seed = BUILTIN_SEED;
+  const seedSettings = seed.settings || {
+    clickThresholdMin: 3,
+    clickThresholdMax: 5,
+    stormResetDurationMs: 1500
+  };
+  const rawSettings = base.settings && typeof base.settings === 'object' ? base.settings : {};
+  let clickThresholdMin = Number(rawSettings.clickThresholdMin ?? seedSettings.clickThresholdMin);
+  let clickThresholdMax = Number(rawSettings.clickThresholdMax ?? seedSettings.clickThresholdMax);
+  let stormResetDurationMs = Number(
+    rawSettings.stormResetDurationMs ?? seedSettings.stormResetDurationMs
+  );
+  if (!Number.isFinite(clickThresholdMin) || clickThresholdMin < 3) clickThresholdMin = 3;
+  if (!Number.isFinite(clickThresholdMax) || clickThresholdMax < clickThresholdMin) {
+    clickThresholdMax = Math.max(clickThresholdMin, seedSettings.clickThresholdMax);
+  }
+  if (!Number.isFinite(stormResetDurationMs) || stormResetDurationMs < 200) {
+    stormResetDurationMs = 1500;
+  }
+  clickThresholdMin = Math.floor(clickThresholdMin);
+  clickThresholdMax = Math.floor(clickThresholdMax);
+  stormResetDurationMs = Math.floor(stormResetDurationMs);
+
   return {
     schemaVersion: base.schemaVersion || 1,
     updatedAt: base.updatedAt || new Date().toISOString(),
     tiers: base.tiers || seed.tiers,
     flags: { noRepeatTwice: false, ...(base.flags || {}) },
+    settings: { clickThresholdMin, clickThresholdMax, stormResetDurationMs },
     seasons: Array.isArray(base.seasons) ? base.seasons : [],
     animations: Array.isArray(base.animations) && base.animations.length
       ? base.animations
@@ -110,6 +140,7 @@ export function publicView(config) {
     updatedAt: config.updatedAt,
     tiers: config.tiers,
     flags: config.flags,
+    settings: config.settings || { clickThresholdMin: 3, clickThresholdMax: 5, stormResetDurationMs: 1500 },
     seasons: config.seasons,
     animations: live
   };

@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body>
+  <div class="container" id="c" style="width:200px;height:200px;background:rgba(0,0,0,0.75)"></div>
+  <img id="mainCreature" class="creature" src="/img/mushroom-platypus.png" />
+  <pre id="out"></pre>
+  <script type="module">
+    import { fadeStormResetToLight } from '/effects/activation/fadeStormReset.js';
+    import SporeBaseEffect from '/effects/spore/SporeBaseEffect.js';
+    import { GHOST_CONFIG } from '/effects/spore/ghost/config.js';
+
+    function parseRgb(str) {
+      const m = String(str).match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+      return m ? { r: +m[1], g: +m[2], b: +m[3] } : null;
+    }
+    function lum(c) { return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b; }
+
+    const el = document.getElementById('c');
+    const samples = [];
+    const t0 = performance.now();
+    samples.push({ t: 0, bg: getComputedStyle(el).backgroundColor });
+    fadeStormResetToLight(el, { durationMs: 600, backgroundColor: '#7ab5a0', clearAfter: false });
+    for (let i = 0; i < 8; i++) {
+      await new Promise((r) => setTimeout(r, 70));
+      samples.push({ t: Math.round(performance.now() - t0), bg: getComputedStyle(el).backgroundColor });
+    }
+    await new Promise((r) => setTimeout(r, 400));
+    samples.push({ t: Math.round(performance.now() - t0), bg: getComputedStyle(el).backgroundColor });
+
+    const lums = samples.map((s) => {
+      const c = parseRgb(s.bg);
+      return { t: s.t, lum: c ? lum(c) : -1, bg: s.bg };
+    });
+    const start = lums[0].lum, early = lums[1].lum, end = lums[lums.length - 1].lum;
+    const rounded = new Set(lums.map((x) => Math.round(x.lum / 8)));
+    const fadeOk = early < end - 5 && end > start + 20 && rounded.size >= 3;
+
+    class T extends SporeBaseEffect { getConfig() { return GHOST_CONFIG; } }
+    const e = new T();
+    e.container = el;
+    e.creature = document.getElementById('mainCreature');
+    e.clickCount = 0;
+    e.calculateResetThreshold();
+    const fallback = e.resetThreshold;
+    e.applyLiveClickThreshold({ clickThresholdMin: 3, clickThresholdMax: 3, stormResetDurationMs: 800 });
+    e.clickCount = 0;
+    e.calculateResetThreshold();
+    const live3 = e.resetThreshold;
+    e.applyLiveClickThreshold({ clickThresholdMin: 8, clickThresholdMax: 8, stormResetDurationMs: 800 });
+    e.clickCount = 0;
+    e.calculateResetThreshold();
+    const live8 = e.resetThreshold;
+
+    const thrOk = GHOST_CONFIG.LIGHTNING.MIN_CLICKS === 3
+      && GHOST_CONFIG.LIGHTNING.MAX_CLICKS === 5
+      && live3 === 3 && live8 === 8 && e.__liveStormResetMs === 800;
+
+    window.__result = {
+      fadeOk, thrOk, lums, rounded: [...rounded],
+      thr: { fallback, live3, live8, fade: e.__liveStormResetMs,
+        ghostMin: GHOST_CONFIG.LIGHTNING.MIN_CLICKS, ghostMax: GHOST_CONFIG.LIGHTNING.MAX_CLICKS }
+    };
+    document.getElementById('out').textContent = JSON.stringify(window.__result, null, 2);
+  </script>
+</body>
+</html>

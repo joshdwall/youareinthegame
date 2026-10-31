@@ -22,7 +22,7 @@ const state = {
   selectedElementId: null,
   dirty: false,
   animFilter: '',
-  /** null | 'connector' | 'rotation' | 'move' | 'size' | 'transition' | 'action' | 'previewObjectActions' */
+  /** null | 'connector' | 'rotation' | 'move' | 'size' | 'transition' | 'action' | 'previewObjectActions' | 'clickThreshold' | 'stormResetDuration' */
   activeMode: null,
   /** Deep clone of element (or transitionId) when mode opened */
   modeSnapshot: null,
@@ -105,7 +105,11 @@ function syncManifestFromRuntime() {
   };
   state.tiers = state.runtimeConfig.tiers;
   state.flags = state.runtimeConfig.flags;
+  state.settings = state.runtimeConfig.settings || { clickThresholdMin: 3, clickThresholdMax: 5 };
   state.seasons = state.runtimeConfig.seasons || [];
+  syncClickThresholdView();
+  syncStormResetView();
+  syncStormResetView();
 }
 
 async function apiJson(url, opts = {}) {
@@ -268,6 +272,12 @@ async function boot() {
   $('btnSaveTransition').addEventListener('click', () => commitMode());
   $('btnCancelTransition').addEventListener('click', () => cancelMode());
   $('btnEditPreviewObjectActions')?.addEventListener('click', () => enterMode('previewObjectActions'));
+  $('btnEditClickThreshold')?.addEventListener('click', () => enterMode('clickThreshold'));
+  $('btnSaveClickThreshold')?.addEventListener('click', () => commitMode());
+  $('btnCancelClickThreshold')?.addEventListener('click', () => cancelMode());
+  $('btnEditStormReset')?.addEventListener('click', () => enterMode('stormResetDuration'));
+  $('btnSaveStormReset')?.addEventListener('click', () => commitMode());
+  $('btnCancelStormReset')?.addEventListener('click', () => cancelMode());
   $('btnSavePreviewObjectActions')?.addEventListener('click', () => commitMode());
   $('btnCancelPreviewObjectActions')?.addEventListener('click', () => cancelMode());
   transitionSelect.addEventListener('change', onTransitionChange);
@@ -324,7 +334,66 @@ function markDirty() {
 
 /* ---------- Modal pencil modes ---------- */
 
+
+function getClickThresholdSettings() {
+  const s = state.settings || state.runtimeConfig?.settings || {};
+  let min = Number(s.clickThresholdMin);
+  let max = Number(s.clickThresholdMax);
+  if (!Number.isFinite(min) || min < 3) min = 3;
+  if (!Number.isFinite(max) || max < min) max = Math.max(min, 5);
+  return { clickThresholdMin: Math.floor(min), clickThresholdMax: Math.floor(max) };
+}
+
+
+function getStormResetDurationMs() {
+  const s = state.settings || state.runtimeConfig?.settings || {};
+  let ms = Number(s.stormResetDurationMs);
+  if (!Number.isFinite(ms) || ms < 200) ms = 1500;
+  return Math.floor(ms);
+}
+
+function syncStormResetView() {
+  const ms = getStormResetDurationMs();
+  const view = $('stormResetView');
+  if (view) view.textContent = `${ms}ms`;
+  const input = $('stormResetInput');
+  if (input && state.activeMode !== 'stormResetDuration') input.value = String(ms);
+}
+
+function syncClickThresholdView() {
+  const { clickThresholdMin: min, clickThresholdMax: max } = getClickThresholdSettings();
+  const view = $('clickThresholdView');
+  if (view) view.textContent = `${min}–${max}`;
+  const minIn = $('clickThresholdMinInput');
+  const maxIn = $('clickThresholdMaxInput');
+  if (minIn && state.activeMode !== 'clickThreshold') minIn.value = String(min);
+  if (maxIn && state.activeMode !== 'clickThreshold') maxIn.value = String(max);
+}
+
 function enterMode(mode) {
+  // Site settings (click threshold) — always available; no edit/anim required
+  if (mode === 'clickThreshold') {
+    if (state.activeMode && state.activeMode !== mode) cancelMode();
+    state.activeMode = mode;
+    const cur = getClickThresholdSettings();
+    state.modeSnapshot = { ...cur };
+    const minIn = $('clickThresholdMinInput');
+    const maxIn = $('clickThresholdMaxInput');
+    if (minIn) minIn.value = String(cur.clickThresholdMin);
+    if (maxIn) maxIn.value = String(cur.clickThresholdMax);
+    syncModeUi();
+    return;
+  }
+  if (mode === 'stormResetDuration') {
+    if (state.activeMode && state.activeMode !== mode) cancelMode();
+    state.activeMode = mode;
+    const ms = getStormResetDurationMs();
+    state.modeSnapshot = { stormResetDurationMs: ms };
+    const input = $('stormResetInput');
+    if (input) input.value = String(ms);
+    syncModeUi();
+    return;
+  }
   if (!state.editMode || !state.selectedAnim) return;
   if (mode !== 'transition' && mode !== 'previewObjectActions' && !state.selectedElementId) return;
   if (state.activeMode && state.activeMode !== mode) {
@@ -392,6 +461,54 @@ async function commitMode() {
       $('saveStatus').textContent = `Preview object actions save failed: ${e.message || e}`;
     }
   }
+  if (state.activeMode === 'clickThreshold') {
+    let min = Number($('clickThresholdMinInput')?.value);
+    let max = Number($('clickThresholdMaxInput')?.value);
+    if (!Number.isFinite(min) || min < 3) min = 3;
+    if (!Number.isFinite(max) || max < min) max = Math.max(min, 5);
+    min = Math.floor(min);
+    max = Math.floor(max);
+    const prev = state.runtimeConfig?.settings || state.settings || {};
+    const settings = {
+      ...prev,
+      clickThresholdMin: min,
+      clickThresholdMax: max,
+      stormResetDurationMs: Number.isFinite(Number(prev.stormResetDurationMs))
+        ? Math.floor(Number(prev.stormResetDurationMs))
+        : 1500
+    };
+    state.settings = settings;
+    if (state.runtimeConfig) state.runtimeConfig.settings = settings;
+    try {
+      await persistRuntime('click-threshold');
+      syncClickThresholdView();
+      $('poolHint').textContent = `Click threshold ${min}–${max} live (next visitors ~15s, no redeploy)`;
+    } catch (e) {
+      console.error(e);
+      $('poolHint').textContent = `Click threshold save failed: ${e.message || e}`;
+    }
+  }
+  if (state.activeMode === 'stormResetDuration') {
+    let ms = Number($('stormResetInput')?.value);
+    if (!Number.isFinite(ms) || ms < 200) ms = 1500;
+    ms = Math.floor(ms);
+    const prev = state.runtimeConfig?.settings || state.settings || {};
+    const settings = { ...prev, stormResetDurationMs: ms };
+    // keep click thresholds
+    const ct = getClickThresholdSettings();
+    settings.clickThresholdMin = ct.clickThresholdMin;
+    settings.clickThresholdMax = ct.clickThresholdMax;
+    state.settings = settings;
+    if (state.runtimeConfig) state.runtimeConfig.settings = settings;
+    try {
+      await persistRuntime('storm-reset-duration');
+      syncStormResetView();
+      $('poolHint').textContent = `Reset fade ${ms}ms live (next visitors ~15s, no redeploy)`;
+    } catch (e) {
+      console.error(e);
+      $('poolHint').textContent = `Reset fade save failed: ${e.message || e}`;
+    }
+  }
   state.activeMode = null;
   state.modeSnapshot = null;
   state.connectorPick = null;
@@ -420,6 +537,18 @@ function cancelMode() {
     ensureAnimPlacement(state.selectedAnim.id).transitionId = state.modeSnapshot.transitionId;
   } else if (mode === 'previewObjectActions') {
     // Cancel: leave animation field unchanged (draft was only in checkbox)
+  } else if (mode === 'clickThreshold') {
+    const snap = state.modeSnapshot || {};
+    const minIn = $('clickThresholdMinInput');
+    const maxIn = $('clickThresholdMaxInput');
+    if (minIn) minIn.value = String(snap.clickThresholdMin ?? 3);
+    if (maxIn) maxIn.value = String(snap.clickThresholdMax ?? 5);
+    syncClickThresholdView();
+  } else if (mode === 'stormResetDuration') {
+    const snap = state.modeSnapshot || {};
+    const input = $('stormResetInput');
+    if (input) input.value = String(snap.stormResetDurationMs ?? 1500);
+    syncStormResetView();
   } else {
     const st = currentElement();
     if (st && state.modeSnapshot) {
@@ -469,6 +598,7 @@ function refreshViews() {
     if (pock && state.activeMode !== 'previewObjectActions') {
       pock.checked = !!state.selectedAnim?.previewObjectActions;
     }
+  syncClickThresholdView();
     transitionSelect.value = place.transitionId || 'lightning';
   }
   const st = currentElement();

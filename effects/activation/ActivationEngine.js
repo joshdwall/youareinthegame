@@ -8,6 +8,7 @@
  */
 import { FireworkManager } from '../spore/finale.js';
 import { GHOST_CONFIG } from '../spore/ghost/config.js';
+import { fadeStormResetToLight } from './fadeStormReset.js';
 import { buildCharacterComposite, measureCreatureBox } from './CharacterComposite.js';
 import { runObjectActions } from './objectActions.js';
 import { resolveClickEffect } from './clickEffect.js';
@@ -318,6 +319,14 @@ export async function runActivation(opts) {
   });
   flashParent.querySelectorAll('.activation-flash-layer, #effectOverlay').forEach((n) => n.remove());
   container.querySelectorAll('.activation-flash-layer, #effectOverlay').forEach((n) => n.remove());
+
+  // Gradual dark→light fade (activation flash stayed instant above)
+  const liveFade = (typeof window !== 'undefined' && window.__yaitgEffect?.__liveStormResetMs)
+    || GHOST_CONFIG.ANIMATIONS.STORM_RESET_DURATION;
+  fadeStormResetToLight(container, {
+    durationMs: liveFade,
+    backgroundColor: GHOST_CONFIG.VISUALS.BACKGROUND_COLOR
+  });
 
   return { ok: true };
 }

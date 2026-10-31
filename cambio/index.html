@@ -36,6 +36,48 @@
     <div class="cambio-sidebar-body" id="cambioPanel">
       <!-- mountEvScrollList host — same module enVivo features import -->
       <div id="animListHost" class="cambio-anim-list-host"></div>
+
+      <!-- Site settings (live KV — no redeploy) -->
+      <div class="cambio-site-settings" id="siteSettings">
+        <div class="ie-row" id="clickThresholdRow" data-mode="clickThreshold">
+          <div class="ie-view">
+            <span class="ie-label">Click threshold</span>
+            <span class="ie-value" id="clickThresholdView">3–5</span>
+            <button type="button" class="ie-btn" id="btnEditClickThreshold" title="Edit click threshold" aria-label="Edit click threshold">✎</button>
+          </div>
+          <div class="ie-edit hidden">
+            <label class="cambio-field">Min
+              <input type="number" id="clickThresholdMinInput" min="3" step="1" value="3" />
+            </label>
+            <label class="cambio-field">Max
+              <input type="number" id="clickThresholdMaxInput" min="3" step="1" value="5" />
+            </label>
+            <p class="cambio-status" style="font-size:.72rem">Clicks until activation (random min–max). Live for next visitors (~15s). No redeploy.</p>
+            <div class="ie-actions">
+              <button type="button" class="ie-btn ie-save" id="btnSaveClickThreshold" title="Save">✓</button>
+              <button type="button" class="ie-btn ie-cancel" id="btnCancelClickThreshold" title="Cancel">✕</button>
+            </div>
+          </div>
+        </div>
+        <div class="ie-row" id="stormResetRow" data-mode="stormResetDuration">
+          <div class="ie-view">
+            <span class="ie-label">Reset fade</span>
+            <span class="ie-value" id="stormResetView">1500ms</span>
+            <button type="button" class="ie-btn" id="btnEditStormReset" title="Edit dark-to-light fade" aria-label="Edit reset fade">✎</button>
+          </div>
+          <div class="ie-edit hidden">
+            <label class="cambio-field">Duration (ms)
+              <input type="number" id="stormResetInput" min="200" step="50" value="1500" />
+            </label>
+            <p class="cambio-status" style="font-size:.72rem">Dark→light background fade after activation. Flash stays instant. Live ~15s, no redeploy.</p>
+            <div class="ie-actions">
+              <button type="button" class="ie-btn ie-save" id="btnSaveStormReset" title="Save">✓</button>
+              <button type="button" class="ie-btn ie-cancel" id="btnCancelStormReset" title="Cancel">✕</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <p id="poolHint" class="cambio-status" style="font-size:.75rem"></p>
       <dialog id="createDialog" class="cambio-dialog">
         <form method="dialog" id="createForm">

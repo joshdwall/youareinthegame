@@ -6,8 +6,8 @@
 export const GHOST_CONFIG = {
     // Lightning and Storm Configuration
     LIGHTNING: {
-        MIN_CLICKS: 5,           // Minimum clicks before lightning
-        MAX_CLICKS: 10,          // Maximum clicks before lightning
+        MIN_CLICKS: 3,           // Fallback min; live SSOT = runtime-config.settings.clickThresholdMin
+        MAX_CLICKS: 5,           // Fallback max; live SSOT = runtime-config.settings.clickThresholdMax
         SEQUENCE_MIN_MS: 2000,   // Minimum lightning sequence duration
         SEQUENCE_MAX_MS: 3000,   // Maximum lightning sequence duration
         FLASH_MIN_MS: 50,        // Minimum individual flash duration

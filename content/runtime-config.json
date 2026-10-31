@@ -100,5 +100,10 @@
       },
       "previewObjectActions": false
     }
-  ]
+  ],
+  "settings": {
+    "clickThresholdMin": 3,
+    "clickThresholdMax": 5,
+    "stormResetDurationMs": 1500
+  }
 }

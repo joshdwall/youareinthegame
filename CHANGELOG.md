@@ -8,7 +8,11 @@ SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.co
 ## 2026-10-30
 
 ### Changed
-- **Cambio uses enVivo CoreUI `#sidebar` + `mountEvScrollList`** (same as live envivo-dashboard / features). Pin via `scripts/sync-envivo-ui.mjs` → `cambio/vendor/envivo-ui/` (enVivo rev in `ENVIVO_PIN.json`). Brand **Cambio** once; wider sidebar; animation list = Live/Tier/Weight/%/Actions. Not pf-kit / od-sidebar unless that is what enVivo renders (it is not). Checkpoint `checkpoint-2026-10-30-pre-envivo-components`.
+- **Live click threshold + dark→light reset fade (KV, no redeploy).** Was build-time `GHOST_CONFIG.LIGHTNING` MIN=**5** / MAX=**10**; now `runtime-config.settings.clickThresholdMin/Max` default **3** / **5** (≈half, floor 3). Public `/api/animations` serves `settings` (~15s cache). Cambio left-rail pencils ✎/✓/✕. Composite path no longer snaps sage — restores SporeBaseEffect `background-color` transition (`stormResetDurationMs`, default **1500**); activation flash stays instant. Playwright: `tests/live-settings-fade-test.mjs` (luminance samples over time).
+
+
+### Changed
+- **Cambio uses enVivo CoreUI `#sidebar` + `mountEvScrollList`** (same as live envivo-dashboard / features). Pin via `scripts/sync-envivo-ui.mjs` → `cambio/vendor/envivo-ui/` (enVivo rev in `ENVIVO_PIN.json`). Brand **Cambio** once; wider sidebar; animation list = Live/Tier/Weight/%/Actions. Not pf-kit / od-sidebar unless that is what enVivo renders (it is not). Checkpoint `checkpoint-2026-10-30-pre-envivo-components`. YAITG `069ccc6` → CF Pages deploy `143ccc8f-f496-4f81-baa0-6078e17247fd` (production aliases: apex, www, app).
 
 ### Added
 - **`previewObjectActions` (default false)** on each animation. Character-click / Click-preview spores show overlay composites but do **not** run object actions (guns) unless the flag is on. Real activation always runs object actions. Cambio pencil ✎/✓/✕ on the edit rail; PATCH `/api/cambio/animations/:id`. Playwright: `tests/preview-object-actions-test.mjs`.
