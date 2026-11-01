@@ -20,7 +20,7 @@ export const DEFAULT_PLACEMENTS_BY_ANIMATION = {
           {
             type: 'textProjectile',
             point: { x: 0.5, y: 0.6 },
-            direction: -90,
+            direction: 90,
             text: 'BOO',
             color: '#000000',
             fontWeight: '700',
