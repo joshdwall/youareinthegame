@@ -11,6 +11,7 @@ SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.co
 - **Fix:** Cursor schema **v2** stores `lastPlayedId` only in `recordPlayed()` after activation completes (ghost `onFinaleComplete` + composite path). `pickUpcoming` no longer mutates the cursor. v1 blobs ignored (clean start).
 - Tests: `tests/selection-cursor-last-played.test.mjs`; Playwright `tests/alternate-reload-cowboy-test.mjs` (ghost↔cowboy with/without reload; cowboy flash/overlays/spores/guns). Screenshots `/workspace/cowboy-transition-shots/`.
 - Plans: Site-Master + Random-Seasonal-Animations-Cambio (pt43u). Checkpoint `checkpoint-2026-10-31-pre-alternate-cursor-fix`.
+- YAITG `9278f5d` → CF Pages deploy `38f818ab-dcb9-4c0a-9e45-c1d2b60ab7f5` (production aliases: apex, www, app). Prod verify: ghost↔cowboy with/without reload; cowboy transition screenshots `/workspace/cowboy-transition-shots/`.
 
 ## 2026-10-31 — Always interactive during transitions + interactionOpacityDuringAnimation
 
