@@ -11,6 +11,7 @@ SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.co
 - **Public site image protect:** Creature, sticker, overlays, spore images: `draggable=false`, `contextmenu` preventDefault, CSS `-webkit-touch-callout:none`, `-webkit-user-drag:none`, `user-select:none`. No hit-shield / no `pointer-events:none` on creature (would steal threshold clicks). Clicks/taps, spore bursts, overlays unchanged.
 - Tests: `tests/cambio-uniform-actions-test.mjs`, `tests/image-protect-verify.mjs`. Screenshots `tmp/cambio-uniform-actions-*.png`, `tmp/image-protect-*.png`.
 - Checkpoint `checkpoint-2026-11-01-pre-cambio-uniform-buttons` @ `a7d7d10`.
+- YAITG `2e77f99` → CF Pages deploy **`313f4f53-b262-4817-9371-b77afc4c1c08`** (production aliases: apex, www, app). Local + prod image-protect PASS; uniform-actions Playwright PASS.
 
 ## 2026-11-01 (America/Chicago) — LIVE KV only: restore ghost BOO direction 90→-90
 
