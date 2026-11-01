@@ -282,12 +282,22 @@ export function installThresholdLootHook(effect) {
   const origEnd = effect.endLightningSequence.bind(effect);
   const origCreate = effect.createSporeExplosion.bind(effect);
 
-  effect.createSporeExplosion = function patchedCreate(x, y) {
+  effect.createSporeExplosion = function patchedCreate(x, y, opts) {
+    // During activation flash / running anim / reset fade: always default spores only
+    // (no composite preview overlays). onSporeClick already passes decor opacity.
+    if (opts?.decorOnly || this.isActivationInteractionBusy?.()) {
+      const opacity = Number.isFinite(Number(opts?.opacity))
+        ? Number(opts.opacity)
+        : (typeof this.getInteractionDecorOpacity === 'function'
+            ? this.getInteractionDecorOpacity()
+            : 0.8);
+      return origCreate(x, y, { opacity, decorOnly: true });
+    }
     const up = upcoming;
-    if (!up?.anim) return origCreate(x, y);
+    if (!up?.anim) return origCreate(x, y, opts);
     const fx = resolveClickEffect(up.anim);
     if (fx.type === 'ghost-spores' || fx.type === 'image-spores') {
-      return origCreate(x, y);
+      return origCreate(x, y, opts);
     }
     const placementsById = prepared?.placementsById || placementsFor(cachedConfig, up.id);
     const elements = prepared?.compositeElements || buildCompositeElements(up.anim, placementsById);
@@ -299,7 +309,7 @@ export function installThresholdLootHook(effect) {
       x,
       y,
       sporeHost: this.container,
-      fallback: (xx, yy) => origCreate(xx, yy)
+      fallback: (xx, yy) => origCreate(xx, yy, opts)
     });
   };
 
@@ -376,6 +386,8 @@ export function installThresholdLootHook(effect) {
     const fadeMs = Number.isFinite(this.__liveStormResetMs)
       ? this.__liveStormResetMs
       : (CONFIG?.ANIMATIONS?.STORM_RESET_DURATION || 1500);
+    // Keep clicks decorative through the fade after finale flags clear
+    this.markStormResetFade?.(fadeMs);
     fadeStormResetToLight(container, {
       durationMs: fadeMs,
       backgroundColor: CONFIG?.VISUALS?.BACKGROUND_COLOR || '#7ab5a0'

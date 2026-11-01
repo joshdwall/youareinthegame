@@ -86,7 +86,7 @@ const state = {
   selectedElementId: null,
   dirty: false,
   animFilter: '',
-  /** null | 'connector' | 'rotation' | 'move' | 'size' | 'transition' | 'action' | 'previewObjectActions' | 'clickThreshold' | 'stormResetDuration' | 'selectionMode' */
+  /** null | 'connector' | 'rotation' | 'move' | 'size' | 'transition' | 'action' | 'previewObjectActions' | 'clickThreshold' | 'stormResetDuration' | 'selectionMode' | 'interactionOpacity' */
   activeMode: null,
   /** Deep clone of element (or transitionId) when mode opened */
   modeSnapshot: null,
@@ -174,6 +174,7 @@ function syncManifestFromRuntime() {
   syncClickThresholdView();
   syncStormResetView();
   syncSelectionModeView();
+  syncInteractionOpacityView();
 }
 
 async function apiJson(url, opts = {}) {
@@ -348,6 +349,9 @@ async function boot() {
   $('btnEditSelectionMode')?.addEventListener('click', () => enterMode('selectionMode'));
   $('btnSaveSelectionMode')?.addEventListener('click', () => commitMode());
   $('btnCancelSelectionMode')?.addEventListener('click', () => cancelMode());
+  $('btnEditInteractionOpacity')?.addEventListener('click', () => enterMode('interactionOpacity'));
+  $('btnSaveInteractionOpacity')?.addEventListener('click', () => commitMode());
+  $('btnCancelInteractionOpacity')?.addEventListener('click', () => cancelMode());
   $('btnSavePreviewObjectActions')?.addEventListener('click', () => commitMode());
   $('btnCancelPreviewObjectActions')?.addEventListener('click', () => cancelMode());
   transitionSelect.addEventListener('change', onTransitionChange);
@@ -449,6 +453,21 @@ function syncSelectionModeView() {
 }
 
 
+function getInteractionOpacitySetting() {
+  const s = state.settings || state.runtimeConfig?.settings || {};
+  let o = Number(s.interactionOpacityDuringAnimation);
+  if (!Number.isFinite(o)) o = 0.8;
+  return Math.min(1, Math.max(0, o));
+}
+
+function syncInteractionOpacityView() {
+  const o = getInteractionOpacitySetting();
+  const view = $('interactionOpacityView');
+  if (view) view.textContent = `${Math.round(o * 100)}%`;
+  const input = $('interactionOpacityInput');
+  if (input && state.activeMode !== 'interactionOpacity') input.value = String(o);
+}
+
 function syncClickThresholdView() {
   const { clickThresholdMin: min, clickThresholdMax: max } = getClickThresholdSettings();
   const view = $('clickThresholdView');
@@ -480,6 +499,26 @@ function enterMode(mode) {
     state.modeSnapshot = { stormResetDurationMs: ms };
     const input = $('stormResetInput');
     if (input) input.value = String(ms);
+    syncModeUi();
+    return;
+  }
+  if (mode === 'selectionMode') {
+    if (state.activeMode && state.activeMode !== mode) cancelMode();
+    state.activeMode = mode;
+    const cur = getSelectionModeSetting();
+    state.modeSnapshot = { selectionMode: cur };
+    const input = $('selectionModeInput');
+    if (input) input.value = cur;
+    syncModeUi();
+    return;
+  }
+  if (mode === 'interactionOpacity') {
+    if (state.activeMode && state.activeMode !== mode) cancelMode();
+    state.activeMode = mode;
+    const o = getInteractionOpacitySetting();
+    state.modeSnapshot = { interactionOpacityDuringAnimation: o };
+    const input = $('interactionOpacityInput');
+    if (input) input.value = String(o);
     syncModeUi();
     return;
   }
@@ -524,12 +563,6 @@ function enterMode(mode) {
     }
     const mh = $('moveHint');
     if (mh) mh.textContent = `Drag the ${selectedLabel()} to where it should stick.`;
-  }
-  if (mode === 'selectionMode') {
-    const cur = getSelectionModeSetting();
-    state.modeSnapshot = { selectionMode: cur };
-    const input = $('selectionModeInput');
-    if (input) input.value = cur;
   }
   syncModeUi();
   if (state.selectedAnim) mountProps(state.selectedAnim.id, { interactive: true });
@@ -620,6 +653,23 @@ async function commitMode() {
       $('poolHint').textContent = `Selection mode save failed: ${e.message || e}`;
     }
   }
+  if (state.activeMode === 'interactionOpacity') {
+    let o = Number($('interactionOpacityInput')?.value);
+    if (!Number.isFinite(o)) o = 0.8;
+    o = Math.min(1, Math.max(0, o));
+    const prev = state.runtimeConfig?.settings || state.settings || {};
+    const settings = { ...prev, interactionOpacityDuringAnimation: o };
+    state.settings = settings;
+    if (state.runtimeConfig) state.runtimeConfig.settings = settings;
+    try {
+      await persistRuntime('interaction-opacity');
+      syncInteractionOpacityView();
+      $('poolHint').textContent = `Click opacity ${Math.round(o * 100)}% during animation live (next visitors ~15s, no redeploy)`;
+    } catch (e) {
+      console.error(e);
+      $('poolHint').textContent = `Interaction opacity save failed: ${e.message || e}`;
+    }
+  }
   state.activeMode = null;
   state.modeSnapshot = null;
   state.connectorPick = null;
@@ -665,6 +715,13 @@ function cancelMode() {
     const input = $('selectionModeInput');
     if (input) input.value = snap.selectionMode === 'weighted' ? 'weighted' : 'alternate';
     syncSelectionModeView();
+  } else if (mode === 'interactionOpacity') {
+    const snap = state.modeSnapshot || {};
+    const input = $('interactionOpacityInput');
+    let o = Number(snap.interactionOpacityDuringAnimation);
+    if (!Number.isFinite(o)) o = 0.8;
+    if (input) input.value = String(o);
+    syncInteractionOpacityView();
   } else {
     const st = currentElement();
     if (st && state.modeSnapshot) {

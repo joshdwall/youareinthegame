@@ -1,0 +1,107 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8" /><link rel="stylesheet" href="/styles.css" /></head>
+<body>
+  <div class="container" id="c" style="width:320px;height:320px;background:#7ab5a0;position:relative"></div>
+  <img id="mainCreature" class="creature" src="/img/mushroom-platypus.png" width="120" height="120" />
+  <pre id="out"></pre>
+  <script type="module">
+    import SporeBaseEffect from '/effects/spore/SporeBaseEffect.js';
+    import { GHOST_CONFIG } from '/effects/spore/ghost/config.js';
+    import { installThresholdLootHook } from '/runtime/public/thresholdActivation.js';
+
+    class T extends SporeBaseEffect { getConfig() { return GHOST_CONFIG; } }
+    const e = new T();
+    e.container = document.getElementById('c');
+    e.creature = document.getElementById('mainCreature');
+    e.clickCount = 0;
+    e.calculateResetThreshold();
+    e.applyLiveClickThreshold({
+      clickThresholdMin: 99,
+      clickThresholdMax: 99,
+      stormResetDurationMs: 900,
+      interactionOpacityDuringAnimation: 0.8
+    });
+
+    // Stub upcoming composite so patchedCreate would otherwise spawn overlays
+    installThresholdLootHook(e);
+
+    function countSpores() {
+      return [...e.container.querySelectorAll('.spore')].map((el) => ({
+        decor: el.dataset.decorOnly === '1',
+        opac: el.style.getPropertyValue('--spore-opacity') || null,
+        cls: el.className
+      }));
+    }
+    function clearSpores() {
+      e.container.querySelectorAll('.spore').forEach((n) => n.remove());
+    }
+
+    const results = {};
+
+    // Idle click: counts toward threshold, full opacity (no --spore-opacity)
+    clearSpores();
+    const before = e.clickCount;
+    e.onSporeClick(40, 40);
+    const idle = countSpores();
+    results.idleSpawned = idle.length > 0;
+    results.idleCounted = e.clickCount === before + 1;
+    results.idleNoDecorFlag = idle.every((s) => !s.decor);
+    results.idleFullOpacity = idle.every((s) => s.opac == null || s.opac === '' || Number(s.opac) === 1);
+
+    // Flash / animation busy
+    clearSpores();
+    e.finaleInProgress = true;
+    e.lightningSequenceActive = true;
+    const midCount = e.clickCount;
+    e.onSporeClick(80, 80);
+    const flash = countSpores();
+    results.flashSpawned = flash.length > 0;
+    results.flashDecor = flash.every((s) => s.decor);
+    results.flashOpacity08 = flash.every((s) => Math.abs(Number(s.opac) - 0.8) < 0.001);
+    results.flashNotCounted = e.clickCount === midCount;
+
+    // During fade window (flags cleared like composite path)
+    clearSpores();
+    e.finaleInProgress = false;
+    e.lightningSequenceActive = false;
+    e.markStormResetFade(1500);
+    const fadeCount = e.clickCount;
+    e.onSporeClick(120, 90);
+    const fade = countSpores();
+    results.fadeSpawned = fade.length > 0;
+    results.fadeDecor = fade.every((s) => s.decor);
+    results.fadeOpacity08 = fade.every((s) => Math.abs(Number(s.opac) - 0.8) < 0.001);
+    results.fadeNotCounted = e.clickCount === fadeCount;
+    results.busyDuringFade = e.isActivationInteractionBusy() === true;
+
+    // Live opacity change without redeploy
+    e.applyLiveClickThreshold({
+      clickThresholdMin: 99,
+      clickThresholdMax: 99,
+      stormResetDurationMs: 900,
+      interactionOpacityDuringAnimation: 0.4
+    });
+    clearSpores();
+    e.finaleInProgress = true;
+    e.onSporeClick(50, 50);
+    const live = countSpores();
+    results.liveOpacity04 = live.every((s) => Math.abs(Number(s.opac) - 0.4) < 0.001);
+    results.liveOpacField = Math.abs(e.__liveInteractionOpacity - 0.4) < 0.001;
+
+    // Clamp
+    e.applyLiveClickThreshold({ interactionOpacityDuringAnimation: 2.5 });
+    results.clampHi = e.__liveInteractionOpacity === 1;
+    e.applyLiveClickThreshold({ interactionOpacityDuringAnimation: -1 });
+    results.clampLo = e.__liveInteractionOpacity === 0;
+    e.applyLiveClickThreshold({ interactionOpacityDuringAnimation: 0.8 });
+
+    results.ok = Object.entries(results)
+      .filter(([k]) => k !== 'ok')
+      .every(([, v]) => v === true);
+
+    window.__result = results;
+    document.getElementById('out').textContent = JSON.stringify(results, null, 2);
+  </script>
+</body>
+</html>

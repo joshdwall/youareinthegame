@@ -21,6 +21,10 @@ class SporeBaseEffect {
         this.resetThreshold = 0;
         this.lightningSequenceActive = false;
         this.finaleInProgress = false; // Track entire finale sequence
+        /** @type {number} epoch ms — decorative-only clicks until this time (covers reset fade) */
+        this.__stormResetFadeUntil = 0;
+        /** @type {number} 0..1 opacity for default click spores during activation/fade */
+        this.__liveInteractionOpacity = 0.8;
 
         // DOM elements (will be set in init)
         this.container = null;
@@ -130,16 +134,42 @@ class SporeBaseEffect {
      * @param {number} x - X coordinate of click
      * @param {number} y - Y coordinate of click
      */
+    /**
+     * True while activation flash/animation OR reset fade is running.
+     * Clicks stay interactive but only spawn decorative default spores.
+     */
+    isActivationInteractionBusy() {
+        if (this.lightningSequenceActive || this.finaleInProgress) return true;
+        return Number.isFinite(this.__stormResetFadeUntil) && Date.now() < this.__stormResetFadeUntil;
+    }
+
+    /** Mark the storm-reset fade window so clicks stay decorative until it ends. */
+    markStormResetFade(durationMs) {
+        const ms = Math.max(0, Math.floor(Number(durationMs) || 0));
+        this.__stormResetFadeUntil = Date.now() + ms;
+    }
+
+    /** Opacity for default click spores while busy (clamped 0..1). */
+    getInteractionDecorOpacity() {
+        const o = Number(this.__liveInteractionOpacity);
+        if (!Number.isFinite(o)) return 0.8;
+        return Math.min(1, Math.max(0, o));
+    }
+
     onSporeClick(x, y) {
-        // Block all click processing during finale
-        if (this.finaleInProgress) {
-            console.log('Click ignored - finale in progress');
+        // Always interactive: during flash/animation/fade, still spawn default spores
+        // (no threshold / storm progress / pulse — counting mid-climax would re-trigger).
+        if (this.isActivationInteractionBusy()) {
+            this.createSporeExplosion(x, y, {
+                opacity: this.getInteractionDecorOpacity(),
+                decorOnly: true
+            });
             return;
         }
 
         this.clickCount++;
 
-        // Create spore explosion
+        // Create spore explosion (previewClick may wrap this for composites)
         this.createSporeExplosion(x, y);
 
         // Progress storm if not in lightning sequence
@@ -192,6 +222,7 @@ class SporeBaseEffect {
         this.clickCount = 0;
         this.lightningSequenceActive = false;
         this.finaleInProgress = false;
+        this.__stormResetFadeUntil = 0;
         this.overlayVisible = false;
 
         // Reset visuals
@@ -217,9 +248,17 @@ class SporeBaseEffect {
      * @param {number} x - X coordinate
      * @param {number} y - Y coordinate
      */
-    createSporeExplosion(x, y) {
+    /**
+     * @param {number} x
+     * @param {number} y
+     * @param {{ opacity?: number, decorOnly?: boolean }} [opts]
+     */
+    createSporeExplosion(x, y, opts = {}) {
         const CONFIG = this.getConfig();
         const config = CONFIG.SPORES;
+        const opacity = Number.isFinite(Number(opts?.opacity))
+          ? Math.min(1, Math.max(0, Number(opts.opacity)))
+          : null;
 
         for (let layer = 0; layer < config.BURST_LAYERS; layer++) {
             const layerSporeCount = config.COUNT / config.BURST_LAYERS;
@@ -230,6 +269,10 @@ class SporeBaseEffect {
                 spore.src = CONFIG.ASSETS.SPORE_IMAGE;
                 spore.className = 'spore';
                 spore.draggable = false;
+                if (opacity != null) {
+                    spore.style.setProperty('--spore-opacity', String(opacity));
+                    if (opts.decorOnly) spore.dataset.decorOnly = '1';
+                }
 
                 // Create burst pattern
                 const baseAngle = (Math.PI * 2 * i) / layerSporeCount;
@@ -398,6 +441,7 @@ class SporeBaseEffect {
                 const durationMs = Number.isFinite(this.__liveStormResetMs)
                   ? this.__liveStormResetMs
                   : CONFIG.ANIMATIONS.STORM_RESET_DURATION;
+                this.markStormResetFade(durationMs);
                 fadeStormResetToLight(this.container, {
                   durationMs,
                   backgroundColor: CONFIG.VISUALS.BACKGROUND_COLOR
@@ -545,6 +589,9 @@ class SporeBaseEffect {
             fadeMs = this.getConfig().ANIMATIONS.STORM_RESET_DURATION;
         }
         this.__liveStormResetMs = Math.floor(fadeMs);
+        let opac = Number(settings.interactionOpacityDuringAnimation);
+        if (!Number.isFinite(opac)) opac = 0.8;
+        this.__liveInteractionOpacity = Math.min(1, Math.max(0, opac));
     }
 
     /**

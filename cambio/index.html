@@ -87,7 +87,7 @@
               <button type="button" class="ie-btn ie-cancel" id="btnCancelStormReset" title="Cancel">✕</button>
             </div>
           </div>
-
+        </div>
         <div class="ie-row" id="selectionModeRow" data-mode="selectionMode">
           <div class="ie-view">
             <span class="ie-label">Selection</span>
@@ -108,6 +108,22 @@
             </div>
           </div>
         </div>
+        <div class="ie-row" id="interactionOpacityRow" data-mode="interactionOpacity">
+          <div class="ie-view">
+            <span class="ie-label">Click opacity (busy)</span>
+            <span class="ie-value" id="interactionOpacityView">80%</span>
+            <button type="button" class="ie-btn" id="btnEditInteractionOpacity" title="Edit click opacity during animation" aria-label="Edit interaction opacity">✎</button>
+          </div>
+          <div class="ie-edit hidden">
+            <label class="cambio-field">Opacity (0–1)
+              <input type="number" id="interactionOpacityInput" min="0" max="1" step="0.05" value="0.8" />
+            </label>
+            <p class="cambio-status" style="font-size:.72rem">Default spore-burst opacity while activation flash / animation / reset fade is running. Live ~15s, no redeploy.</p>
+            <div class="ie-actions">
+              <button type="button" class="ie-btn ie-save" id="btnSaveInteractionOpacity" title="Save">✓</button>
+              <button type="button" class="ie-btn ie-cancel" id="btnCancelInteractionOpacity" title="Cancel">✕</button>
+            </div>
+          </div>
         </div>
           </div><!-- /.card-body -->
         </div><!-- /.card -->

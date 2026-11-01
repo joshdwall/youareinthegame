@@ -5,6 +5,13 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
+## 2026-10-31 — Always interactive during transitions + interactionOpacityDuringAnimation
+
+- **Always interactive:** During activation flash, running activation, and reset fade (any former click-ignore window), click/tap still spawns the **default spore burst** at the point — no overlays / object actions. **Decorative only** (does not increment click threshold, storm progress, or next-pick). Overlay `pointer-events:none` kept so clicks pass through.
+- **`settings.interactionOpacityDuringAnimation`** (0–1, default **0.8**): live in Cambio Site settings (✎/✓/✕); served on `/api/animations` (~15s); no redeploy. Applies **only** to default click-spawned spore bursts while busy — not the activation overlay, flash, or pre-threshold preview clicks.
+- CSS `--spore-opacity` on `@keyframes explode`; `__stormResetFadeUntil` covers composite fade after finale flags clear.
+- Tests: `tests/always-interactive-opacity-test.mjs` (+ fixture). Plans: Site-Master + Animations-Cambio (pt42u). Checkpoint `checkpoint-2026-10-31-pre-always-interactive-opacity`.
+
 ## 2026-10-31 — Selection mode: alternate (round-robin) + 50/50 weights
 
 - **`settings.selectionMode`**: `alternate` (default) or `weighted`. Live in Cambio Site settings (✎/✓/✕); served on `/api/animations` (~15s); no redeploy to switch.

@@ -29,7 +29,9 @@ export const BUILTIN_SEED = {
     // Dark→light background fade on reset (was ANIMATIONS.STORM_RESET_DURATION 1500). Flash stays instant.
     stormResetDurationMs: 1500,
     // alternate = round-robin by order; weighted = loot table. Live-editable in Cambio.
-    selectionMode: 'alternate'
+    selectionMode: 'alternate',
+    // Default click-spore opacity (0..1) while activation/fade is running.
+    interactionOpacityDuringAnimation: 0.8
   },
   seasons: [],
   animations: [
@@ -86,7 +88,8 @@ export function normalizeConfig(raw) {
     clickThresholdMin: 3,
     clickThresholdMax: 5,
     stormResetDurationMs: 1500,
-    selectionMode: 'alternate'
+    selectionMode: 'alternate',
+    interactionOpacityDuringAnimation: 0.8
   };
   const rawSettings = base.settings && typeof base.settings === 'object' ? base.settings : {};
   let clickThresholdMin = Number(rawSettings.clickThresholdMin ?? seedSettings.clickThresholdMin);
@@ -112,6 +115,19 @@ export function normalizeConfig(raw) {
     selectionMode = 'alternate';
   }
 
+  let interactionOpacityDuringAnimation = Number(
+    rawSettings.interactionOpacityDuringAnimation ??
+      seedSettings.interactionOpacityDuringAnimation ??
+      0.8
+  );
+  if (!Number.isFinite(interactionOpacityDuringAnimation)) {
+    interactionOpacityDuringAnimation = 0.8;
+  }
+  interactionOpacityDuringAnimation = Math.min(
+    1,
+    Math.max(0, interactionOpacityDuringAnimation)
+  );
+
   const seedAnims = seed.animations || [];
   let animations =
     Array.isArray(base.animations) && base.animations.length
@@ -129,7 +145,13 @@ export function normalizeConfig(raw) {
     updatedAt: base.updatedAt || new Date().toISOString(),
     tiers: base.tiers || seed.tiers,
     flags: { noRepeatTwice: false, ...(base.flags || {}) },
-    settings: { clickThresholdMin, clickThresholdMax, stormResetDurationMs, selectionMode },
+    settings: {
+      clickThresholdMin,
+      clickThresholdMax,
+      stormResetDurationMs,
+      selectionMode,
+      interactionOpacityDuringAnimation
+    },
     seasons: Array.isArray(base.seasons) ? base.seasons : [],
     animations
   };
@@ -162,7 +184,13 @@ export function publicView(config) {
     updatedAt: config.updatedAt,
     tiers: config.tiers,
     flags: config.flags,
-    settings: config.settings || { clickThresholdMin: 3, clickThresholdMax: 5, stormResetDurationMs: 1500, selectionMode: 'alternate' },
+    settings: config.settings || {
+      clickThresholdMin: 3,
+      clickThresholdMax: 5,
+      stormResetDurationMs: 1500,
+      selectionMode: 'alternate',
+      interactionOpacityDuringAnimation: 0.8
+    },
     seasons: config.seasons,
     animations: live
   };

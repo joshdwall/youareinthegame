@@ -153,7 +153,7 @@ img {
 @keyframes explode {
   0% {
     transform: translate(0, 0) rotate(0deg) scale(1);
-    opacity: 1;
+    opacity: var(--spore-opacity, 1);
   }
 
   100% {
