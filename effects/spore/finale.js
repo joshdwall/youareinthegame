@@ -200,6 +200,7 @@ class FireworkSpore {
      * Clean up and remove DOM element
      */
     destroy() {
+        try { this.element?.__actionStop?.(); } catch (_) {}
         if (this.element && this.element.parentNode) {
             this.element.remove();
         }

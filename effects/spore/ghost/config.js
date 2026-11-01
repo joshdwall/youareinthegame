@@ -127,8 +127,52 @@ export const GHOST_CONFIG = {
         description: 'Ethereal ghost appearances with progressive storm and lightning',
         author: 'Mushroom Platypus Team',
         version: '1.0.0'
+    },
+
+    /**
+     * Synthetic spore "elements" for the standard objectActions system.
+     * Ghost fireworks are image spores (not composites); createSporeElement wraps
+     * the img and runs these actions. textProjectile is generic for reuse.
+     */
+    OBJECT_ACTIONS: {
+        ELEMENTS: [
+            {
+                id: 'ghostBody',
+                // Mouth on the front-facing white ghost face (below eyes)
+                placement: {
+                    objectAnchor: { x: 0.5, y: 0.5 }
+                },
+                objectActions: [
+                    {
+                        type: 'textProjectile',
+                        // Mouth anchor (fraction of spore bitmap)
+                        point: { x: 0.50, y: 0.60 },
+                        // Local degrees: -90 = toward sprite top = flight/facing direction
+                        direction: -90,
+                        text: 'BOO',
+                        color: '#000000',
+                        fontWeight: '700',
+                        fontSizeRatio: 0.42,
+                        durationMs: 550,
+                        distanceRatio: 0.62,
+                        scaleFrom: 0.65,
+                        scaleTo: 1.15,
+                        pattern: 'once',
+                        appliesTo: ['spore']
+                    }
+                ]
+            }
+        ]
     }
 };
+
+/**
+ * Elements list for runObjectActions on ghost image spores.
+ * @returns {Array}
+ */
+export function ghostSporeActionElements() {
+    return GHOST_CONFIG.OBJECT_ACTIONS?.ELEMENTS || [];
+}
 
 // Freeze the configuration to prevent accidental modifications
 Object.freeze(GHOST_CONFIG);

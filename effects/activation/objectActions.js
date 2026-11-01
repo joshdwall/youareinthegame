@@ -1,8 +1,11 @@
 /**
  * Pluggable objectActions registry.
- * Element schema: objectActions: [{ type, point:{x,y}, direction, pattern, rate, jitter, appliesTo }]
+ * Element schema: objectActions: [{ type, point:{x,y}, direction, pattern, rate, jitter, appliesTo, ... }]
+ * Built-ins: fire (muzzle), textProjectile (short-lived text from an anchor).
  * Handlers receive a runtime context and schedule visuals on a host node.
  */
+
+import { clampBurstDelta, getViewportSpreadScale } from '../spore/sporeBurstMath.js';
 
 /** @type {Map<string, Function>} */
 const registry = new Map();
@@ -198,6 +201,198 @@ export function fireOnce({ root, el, action }) {
   }, 140);
 }
 
+/**
+ * Resolve a DOM node for an element id inside an action root.
+ * Falls back to the root itself (image-only spores with data-element-id on root/img).
+ */
+function resolveActionNode(root, el) {
+  if (!root) return null;
+  if (el?.id) {
+    const found = root.querySelector(`[data-element-id="${el.id}"]`);
+    if (found) return found;
+  }
+  if (root.matches?.('[data-element-id]')) return root;
+  const img = root.querySelector('img[data-element-id], img');
+  return img || root;
+}
+
+/**
+ * Generic short-lived text projectile from an anchor point (mouth, muzzle, etc.).
+ * Config (reusable): text, color, fontWeight, fontSizeRatio, durationMs,
+ * distance | distanceRatio, point (anchor), direction (local deg), scaleFrom, scaleTo,
+ * pattern ('once' | 'repeat'), rate, jitter, appliesTo.
+ */
+export function textProjectileOnce({ root, el, action }) {
+  if (!root?.isConnected) return;
+  const node = resolveActionNode(root, el);
+  if (!node) return;
+
+  const point = action.point || { x: 0.5, y: 0.5 };
+  const localDeg = Number.isFinite(+action.direction) ? +action.direction : -90;
+  const st = el?.placement || {};
+  const rot = +(st.rotation || 0);
+  const flip = !!st.flipX;
+  let deg = localDeg;
+  if (flip) deg = 180 - deg;
+  deg = deg + rot;
+
+  const w = node.offsetWidth || parseFloat(node.style.width) || root.offsetWidth || 40;
+  const h = node.offsetHeight || parseFloat(node.style.height) || root.offsetHeight || w * 0.7;
+  const oa = st.objectAnchor || { x: 0.5, y: 0.5 };
+  const elLeft = parseFloat(node.style.left) || 0;
+  const elTop = parseFloat(node.style.top) || 0;
+  // When the img fills the root (ghost wrap), left/top are 0 and oa is unused — point is fraction of node box.
+  const fillsRoot = !node.style.left && node.parentElement === root;
+  const mx = fillsRoot ? point.x * w : elLeft + (point.x - oa.x) * w;
+  const my = fillsRoot ? point.y * h : elTop + (point.y - oa.y) * h;
+
+  const distRatio = Number.isFinite(+action.distanceRatio) ? +action.distanceRatio : 0.55;
+  let dist = Number.isFinite(+action.distance)
+    ? +action.distance
+    : Math.max(14, w * distRatio);
+  // Mobile: shorten travel via the same viewport spread scale as spore bursts
+  dist *= getViewportSpreadScale();
+
+  const rad = (deg * Math.PI) / 180;
+  let endX = Math.cos(rad) * dist;
+  let endY = Math.sin(rad) * dist;
+
+  // Clamp travel so the word stays on screen (host = spore container)
+  try {
+    const host = root.parentElement;
+    const br = root.getBoundingClientRect();
+    const hr = host?.getBoundingClientRect?.();
+    if (hr && br.width > 0) {
+      const mouthX = (br.left + br.right) / 2 - hr.left;
+      const mouthY = (br.top + br.bottom) / 2 - hr.top;
+      const rotMatch = /rotate\((-?[\d.]+)(rad|deg)\)/.exec(root.style.transform || '');
+      let rootRot = 0;
+      if (rotMatch) {
+        rootRot = rotMatch[2] === 'rad'
+          ? parseFloat(rotMatch[1])
+          : (parseFloat(rotMatch[1]) * Math.PI) / 180;
+      }
+      const worldAng = rootRot + rad;
+      const wtx = Math.cos(worldAng) * dist;
+      const wty = Math.sin(worldAng) * dist;
+      const fontSizeApprox = Math.max(10, w * (Number(action.fontSizeRatio) || 0.4));
+      const clamped = clampBurstDelta(mouthX, mouthY, wtx, wty, {
+        width: fontSizeApprox * 2.4,
+        height: fontSizeApprox * 1.2,
+        margin: 4,
+        host
+      });
+      const cLen = Math.hypot(clamped.tx, clamped.ty);
+      if (Number.isFinite(cLen) && cLen < dist) {
+        const scale = dist > 0 ? cLen / dist : 1;
+        endX *= scale;
+        endY *= scale;
+      }
+    }
+  } catch (_) { /* clamp is best-effort */ }
+
+  const durationMs = Math.max(
+    200,
+    Math.min(2000, Number(action.durationMs) || 550)
+  );
+  const scaleFrom = Number.isFinite(+action.scaleFrom) ? +action.scaleFrom : 0.65;
+  const scaleTo = Number.isFinite(+action.scaleTo) ? +action.scaleTo : 1.12;
+  const fontSizeRatio = Number.isFinite(+action.fontSizeRatio) ? +action.fontSizeRatio : 0.4;
+  const fontSize = Math.max(10, w * fontSizeRatio);
+  const rawText = (action.text != null ? String(action.text) : 'BOO');
+  const color = action.color || '#000';
+  const fontWeight = action.fontWeight != null ? String(action.fontWeight) : '700';
+
+  const tip = document.createElement('div');
+  tip.className = 'activation-text-projectile';
+  tip.setAttribute('data-text-projectile-for', el?.id || 'spore');
+  tip.textContent = rawText;
+  tip.style.cssText = [
+    'position:absolute',
+    `left:${mx}px`,
+    `top:${my}px`,
+    `font-size:${fontSize}px`,
+    `color:${color}`,
+    `font-weight:${fontWeight}`,
+    'line-height:1',
+    'white-space:nowrap',
+    'text-transform:uppercase',
+    'letter-spacing:0.04em',
+    'pointer-events:none',
+    'z-index:36',
+    'user-select:none',
+    `transform:translate(-50%,-50%) translate(0px,0px) scale(${scaleFrom})`,
+    'opacity:1'
+  ].join(';');
+  root.appendChild(tip);
+
+  const anim = tip.animate(
+    [
+      {
+        transform: `translate(-50%, -50%) translate(0px, 0px) scale(${scaleFrom})`,
+        opacity: 1
+      },
+      {
+        transform: `translate(-50%, -50%) translate(${endX}px, ${endY}px) scale(${scaleTo})`,
+        opacity: 0
+      }
+    ],
+    { duration: durationMs, easing: 'ease-out', fill: 'forwards' }
+  );
+  const done = () => {
+    try { tip.remove(); } catch (_) {}
+  };
+  if (anim && typeof anim.finished?.then === 'function') {
+    anim.finished.then(done).catch(done);
+  } else {
+    setTimeout(done, durationMs + 30);
+  }
+}
+
+/**
+ * Register textProjectile — once (default) or repeat with rate/jitter.
+ */
+registerAction('textProjectile', ({ root, el, action, sporeIndex = 0 }) => {
+  const timers = new Set();
+  let stopped = false;
+  const pattern = action.pattern || 'once';
+
+  const shoot = () => {
+    if (stopped || !root?.isConnected) return;
+    textProjectileOnce({ root, el, action });
+  };
+
+  // Stagger first shot slightly so a burst of ghosts doesn't sync
+  const firstDelay = 40 + (Number(sporeIndex) % 5) * 25 + Math.random() * 60;
+  const first = setTimeout(() => {
+    shoot();
+    if (stopped || pattern === 'once') return;
+    const tick = () => {
+      if (stopped) return;
+      shoot();
+      const rate = Math.max(0.4, +action.rate || 1.2);
+      const jitter = Math.max(0, +action.jitter || 0.35);
+      const delay = (1000 / rate) * (1 + (Math.random() * 2 - 1) * jitter);
+      const id = setTimeout(tick, Math.max(120, delay));
+      timers.add(id);
+    };
+    const id = setTimeout(tick, Math.max(200, 1000 / Math.max(0.4, +action.rate || 1.2)));
+    timers.add(id);
+  }, firstDelay);
+  timers.add(first);
+
+  return {
+    stop() {
+      stopped = true;
+      timers.forEach((id) => clearTimeout(id));
+      timers.clear();
+      try {
+        root?.querySelectorAll?.('.activation-text-projectile').forEach((n) => n.remove());
+      } catch (_) {}
+    }
+  };
+});
+
 // Register built-in fire (also used via alternating coordinator)
 registerAction('fire', ({ root, el, action }) => {
   // Single-slot fallback when not batched by runAlternatingFire
@@ -229,5 +424,6 @@ export default {
   listActionTypes,
   actionsForElement,
   runObjectActions,
-  fireOnce
+  fireOnce,
+  textProjectileOnce
 };

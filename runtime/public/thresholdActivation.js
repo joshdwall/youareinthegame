@@ -368,6 +368,20 @@ export function installThresholdLootHook(effect) {
     if (!up?.anim) return origCreate(x, y, opts);
     const fx = resolveClickEffect(up.anim);
     if (fx.type === 'ghost-spores' || fx.type === 'image-spores') {
+      // Default: unchanged image burst. When previewObjectActions, route through
+      // previewClick so ghost textProjectile (BOO) runs on click-preview spores.
+      if (up.anim?.previewObjectActions === true) {
+        return previewClick({
+          container: this.container,
+          creature: this.creature,
+          animation: up.anim,
+          compositeElements: [],
+          x,
+          y,
+          sporeHost: this.container,
+          fallback: (xx, yy) => origCreate(xx, yy, opts)
+        });
+      }
       return origCreate(x, y, opts);
     }
     const placementsById = prepared?.placementsById || placementsFor(cachedConfig, up.id);

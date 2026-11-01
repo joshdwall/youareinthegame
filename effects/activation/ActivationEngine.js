@@ -8,7 +8,7 @@
  * Owned flash layers are always created fresh per run and removed on cleanup.
  */
 import { FireworkManager } from '../spore/finale.js';
-import { GHOST_CONFIG } from '../spore/ghost/config.js';
+import { GHOST_CONFIG, ghostSporeActionElements } from '../spore/ghost/config.js';
 import { fadeStormResetToLight } from './fadeStormReset.js';
 import { buildCharacterComposite, measureCreatureBox } from './CharacterComposite.js';
 import { runObjectActions } from './objectActions.js';
@@ -189,7 +189,42 @@ export async function runActivation(opts) {
 
   const sporeDone = new Promise((resolve) => {
     if (profile === 'ghost') {
-      fireworkManager = new FireworkManager(fw);
+      // Image spores + textProjectile objectActions (BOO from mouth) — same OA system as cowboy guns.
+      const fwGhost = {
+        ...fw,
+        createSporeElement(sporeInst, dims) {
+          const w = dims?.width ?? (fw.BASE_WIDTH * sporeInst.size);
+          const h = dims?.height ?? (fw.BASE_HEIGHT * sporeInst.size);
+          const wrap = document.createElement('div');
+          wrap.classList.add('activation-spore');
+          wrap.style.position = 'absolute';
+          wrap.style.width = `${w}px`;
+          wrap.style.height = `${h}px`;
+          wrap.style.zIndex = '25';
+          wrap.style.opacity = '1';
+          wrap.style.overflow = 'visible';
+          const img = document.createElement('img');
+          img.src = fw.SPORE_IMAGE;
+          img.draggable = false;
+          img.dataset.elementId = 'ghostBody';
+          img.alt = '';
+          img.style.width = '100%';
+          img.style.height = '100%';
+          img.style.display = 'block';
+          img.style.pointerEvents = 'none';
+          wrap.appendChild(img);
+          const sporeIndex = sporeInst?.id ?? Math.floor(Math.random() * 1000);
+          const ctrl = runObjectActions({
+            root: wrap,
+            elements: ghostSporeActionElements(),
+            target: 'spore',
+            sporeIndex
+          });
+          wrap.__actionStop = ctrl.stop;
+          return wrap;
+        }
+      };
+      fireworkManager = new FireworkManager(fwGhost);
       fireworkManager.launch(launchX, launchY, sporeHost, () => resolve());
       track(setTimeout(resolve, 6000));
       return;
@@ -308,6 +343,13 @@ export function previewClick(opts) {
   const fx = resolveClickEffect(animation);
 
   if (fx.type === 'ghost-spores' || fx.type === 'image-spores') {
+    // When previewObjectActions is on, prefer our image burst so textProjectile can run.
+    // Otherwise keep legacy fallback (SporeBaseEffect.createSporeExplosion) unchanged.
+    if (animation?.previewObjectActions === true) {
+      const img = fx.sporeImage || '/effects/spore/ghost/img/mushroom-platypus-ghost-spores.png';
+      spawnImageBurst(sporeHost, x, y, img, fx.count || 16, { runObjectActions: true });
+      return { ok: true, type: fx.type, via: 'image-actions' };
+    }
     if (typeof fallback === 'function') {
       fallback(x, y);
       return { ok: true, type: fx.type, via: 'fallback' };
@@ -385,17 +427,32 @@ export function previewClick(opts) {
   return { ok: true, type: 'composite-spores' };
 }
 
-function spawnImageBurst(host, x, y, src, count) {
+function spawnImageBurst(host, x, y, src, count, opts = {}) {
   const layers = 2;
   const perLayer = Math.max(1, Math.floor(count / layers));
   const sw = 76, sh = 50;
+  const runActions = opts.runObjectActions === true;
+  const actionElements = runActions ? ghostSporeActionElements() : [];
   for (let layer = 0; layer < layers; layer++) {
     const layerRadius = (layer + 1) * 60;
     for (let i = 0; i < perLayer; i++) {
+      const wrap = document.createElement('div');
+      wrap.className = 'spore activation-spore';
+      wrap.style.position = 'absolute';
+      wrap.style.width = `${sw}px`;
+      wrap.style.height = `${sh}px`;
+      wrap.style.overflow = 'visible';
+      wrap.style.pointerEvents = 'none';
+      wrap.style.zIndex = '20';
       const spore = document.createElement('img');
       spore.src = src;
-      spore.className = 'spore';
       spore.draggable = false;
+      spore.dataset.elementId = 'ghostBody';
+      spore.alt = '';
+      spore.style.width = '100%';
+      spore.style.height = '100%';
+      spore.style.display = 'block';
+      wrap.appendChild(spore);
       const baseAngle = (Math.PI * 2 * i) / perLayer;
       const angle = baseAngle + (Math.random() - 0.5) * 0.3;
       const velocity = layerRadius + Math.random() * 50;
@@ -404,16 +461,28 @@ function spawnImageBurst(host, x, y, src, count) {
         height: sh,
         host
       });
-      spore.style.setProperty('--tx', tx + 'px');
-      spore.style.setProperty('--ty', ty + 'px');
-      spore.style.setProperty('--rotation', (360 + Math.random() * 720) + 'deg');
-      spore.style.left = (x - sw / 2) + 'px';
-      spore.style.top = (y - sh / 2) + 'px';
+      wrap.style.setProperty('--tx', tx + 'px');
+      wrap.style.setProperty('--ty', ty + 'px');
+      wrap.style.setProperty('--rotation', (360 + Math.random() * 720) + 'deg');
+      wrap.style.left = (x - sw / 2) + 'px';
+      wrap.style.top = (y - sh / 2) + 'px';
       const delay = layer * 0.08 + i * 0.02;
       const duration = 0.6 + Math.random() * 0.4;
-      spore.style.animation = `explode ${duration}s ease-out ${delay}s forwards`;
-      host.appendChild(spore);
-      setTimeout(() => spore.remove(), (duration + delay) * 1000 + 50);
+      wrap.style.animation = `explode ${duration}s ease-out ${delay}s forwards`;
+      if (runActions && actionElements.length) {
+        const ctrl = runObjectActions({
+          root: wrap,
+          elements: actionElements,
+          target: 'spore',
+          sporeIndex: layer * perLayer + i
+        });
+        wrap.__actionStop = ctrl.stop;
+      }
+      host.appendChild(wrap);
+      setTimeout(() => {
+        try { wrap.__actionStop?.(); } catch (_) {}
+        wrap.remove();
+      }, (duration + delay) * 1000 + 50);
     }
   }
 }

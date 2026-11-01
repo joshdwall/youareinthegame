@@ -38,3 +38,21 @@
   transition: opacity 30ms linear;
 }
 .activation-muzzle-streak.is-on { opacity: 1; }
+
+/* objectActions: textProjectile (e.g. ghost BOO from mouth) */
+.activation-text-projectile {
+  font-family: system-ui, -apple-system, 'Segoe UI', Impact, Haettenschweiler, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  will-change: transform, opacity;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.activation-spore .activation-text-projectile,
+.firework-spore .activation-text-projectile {
+  z-index: 36;
+}

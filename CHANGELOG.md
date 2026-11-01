@@ -5,6 +5,13 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
+## 2026-11-01 (America/Chicago) — preview: ghost BOO textProjectile
+
+- New generic `objectActions` type **`textProjectile`** (config: text, color, fontWeight, durationMs, distance/distanceRatio, mouth `point`, direction, …).
+- Ghost firework spores shoot black bold ALL-CAPS **BOO** from the mouth (facing direction, ~550ms fade/scale); mobile uses viewport spread + clamp.
+- Activation always runs OA; click-preview only when `previewObjectActions` (unchanged).
+- **Preview only** — local commit on `main`, do **not** push (main = prod). Deploy via `wrangler pages deploy --branch=preview-ghost-boo`.
+
 ## 2026-11-01 (America/Chicago) — OverlayPlayer standard: ghost never missing after cowboy
 
 - **Bug (prod `5466cc3` / deploy `43efdccb`):** First ghost climax overlay OK; cowboy `ActivationEngine` removed `#effectOverlay`; later ghost cycles called `SporeBaseEffect.showOverlay` on a **detached** node → flash with no visible overlay.
