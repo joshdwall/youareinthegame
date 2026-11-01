@@ -1,44 +1,35 @@
 /**
  * Mushroom Platypus Interactive Experience
- * Main JavaScript file - Modular Effects System
+ * Instant-interactive boot: listeners + default spores first;
+ * EffectLoader / thresholdActivation / ghost stack load in background.
  */
-
-// Import configuration
 import { CONFIG } from './mainConfig.js';
-
-// Import modular systems
-import effectLoader from './effects/EffectLoader.js';
 import { createDefaultSporeExplosion } from './effects/spore/defaultSpore.js';
-import { installThresholdLootHook } from './runtime/public/thresholdActivation.js';
 
-/**
- * Main application controller
- */
 class MushroomPlatypusApp {
     constructor() {
-        // DOM elements
         this.creature = null;
         this.container = null;
         this.sporeSticker = null;
 
-        // State
         this.clickCount = 0;
         this.currentEffect = null;
         this.isInitialized = false;
+        /** True once EffectLoader + threshold hook are installed. */
+        this.effectsReady = false;
+        /** Creature clicks before effectsReady — applied to effect.clickCount on takeover. */
+        this.pendingThresholdClicks = 0;
+        /** Module handle once dynamically imported. */
+        this.effectLoader = null;
 
-        // Performance
         this.lastClickTime = 0;
         this.clickDebounce = CONFIG.APP.CLICK_DEBOUNCE || 50;
     }
 
-    /**
-     * Initialize the application
-     */
     async init() {
         try {
             console.log('Mushroom Platypus: Initializing...');
 
-            // Get DOM elements
             this.creature = document.getElementById('mainCreature');
             this.container = document.querySelector('.container');
             this.sporeSticker = document.querySelector('.spore-sticker');
@@ -47,32 +38,52 @@ class MushroomPlatypusApp {
                 throw new Error('Required DOM elements not found');
             }
 
-            // Initialize effects system
-            await this.initializeEffects();
+            // Absorb early-boot pending clicks (inline script) before attaching module listeners.
+            const early = typeof window !== 'undefined' ? window.__yaitgEarly : null;
+            if (early && typeof early.takeOver === 'function') {
+                const pending = early.takeOver() || 0;
+                this.pendingThresholdClicks += Number(pending) || 0;
+            }
 
-            // Set up event listeners
+            // Instant interactivity: listeners BEFORE heavy effect stack.
             this.setupEventListeners();
-
-            // Log ARG console messages
+            this.markListenersReady();
             this.logConsoleArt();
-
             this.isInitialized = true;
-            console.log('Mushroom Platypus: Initialization complete');
+            console.log('Mushroom Platypus: listeners ready (effects loading…)');
 
+            // Background: ghost / ActivationEngine / loot / CSS / images.
+            await this.initializeEffects();
+            this.flushPendingThresholdClicks();
+            this.effectsReady = true;
+            console.log('Mushroom Platypus: Initialization complete');
         } catch (error) {
             console.error('Failed to initialize Mushroom Platypus:', error);
             this.handleInitializationError(error);
         }
     }
 
-    /**
-     * Initialize the effects system
-     */
-    async initializeEffects() {
-        // Load effects manifest
-        await effectLoader.loadManifest();
+    markListenersReady() {
+        try {
+            if (typeof performance !== 'undefined' && performance.mark) {
+                performance.mark('yaitg-listeners-ready');
+            }
+            if (typeof window !== 'undefined') {
+                window.__yaitgListenersReadyAt = Date.now();
+                window.__yaitgListenersReady = true;
+            }
+        } catch (_) { /* ignore */ }
+    }
 
-        // Select and load initial effect
+    async initializeEffects() {
+        const { default: effectLoader } = await import('./effects/EffectLoader.js');
+        const { installThresholdLootHook } = await import('./runtime/public/thresholdActivation.js');
+        this.effectLoader = effectLoader;
+        if (typeof window !== 'undefined') {
+            window.effectLoader = effectLoader;
+        }
+
+        await effectLoader.loadManifest();
         this.currentEffect = await effectLoader.selectRandomEffect();
 
         if (!this.currentEffect) {
@@ -83,7 +94,6 @@ class MushroomPlatypusApp {
         window.__yaitgEffect = this.currentEffect;
         console.log('Loaded initial effect:', this.currentEffect.constructor.name);
 
-        // Preload next effect if enabled
         if (CONFIG.EFFECTS.AUTO_PRELOAD_NEXT) {
             setTimeout(() => {
                 effectLoader.preloadNextEffect().catch(err =>
@@ -94,92 +104,85 @@ class MushroomPlatypusApp {
     }
 
     /**
-     * Set up event listeners
+     * Apply early creature clicks to the effect's threshold counter without
+     * re-firing spore bursts (already shown via default spores).
      */
-    setupEventListeners() {
-        // Creature click handler
-        this.creature.addEventListener('click', (e) => this.handleCreatureClick(e));
+    flushPendingThresholdClicks() {
+        const n = this.pendingThresholdClicks | 0;
+        this.pendingThresholdClicks = 0;
+        if (!n || !this.currentEffect) return;
+        const effect = this.currentEffect;
+        effect.clickCount = (effect.clickCount | 0) + n;
+        if (typeof effect.progressThunderstorm === 'function' && !effect.lightningSequenceActive) {
+            // One visual progress step is enough; count already includes all early clicks.
+            // Progress storm level based on how far into threshold we are without N full pulses.
+            const steps = Math.min(n, 8);
+            for (let i = 0; i < steps; i++) {
+                if (effect.lightningSequenceActive || effect.finaleInProgress) break;
+                effect.progressThunderstorm();
+            }
+        }
+        // If early clicks already met threshold, trigger once effects are ready.
+        if (
+            typeof effect.resetThreshold === 'number' &&
+            effect.clickCount >= effect.resetThreshold &&
+            typeof effect.triggerLightningReset === 'function' &&
+            !effect.lightningSequenceActive &&
+            !effect.finaleInProgress
+        ) {
+            effect.triggerLightningReset();
+        }
+    }
 
-        // Spore sticker is decorative (pointer-events:none) — no click handler.
-        // Container click handler for default background spores
+    setupEventListeners() {
+        this.creature.addEventListener('click', (e) => this.handleCreatureClick(e));
         this.container.addEventListener('click', (e) => {
-            // Only handle if not clicking on creature
             if (e.target !== this.creature) {
                 this.handleContainerClick(e);
             }
         });
-
-        // Handle visibility changes
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                this.handlePageHidden();
-            } else {
-                this.handlePageVisible();
-            }
+            if (document.hidden) this.handlePageHidden();
+            else this.handlePageVisible();
         });
     }
 
-    /**
-     * Handle creature click
-     * @param {MouseEvent} e - Click event
-     */
     handleCreatureClick(e) {
-        // Debounce rapid clicks
         const now = Date.now();
-        if (now - this.lastClickTime < this.clickDebounce) {
-            return;
-        }
+        if (now - this.lastClickTime < this.clickDebounce) return;
         this.lastClickTime = now;
 
-        // Increment click count
         this.clickCount++;
 
-        // Get click position relative to container
         const rect = this.container.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
 
-        // Delegate to current effect
-        if (this.currentEffect && this.currentEffect.onSporeClick) {
+        if (this.effectsReady && this.currentEffect && this.currentEffect.onSporeClick) {
             this.currentEffect.onSporeClick(x, y);
+        } else {
+            // Early path: default spores immediately; count applied on takeover.
+            createDefaultSporeExplosion(x, y, this.container);
+            this.pendingThresholdClicks++;
         }
 
-        // Pulse effect
         this.pulseCreature();
-
-        // Console messages for ARG
         this.checkConsoleMessages();
 
-        // Check for effect transition (every 100 clicks)
         if (this.clickCount % 100 === 0) {
             this.considerEffectTransition();
         }
     }
 
-    /**
-     * @deprecated Badge is non-interactive (pointer-events:none). Kept as no-op.
-     */
-    handleStickerClick(_e) {
-        /* no-op */
-    }
+    handleStickerClick(_e) { /* no-op */ }
 
-    /**
-     * Handle container click for default spores
-     * @param {MouseEvent} e - Click event
-     */
     handleContainerClick(e) {
-        // Get click position relative to container
         const rect = this.container.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
-
-        // Create default spore explosion using imported function
         createDefaultSporeExplosion(x, y, this.container);
     }
 
-    /**
-     * Pulse the creature on click
-     */
     pulseCreature() {
         this.creature.style.filter = CONFIG.VISUALS.CREATURE_PULSE_FILTER;
         setTimeout(() => {
@@ -187,111 +190,61 @@ class MushroomPlatypusApp {
         }, CONFIG.ANIMATIONS.CREATURE_PULSE_DURATION);
     }
 
-    /**
-     * Check and display console messages
-     */
     checkConsoleMessages() {
         CONFIG.CONSOLE_MESSAGES.forEach(msg => {
-            if (this.clickCount === msg.clicks) {
-                console.log(msg.message);
-            }
+            if (this.clickCount === msg.clicks) console.log(msg.message);
         });
     }
 
-    /**
-     * Consider transitioning to a new effect
-     */
     async considerEffectTransition() {
         if (!CONFIG.EFFECTS.AUTO_PRELOAD_NEXT) return;
-
+        if (!this.effectsReady || !this.effectLoader) return;
         try {
             console.log('Considering effect transition...');
-
-            // Trigger current effect's climax
             if (this.currentEffect && this.currentEffect.onClimax) {
                 await this.currentEffect.onClimax();
-
-                // Wait for climax to complete
                 await new Promise(resolve => setTimeout(resolve, 5000));
             }
-
-            // Transition to new effect
             await this.transitionToNewEffect();
-
         } catch (error) {
             console.error('Effect transition failed:', error);
         }
     }
 
-    /**
-     * Transition to a new effect
-     */
     async transitionToNewEffect() {
         try {
-            // Reset current effect
             if (this.currentEffect && this.currentEffect.reset) {
                 await this.currentEffect.reset();
             }
-
-            // Load new effect
-            this.currentEffect = await effectLoader.selectRandomEffect();
-
+            this.currentEffect = await this.effectLoader.selectRandomEffect();
+            window.__yaitgEffect = this.currentEffect;
             console.log('Transitioned to new effect:', this.currentEffect.constructor.name);
-
-            // Preload next
             if (CONFIG.EFFECTS.AUTO_PRELOAD_NEXT) {
                 setTimeout(() => {
-                    effectLoader.preloadNextEffect().catch(err =>
+                    this.effectLoader.preloadNextEffect().catch(err =>
                         console.warn('Failed to preload next effect:', err)
                     );
                 }, 5000);
             }
-
         } catch (error) {
             console.error('Failed to transition to new effect:', error);
         }
     }
 
-    /**
-     * Handle page becoming hidden
-     */
-    handlePageHidden() {
-        // Could pause animations here if needed
-    }
+    handlePageHidden() {}
+    handlePageVisible() {}
 
-    /**
-     * Handle page becoming visible
-     */
-    handlePageVisible() {
-        // Could resume animations here if needed
-    }
-
-    /**
-     * Log console art for ARG
-     */
     logConsoleArt() {
         console.log(`%c${CONFIG.CONSOLE_ART.EMOJI}`, CONFIG.CONSOLE_ART.EMOJI_STYLE);
         console.log(`%c${CONFIG.CONSOLE_ART.MESSAGE}`, CONFIG.CONSOLE_ART.MESSAGE_STYLE);
     }
 
-    /**
-     * Handle initialization errors
-     * @param {Error} error - The error that occurred
-     */
     handleInitializationError(error) {
-        // Show user-friendly error
         const errorDiv = document.createElement('div');
         errorDiv.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            z-index: 1000;
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: white; padding: 20px; border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); text-align: center; z-index: 1000;
         `;
         errorDiv.innerHTML = `
             <h2 style="color: #e74c3c; margin: 0 0 10px 0;">Oops!</h2>
@@ -301,34 +254,24 @@ class MushroomPlatypusApp {
         document.body.appendChild(errorDiv);
     }
 
-    /**
-     * Get current app statistics
-     * @returns {Object} App statistics
-     */
     getStats() {
         return {
             clickCount: this.clickCount,
-            currentEffect: this.currentEffect ? this.currentEffect.constructor.name : 'None'
+            currentEffect: this.currentEffect ? this.currentEffect.constructor.name : 'None',
+            effectsReady: this.effectsReady
         };
     }
 }
 
-/**
- * Initialize the application when DOM is loaded
- */
-document.addEventListener('DOMContentLoaded', async function() {
-    // Create and initialize app
+document.addEventListener('DOMContentLoaded', async function () {
     const app = new MushroomPlatypusApp();
     await app.init();
-
-    // Always expose for harness/Playwright (no visual change). Verbose log only in debug.
     window.mushroomPlatypusApp = app;
-    window.effectLoader = effectLoader;
     if (CONFIG.DEV_MODE || CONFIG.APP.DEBUG_MODE) {
         console.log('Debug mode enabled. Access app via window.mushroomPlatypusApp');
     }
 });
-// Block selection / caret on mouse-down anywhere except real inputs
+
 (() => {
     const block = (e) => {
         if (e.target.closest && e.target.closest('input, textarea, select, [contenteditable="true"]')) return;

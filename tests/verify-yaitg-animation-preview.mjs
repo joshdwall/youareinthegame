@@ -90,8 +90,12 @@ assert.match(lightningSrc, /lightning-flash/);
 assert.doesNotMatch(lightningSrc, /global-lightning-flash/);
 
 const scriptSrc = fs.readFileSync(path.join(root, 'script.js'), 'utf8');
-assert.match(scriptSrc, /runHarnessPreview/);
-assert.match(scriptSrc, /previewDemo/);
+// Instant-interactive boot: listeners before heavy effect stack; harness preview lives in Cambio.
+assert.match(scriptSrc, /createDefaultSporeExplosion/);
+assert.match(scriptSrc, /effectsReady|initializeEffects/);
+assert.match(scriptSrc, /EffectLoader/);
+const indexSrc = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+assert.match(indexSrc, /__yaitgEarly|yaitg-listeners-ready/);
 
 console.log(
   '[verify-yaitg-animation-preview] OK',

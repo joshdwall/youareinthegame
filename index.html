@@ -5,19 +5,102 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Mushroom Platypus - Now With Spores!</title>
-  <link rel="stylesheet" href="styles.css?v=oa-1">
+  <link rel="stylesheet" href="styles.css?v=ii-1">
 </head>
 
 <body>
   <div class="container">
-    <img src="img/mushroom-platypus.png" alt="Mushroom Platypus Creature" class="creature" id="mainCreature"
-      draggable="false">
-    <!-- Updated sticker image source -->
-    <img src="img/Now With Spores Large Image Circular Blue Orange.png" alt="Now With Spores!" class="spore-sticker"
-      draggable="false">
+    <img src="img/mushroom-platypus.webp" alt="Mushroom Platypus Creature" class="creature" id="mainCreature"
+      draggable="false"
+      onerror="this.onerror=null;this.src='img/mushroom-platypus.png'">
+    <picture class="spore-sticker-picture">
+      <source type="image/avif" srcset="img/now-with-spores.avif">
+      <source type="image/webp" srcset="img/now-with-spores.webp">
+      <img src="img/now-with-spores.png" alt="Now With Spores!" class="spore-sticker" draggable="false"
+        width="192" height="192">
+    </picture>
   </div>
-  <!-- Load the modular effects system -->
-  <script type="module" src="script.js?v=oa-1"></script>
+  <!-- Instant interactivity: attach listeners at first paint (before module graph). -->
+  <script>
+    (function () {
+      var SPORE = '/effects/spore/mushroom-platypus-spores.png';
+      var takenOver = false;
+      var pending = 0;
+      var creature, container;
+      function clampBurst(x, y, angle, velocity) {
+        var vw = window.innerWidth || 390, vh = window.innerHeight || 844;
+        var minDim = Math.min(vw, vh);
+        var scale = Math.min(1, Math.max(0.45, minDim / 720));
+        var tx = Math.cos(angle) * velocity * scale;
+        var ty = Math.sin(angle) * velocity * scale;
+        var sw = 76, sh = 50, m = 8;
+        var endX = Math.min(vw - m - sw / 2, Math.max(m + sw / 2, x + tx));
+        var endY = Math.min(vh - m - sh / 2, Math.max(m + sh / 2, y + ty));
+        return { tx: endX - x, ty: endY - y };
+      }
+      function burst(x, y) {
+        if (!container) return;
+        var layers = 2, count = 16, per = count / layers;
+        for (var layer = 0; layer < layers; layer++) {
+          var radius = (layer + 1) * 60;
+          for (var i = 0; i < per; i++) {
+            var spore = document.createElement('img');
+            spore.src = SPORE;
+            spore.className = 'spore';
+            spore.draggable = false;
+            var angle = (Math.PI * 2 * i) / per + (Math.random() - 0.5) * 0.3;
+            var velocity = radius + Math.random() * 50;
+            var d = clampBurst(x, y, angle, velocity);
+            spore.style.setProperty('--tx', d.tx + 'px');
+            spore.style.setProperty('--ty', d.ty + 'px');
+            spore.style.setProperty('--rotation', (360 + Math.random() * 720) + 'deg');
+            spore.style.left = (x - 38) + 'px';
+            spore.style.top = (y - 25) + 'px';
+            var delay = layer * 0.08 + i * 0.02;
+            var dur = 0.6 + Math.random() * 0.4;
+            spore.style.animation = 'explode ' + dur + 's ease-out ' + delay + 's forwards';
+            container.appendChild(spore);
+            (function (el, ms) { setTimeout(function () { el.remove(); }, ms); })(spore, (dur + delay) * 1000);
+          }
+        }
+      }
+      function onCreature(e) {
+        if (takenOver) return;
+        pending++;
+        var rect = container.getBoundingClientRect();
+        burst(e.clientX - rect.left, e.clientY - rect.top);
+      }
+      function onContainer(e) {
+        if (takenOver) return;
+        if (e.target === creature) return;
+        var rect = container.getBoundingClientRect();
+        burst(e.clientX - rect.left, e.clientY - rect.top);
+      }
+      function attach() {
+        creature = document.getElementById('mainCreature');
+        container = document.querySelector('.container');
+        if (!creature || !container) return;
+        creature.addEventListener('click', onCreature);
+        container.addEventListener('click', onContainer);
+        try { performance.mark('yaitg-listeners-ready'); } catch (_) {}
+        window.__yaitgListenersReadyAt = Date.now();
+        window.__yaitgListenersReady = true;
+      }
+      window.__yaitgEarly = {
+        takeOver: function () {
+          if (takenOver) return pending;
+          takenOver = true;
+          if (creature) creature.removeEventListener('click', onCreature);
+          if (container) container.removeEventListener('click', onContainer);
+          return pending;
+        },
+        pendingClicks: function () { return pending; }
+      };
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attach);
+      else attach();
+    })();
+  </script>
+  <script type="module" src="script.js?v=ii-1"></script>
 </body>
 
 </html>

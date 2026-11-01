@@ -30,8 +30,8 @@ const CONFIG = {
 
     // Asset Paths - Global assets only
     ASSETS: {
-        CREATURE_IMAGE: 'img/mushroom-platypus.png',
-        STICKER_IMAGE: 'img/Now With Spores Large Image Circular Blue Orange.png'
+        CREATURE_IMAGE: 'img/mushroom-platypus.webp',
+        STICKER_IMAGE: 'img/now-with-spores.webp'
     },
 
     // Console ARG Easter Eggs

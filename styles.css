@@ -176,6 +176,34 @@ img {
   --badge-z: 25;
 }
 
+.spore-sticker-picture {
+  position: fixed;
+  width: var(--badge-size);
+  height: var(--badge-size);
+  right: var(--badge-right);
+  bottom: var(--badge-bottom);
+  left: auto;
+  top: auto;
+  z-index: var(--badge-z);
+  pointer-events: none;
+  display: block;
+  animation: floatWithRotation 4s ease-in-out infinite;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
+}
+.spore-sticker-picture .spore-sticker {
+  position: static;
+  width: 100%;
+  height: 100%;
+  right: auto;
+  bottom: auto;
+  animation: none;
+  filter: none;
+  pointer-events: none;
+  display: block;
+  object-fit: contain;
+  -webkit-user-drag: none;
+  user-select: none;
+}
 .spore-sticker {
   position: fixed;
   width: var(--badge-size);
@@ -233,7 +261,20 @@ img {
     height: auto;
   }
 
-  .spore-sticker {
+  .spore-sticker-picture {
+  position: fixed;
+  width: var(--badge-size);
+  height: var(--badge-size);
+  right: var(--badge-right);
+  bottom: var(--badge-bottom);
+  left: auto;
+  top: auto;
+  z-index: var(--badge-z);
+  pointer-events: none;
+  display: block;
+}
+.spore-sticker-picture .spore-sticker,
+.spore-sticker {
     --badge-size: 80px;
   }
 }
@@ -244,7 +285,20 @@ img {
     height: auto;
   }
 
-  .spore-sticker {
+  .spore-sticker-picture {
+  position: fixed;
+  width: var(--badge-size);
+  height: var(--badge-size);
+  right: var(--badge-right);
+  bottom: var(--badge-bottom);
+  left: auto;
+  top: auto;
+  z-index: var(--badge-z);
+  pointer-events: none;
+  display: block;
+}
+.spore-sticker-picture .spore-sticker,
+.spore-sticker {
     --badge-size: 64px;
   }
 }
