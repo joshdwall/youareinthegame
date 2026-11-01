@@ -6,6 +6,7 @@
 
 import { FireworkManager } from './finale.js';
 import { fadeStormResetToLight } from '../activation/fadeStormReset.js';
+import { computeClampedBurstDelta } from './sporeBurstMath.js';
 
 /**
  * Base class for spore effects with storm and lightning mechanics
@@ -279,10 +280,13 @@ class SporeBaseEffect {
                 const angleVariation = (Math.random() - 0.5) * config.ANGLE_VARIATION;
                 const angle = baseAngle + angleVariation;
 
-                // Calculate velocity
+                // Calculate velocity (viewport-scaled + clamped so spores stay on screen)
                 const velocity = layerRadius + Math.random() * config.VELOCITY_RANDOM_RANGE;
-                const tx = Math.cos(angle) * velocity;
-                const ty = Math.sin(angle) * velocity;
+                const { tx, ty } = computeClampedBurstDelta(x, y, angle, velocity, {
+                    width: config.SPRITE_WIDTH,
+                    height: config.SPRITE_HEIGHT,
+                    host: this.container
+                });
                 const rotation = config.MIN_ROTATION + Math.random() * (config.MAX_ROTATION - config.MIN_ROTATION);
 
                 // Set CSS variables

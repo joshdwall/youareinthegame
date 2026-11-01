@@ -12,6 +12,7 @@ import { fadeStormResetToLight } from './fadeStormReset.js';
 import { buildCharacterComposite, measureCreatureBox } from './CharacterComposite.js';
 import { runObjectActions } from './objectActions.js';
 import { resolveClickEffect } from './clickEffect.js';
+import { computeClampedBurstDelta } from '../spore/sporeBurstMath.js';
 
 const loadedSheets = new Set();
 
@@ -383,7 +384,7 @@ export function previewClick(opts) {
   const box = measureCreatureBox(creature, container);
   const charBox = { width: box.width, height: box.height };
   const count = fx.count || 16;
-  const baseScale = fx.scale || 0.18;
+  const baseScale = fx.scale || 0.15;
   const layers = 2;
   const perLayer = Math.max(1, Math.floor(count / layers));
 
@@ -406,15 +407,18 @@ export function previewClick(opts) {
       const baseAngle = (Math.PI * 2 * i) / perLayer;
       const angle = baseAngle + (Math.random() - 0.5) * 0.3;
       const velocity = layerRadius + Math.random() * 50;
-      const tx = Math.cos(angle) * velocity;
-      const ty = Math.sin(angle) * velocity;
+      const w = charBox.width * scale;
+      const h = charBox.height * scale;
+      const { tx, ty } = computeClampedBurstDelta(x, y, angle, velocity, {
+        width: w,
+        height: h,
+        host: sporeHost
+      });
       const rotation = 360 + Math.random() * 720;
       node.style.setProperty('--tx', tx + 'px');
       node.style.setProperty('--ty', ty + 'px');
       node.style.setProperty('--rotation', rotation + 'deg');
 
-      const w = charBox.width * scale;
-      const h = charBox.height * scale;
       node.style.left = (x - w / 2) + 'px';
       node.style.top = (y - h / 2) + 'px';
 
@@ -457,8 +461,13 @@ function spawnImageBurst(host, x, y, src, count) {
       const baseAngle = (Math.PI * 2 * i) / perLayer;
       const angle = baseAngle + (Math.random() - 0.5) * 0.3;
       const velocity = layerRadius + Math.random() * 50;
-      spore.style.setProperty('--tx', Math.cos(angle) * velocity + 'px');
-      spore.style.setProperty('--ty', Math.sin(angle) * velocity + 'px');
+      const { tx, ty } = computeClampedBurstDelta(x, y, angle, velocity, {
+        width: sw,
+        height: sh,
+        host
+      });
+      spore.style.setProperty('--tx', tx + 'px');
+      spore.style.setProperty('--ty', ty + 'px');
       spore.style.setProperty('--rotation', (360 + Math.random() * 720) + 'deg');
       spore.style.left = (x - sw / 2) + 'px';
       spore.style.top = (y - sh / 2) + 'px';

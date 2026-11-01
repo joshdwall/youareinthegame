@@ -22,12 +22,12 @@ export function resolveClickEffect(animation) {
       type: raw.type,
       sporeImage: raw.sporeImage || null,
       count: raw.count ?? 16,
-      scale: raw.scale ?? 0.18
+      scale: raw.scale ?? 0.15
     };
   }
   const hasElements = Array.isArray(animation.elements) && animation.elements.length > 0;
   if (hasElements || animation.playMode === 'character-overlay' || animation.overlayFlashMode === 'composite') {
-    return { type: 'composite-spores', count: 16, scale: 0.18, sporeImage: null };
+    return { type: 'composite-spores', count: 16, scale: 0.15, sporeImage: null };
   }
   return { type: 'ghost-spores', count: 16, scale: null, sporeImage: null };
 }

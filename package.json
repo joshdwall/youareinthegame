@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "node scripts/sync-envivo-ui.mjs && node scripts/build.mjs",
-    "verify": "node tests/verify-yaitg-session-roll.mjs && node tests/verify-yaitg-animation-preview.mjs && node tests/loot-table-weights.test.mjs && node tests/placement-math.test.mjs && node tests/selection-cursor-last-played.test.mjs && node tests/loot-table-alternate.test.mjs",
+    "verify": "node tests/verify-yaitg-session-roll.mjs && node tests/verify-yaitg-animation-preview.mjs && node tests/loot-table-weights.test.mjs && node tests/placement-math.test.mjs && node tests/selection-cursor-last-played.test.mjs && node tests/loot-table-alternate.test.mjs && node tests/spore-burst-math.test.mjs && node scripts/check-image-budget.mjs",
     "test": "npm run verify",
     "dev": "npm run build && npx wrangler pages dev dist",
     "compare:staging": "node scripts/compare-staging.mjs",
@@ -17,9 +17,12 @@
     "test:placement": "node tests/placement-parity-test.mjs",
     "test:upcoming": "node tests/upcoming-clickeffect-test.mjs",
     "sync:pf-kit": "node scripts/sync-site-hub-pf-kit.mjs",
-    "sync:envivo-ui": "node scripts/sync-envivo-ui.mjs"
+    "sync:envivo-ui": "node scripts/sync-envivo-ui.mjs",
+    "optimize:images": "node scripts/optimize-images.mjs",
+    "check:images": "node scripts/check-image-budget.mjs"
   },
   "devDependencies": {
-    "playwright": "^1.48.0"
+    "playwright": "^1.48.0",
+    "sharp": "^0.33.5"
   }
 }

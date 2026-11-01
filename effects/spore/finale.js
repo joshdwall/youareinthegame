@@ -3,6 +3,8 @@
  * Individual firework spore physics and animation handler
  * Fixed for mobile compatibility and reliable animation
  */
+import { getViewportSpreadScale } from './sporeBurstMath.js';
+
 
 /**
  * Class representing a single firework spore
@@ -21,9 +23,11 @@ class FireworkSpore {
 
         // Velocity with random initial direction and speed
         const angle = config.MIN_LAUNCH_ANGLE + Math.random() * (config.MAX_LAUNCH_ANGLE - config.MIN_LAUNCH_ANGLE);
-        const speed = config.MIN_INITIAL_SPEED + Math.random() * (config.MAX_INITIAL_SPEED - config.MIN_INITIAL_SPEED);
+        const spreadScale = getViewportSpreadScale();
+        const speed = (config.MIN_INITIAL_SPEED + Math.random() * (config.MAX_INITIAL_SPEED - config.MIN_INITIAL_SPEED)) * spreadScale;
         this.vx = Math.cos(angle) * speed;
         this.vy = Math.sin(angle) * speed;
+        this._spreadScale = spreadScale;
 
         // Acceleration
         this.ax = 0;

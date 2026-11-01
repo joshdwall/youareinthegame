@@ -73,7 +73,7 @@
       "clickEffect": {
         "type": "composite-spores",
         "count": 16,
-        "scale": 0.18
+        "scale": 0.15
       },
       "previewObjectActions": false
     }
