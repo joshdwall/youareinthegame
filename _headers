@@ -19,8 +19,21 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
+# Broad effects rule first; more-specific JS/CSS below override (Pages: last match wins).
 /effects/*
   Cache-Control: public, max-age=31536000, immutable
+
+/effects/*.js
+  Cache-Control: public, max-age=60, must-revalidate
+
+/effects/*.css
+  Cache-Control: public, max-age=60, must-revalidate
+
+/runtime/*
+  Cache-Control: public, max-age=60, must-revalidate
+
+/cambio/*
+  Cache-Control: public, max-age=60, must-revalidate
 
 /content/*
   Cache-Control: public, max-age=60, must-revalidate
