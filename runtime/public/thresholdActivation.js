@@ -14,6 +14,7 @@ import {
 } from '../../effects/activation/ActivationEngine.js';
 import { mountOverlayProps } from '../../effects/activation/mountOverlayProps.js';
 import { fadeStormResetToLight } from '../../effects/activation/fadeStormReset.js';
+import { GHOST_CONFIG } from '../../effects/spore/ghost/config.js';
 
 let cachedConfig = null;
 let cacheAt = 0;
@@ -223,7 +224,13 @@ function assetUrls(anim, compositeElements, creature) {
 export async function prepareUpcoming(creature) {
   prepared = null;
   if (!upcoming || isGhostPick(upcoming)) {
-    prepared = { kind: 'ghost', ready: true };
+    const urls = [
+      GHOST_CONFIG.ASSETS.OVERLAY_IMAGE,
+      GHOST_CONFIG.ASSETS.SPORE_IMAGE,
+      creature?.getAttribute?.('src') || '/img/mushroom-platypus.png'
+    ].filter(Boolean);
+    await preloadActivationAssets(urls, 'ghost');
+    prepared = { kind: 'ghost', ready: true, urls };
     exposeUpcoming();
     return prepared;
   }
@@ -325,8 +332,8 @@ export function ensurePublicOverlayDom(creature) {
  * Hook SporeBaseEffect:
  * - pick + preload upcoming at install (cycle start)
  * - character click spores → previewClick(upcoming)
- * - threshold → IMMEDIATE activate(upcoming) for composites (no ghost pre-sequence)
- * - ghost keeps original triggerLightningReset timing
+ * - threshold → IMMEDIATE activate(upcoming) for EVERY profile (ghost + composite)
+ *   via the same OverlayPlayer path in ActivationEngine
  */
 
 /** Apply live click-threshold settings onto the SporeBaseEffect instance. */
@@ -378,18 +385,15 @@ export function installThresholdLootHook(effect) {
   };
 
   /**
-   * Threshold entry — composites activate IMMEDIATELY (same moment as ghost would
-   * start its first flash). Ghost keeps the original lightning→spores path.
+   * Threshold entry — EVERY animation (ghost + composite) activates IMMEDIATELY
+   * through ActivationEngine / OverlayPlayer. Same lifecycle; profiles are data.
    */
   effect.triggerLightningReset = async function patchedTrigger() {
     if (this.lightningSequenceActive || this.finaleInProgress) return;
 
     const pick = resolveForcePick(cachedConfig) || upcoming;
-    if (isGhostPick(pick)) {
-      return origTrigger();
-    }
+    const ghost = isGhostPick(pick);
 
-    // --- Composite: immediate simultaneous flash+overlay (no blank pre-flash) ---
     this.clearAllTimers?.();
     this.lightningSequenceActive = true;
     this.finaleInProgress = true;
@@ -400,44 +404,64 @@ export function installThresholdLootHook(effect) {
     const CONFIG = this.getConfig();
     const { rig, overlay } = ensurePublicOverlayDom(creature);
 
-    // Ensure prepared (should already be ready from cycle start)
-    if (!prepared?.ready || prepared.id !== pick.id || prepared.kind !== 'composite') {
+    if (ghost) {
+      if (!prepared?.ready || prepared.kind !== 'ghost') {
+        upcoming = pick || { id: 'ghost', anim: { id: 'ghost', playMode: 'legacy-ghost' } };
+        await prepareUpcoming(creature);
+      }
+    } else if (!prepared?.ready || prepared.id !== pick.id || prepared.kind !== 'composite') {
       upcoming = pick;
       await prepareUpcoming(creature);
     }
     const prep = prepared;
-    const placementsById = prep.placementsById || {};
-    const elements = prep.elements || [];
 
-    // Mount accessories NOW (assets already decoded) — opacity 0 until engine flashes
-    mountOverlayProps(overlay, { creature, creatureRig: rig, elements, placementsById });
+    if (!ghost) {
+      const placementsById = prep.placementsById || {};
+      const elements = prep.elements || [];
+      mountOverlayProps(overlay, { creature, creatureRig: rig, elements, placementsById });
+    }
     overlay.style.opacity = '0';
 
     try {
-      await activate({
-        container,
-        creature,
-        creatureRig: rig,
-        sporeHost: container,
-        profile: 'composite',
-        flashHost: overlay,
-        composite: {
-          baseSrc: creature.getAttribute('src') || '/img/mushroom-platypus.png',
-          elements: prep.compositeElements || buildCompositeElements(pick.anim, placementsById)
-        },
-        spore: { count: 8, scale: 0.32, durationMs: 1800, rangePx: 140 },
-        assetsPreloaded: true
-      });
+      if (ghost) {
+        await activate({
+          container,
+          creature,
+          creatureRig: rig,
+          sporeHost: container,
+          profile: 'ghost',
+          assetsPreloaded: true
+        });
+      } else {
+        const placementsById = prep.placementsById || {};
+        await activate({
+          container,
+          creature,
+          creatureRig: rig,
+          sporeHost: container,
+          profile: 'composite',
+          flashHost: overlay,
+          composite: {
+            baseSrc: creature.getAttribute('src') || '/img/mushroom-platypus.png',
+            elements: prep.compositeElements || buildCompositeElements(pick.anim, placementsById)
+          },
+          spore: { count: 8, scale: 0.32, durationMs: 1800, distancePx: 140 },
+          assetsPreloaded: true
+        });
+      }
     } catch (err) {
-      error('composite activation failed; falling back to ghost', err);
+      error(ghost ? 'ghost activation failed' : 'composite activation failed; falling back to legacy ghost', err);
       overlay.innerHTML = '';
+      overlay.style.opacity = '0';
       this.lightningSequenceActive = false;
       this.finaleInProgress = false;
-      return origTrigger();
+      if (!ghost) return origTrigger();
+      return;
     }
 
+    // Reset host: keep opacity 0 (never '') so a cleared host cannot flash opaque.
     overlay.innerHTML = '';
-    overlay.style.opacity = '';
+    overlay.style.opacity = '0';
     overlay.classList.remove('activation-flash-host');
 
     this.clickCount = 0;
@@ -446,11 +470,9 @@ export function installThresholdLootHook(effect) {
     this.lightningSequenceActive = false;
     this.finaleInProgress = false;
     this.stormLevel = 0;
-    // Gradual dark→light (prior SporeBaseEffect fade); flash at activation stays instant
     const fadeMs = Number.isFinite(this.__liveStormResetMs)
       ? this.__liveStormResetMs
       : (CONFIG?.ANIMATIONS?.STORM_RESET_DURATION || 1500);
-    // Keep clicks decorative through the fade after finale flags clear
     this.markStormResetFade?.(fadeMs);
     fadeStormResetToLight(container, {
       durationMs: fadeMs,
@@ -459,44 +481,42 @@ export function installThresholdLootHook(effect) {
     if (this.creature) {
       this.creature.className = this.creature.className.replace(/storm-level-\d+/g, '');
     }
-    if (this.effectOverlay) {
+    // SporeBaseEffect no longer owns the climax overlay; clear any stale ref.
+    if (this.effectOverlay && !this.effectOverlay.isConnected) {
+      this.effectOverlay = null;
+    } else if (this.effectOverlay) {
       this.effectOverlay.className = this.effectOverlay.className.replace(/storm-level-\d+/g, '');
+      this.effectOverlay.style.opacity = '0';
     }
 
-    const playedId = pick?.id || null;
-    const playedIndex = Number.isFinite(pick?.index) ? pick.index : -1;
+    const playedId = ghost ? 'ghost' : (pick?.id || null);
+    const playedIndex = Number.isFinite(pick?.index) ? pick.index : (ghost ? 0 : -1);
     upcoming = null;
     prepared = null;
     recordPlayed(playedId, playedIndex);
     await pickUpcoming({ forceRefresh: true, creature });
   };
 
-  // Ghost climax end: fireworks path; next pick happens in onFinaleComplete after recordPlayed
+  // Legacy SporeBaseEffect climax path is unused when activate() owns every profile.
+  // Keep hooks as no-ops so a stray origTrigger completion cannot double-pick.
   effect.endLightningSequence = function patchedEnd() {
-    const pick = resolveForcePick(cachedConfig) || upcoming;
-    // If somehow composite reached here, do nothing (trigger already handled)
-    if (!isGhostPick(pick)) {
-      return;
-    }
-    origEnd();
+    // Composite + ghost both finish inside activate(); ignore leftover calls.
   };
 
   const origFinale = effect.onFinaleComplete?.bind(effect);
   if (origFinale) {
     effect.onFinaleComplete = async function patchedFinale() {
-      await origFinale();
-      const playedIndex = Number.isFinite(upcoming?.index) ? upcoming.index : 0;
-      upcoming = null;
-      prepared = null;
-      recordPlayed('ghost', playedIndex);
-      await pickUpcoming({ creature: this.creature });
+      // activate() already recorded + picked; only run base cleanup if still needed.
+      try {
+        await origFinale();
+      } catch (_) {}
     };
   }
 
-  // Cycle start: pick + preload now (and ensure overlay DOM for composites)
+  // Cycle start: pick + preload; always ensure shared overlay DOM (ghost + composite).
   (async () => {
     await pickUpcoming({ creature: effect.creature });
-    if (!isGhostPick(upcoming) && effect.creature) {
+    if (effect.creature) {
       ensurePublicOverlayDom(effect.creature);
     }
   })().catch(() => {});

@@ -1,10 +1,11 @@
 /**
  * Shared character-overlay activation engine.
- * Play / threshold → transition + overlay flash + spore replicas + reset.
- * Ghost uses image overlay + FireworkManager (apex-compatible assets/timings).
- * Cowboy (and future) flashes accessories on the LIVE character via flashHost
+ * Play / threshold → OverlayPlayer flash + spore replicas + reset.
+ * Ghost + cowboy (+ future) share ONE OverlayPlayer lifecycle; profiles are data.
+ * Cowboy flashes accessories on the LIVE character via flashHost
  * (same mount/placement path as edit mode) + mini composite-replica spores.
  * Never draws a second full-size base character during the flash.
+ * Owned flash layers are always created fresh per run and removed on cleanup.
  */
 import { FireworkManager } from '../spore/finale.js';
 import { GHOST_CONFIG } from '../spore/ghost/config.js';
@@ -13,6 +14,14 @@ import { buildCharacterComposite, measureCreatureBox } from './CharacterComposit
 import { runObjectActions } from './objectActions.js';
 import { resolveClickEffect } from './clickEffect.js';
 import { computeClampedBurstDelta } from '../spore/sporeBurstMath.js';
+import { OVERLAY_PROFILES } from './overlayProfiles.js';
+import {
+  preloadAndDecode,
+  clearOwnedFlashLayers,
+  createImageFlashLayer,
+  bindFlashHost,
+  createOverlayPlayer
+} from './OverlayPlayer.js';
 
 const loadedSheets = new Set();
 
@@ -41,25 +50,10 @@ async function ensureStylesheet(href) {
  * Preload stylesheets + images used by activation. Call at cycle start so
  * threshold activate() can flash overlay from frame one with no await gap.
  */
-export async function preloadActivationAssets(urls = []) {
-  await Promise.all([
-    ensureStylesheet(GHOST_CONFIG.STYLESHEETS.EFFECT),
-    ensureStylesheet(GHOST_CONFIG.STYLESHEETS.FINALE),
-    ensureStylesheet('/effects/activation/activation.css')
-  ]);
-  const unique = [...new Set((urls || []).filter(Boolean))];
-  await Promise.all(unique.map((src) => new Promise((resolve) => {
-    const img = new Image();
-    img.onload = img.onerror = () => {
-      // decode when available so first paint is not blank
-      if (img.decode) {
-        img.decode().then(resolve).catch(resolve);
-      } else {
-        resolve();
-      }
-    };
-    img.src = src;
-  })));
+export async function preloadActivationAssets(urls = [], profileId = 'ghost') {
+  const profile = OVERLAY_PROFILES[profileId] || OVERLAY_PROFILES.ghost;
+  await Promise.all((profile.stylesheets || []).map((href) => ensureStylesheet(href)));
+  await preloadAndDecode(urls);
 }
 
 function bodyFlash(classExtra = '') {
@@ -117,101 +111,45 @@ export async function runActivation(opts) {
   };
   const aborted = () => signal?.aborted;
 
-  // Clean prior activation leftovers
-  flashParent.querySelectorAll('.activation-flash-layer, .activation-spore, #effectOverlay').forEach((n) => n.remove());
-  container.querySelectorAll('.activation-flash-layer, .activation-spore, #effectOverlay').forEach((n) => n.remove());
+  // Clean prior OWNED flash leftovers only (never delete a foreign host by id).
+  clearOwnedFlashLayers(flashParent, container);
   sporeHost.querySelectorAll('.firework-spore, .activation-spore').forEach((n) => n.remove());
 
   const boxInContainer = measureCreatureBox(creature, flashParent);
-  let flashLayer = null;
-  let flashOwned = false; // true when we created the layer and may remove it
-  let flickerInterval = null;
+  const overlayProfile = OVERLAY_PROFILES[profile] || OVERLAY_PROFILES.ghost;
+  let overlayPlayer = null;
   let fireworkManager = null;
 
-  const showFlash = () => {
-    if (!flashLayer) return;
-    const ov = GHOST_CONFIG.OVERLAY;
-    if (Math.random() > ov.SHOW_PROBABILITY) return;
-    if (flickerInterval) {
-      clearInterval(flickerInterval);
-      timers.delete(flickerInterval);
-    }
-    const opacity = ov.MIN_OPACITY + Math.random() * (ov.MAX_OPACITY - ov.MIN_OPACITY);
-    flashLayer.style.transition = `opacity ${ov.FADE_IN_MS}ms ease`;
-    flashLayer.style.opacity = String(opacity);
-    if (ov.FLICKER_ENABLED) {
-      flickerInterval = setInterval(() => {
-        const fo = ov.FLICKER_MIN_OPACITY + Math.random() * (ov.FLICKER_MAX_OPACITY - ov.FLICKER_MIN_OPACITY);
-        flashLayer.style.opacity = String(fo);
-      }, ov.FLICKER_SPEED_MS);
-      timers.add(flickerInterval);
-    }
-  };
-
-  const hideFlash = () => {
-    if (!flashLayer) return;
-    const ov = GHOST_CONFIG.OVERLAY;
-    if (flickerInterval) {
-      clearInterval(flickerInterval);
-      timers.delete(flickerInterval);
-      flickerInterval = null;
-    }
-    flashLayer.style.transition = `opacity ${ov.FADE_OUT_MS}ms ease`;
-    flashLayer.style.opacity = '0';
-  };
-
-  const cleanupFlashLayer = () => {
-    hideFlash();
-    if (!flashLayer) return;
-    if (flashOwned) {
-      flashLayer.remove();
-    } else {
-      flashLayer.classList.remove('activation-flash-host');
-      // Keep opacity 0 until caller clears accessory children (avoids a final opaque flash).
-      flashLayer.style.opacity = '0';
-      flashLayer.style.transition = '';
-      // Caller clears accessory children; do not remove the live overlay host.
-    }
-    flashLayer = null;
-  };
-
-  // Build flash overlay
+  // Build flash overlay via OverlayPlayer — identical lifecycle for every profile.
   if (profile === 'ghost') {
-    flashLayer = document.createElement('img');
-    flashLayer.id = 'effectOverlay';
-    flashLayer.className = 'effect-overlay activation-flash-layer';
-    flashLayer.src = GHOST_CONFIG.ASSETS.OVERLAY_IMAGE;
-    flashLayer.alt = 'Ghost Overlay';
-    flashLayer.draggable = false;
-    // Match creature box inside rig so flash tracks the floating character (Cambio + apex-shaped hosts).
-    flashLayer.style.cssText = [
-      `left:${boxInContainer.left}px`,
-      `top:${boxInContainer.top}px`,
-      `width:${boxInContainer.width}px`,
-      'height:auto',
-      'opacity:0',
-      'animation:none' /* parent rig already floats */
-    ].join(';');
-    flashParent.appendChild(flashLayer);
+    const layer = createImageFlashLayer({
+      parent: flashParent,
+      src: overlayProfile.imageSrc || GHOST_CONFIG.ASSETS.OVERLAY_IMAGE,
+      box: boxInContainer,
+      alt: 'Ghost Overlay',
+      matchCreatureFloat: true
+    });
+    overlayPlayer = createOverlayPlayer({ layer, owned: true, flash: overlayProfile.flash });
   } else if (profile === 'composite') {
     // Flash accessories ON the live character — never a second full-size base.
-    // Caller mounts props via the same edit-mode path (mountProps) into flashHost.
     if (!flashHost) {
       throw new Error('activation: composite profile requires flashHost (live overlay with accessories)');
     }
     if (!composite) {
       throw new Error('activation: composite profile requires composite (for mini spores)');
     }
-    flashLayer = flashHost;
-    flashOwned = false;
-    flashLayer.classList.add('activation-flash-host');
-    flashLayer.style.opacity = '0';
-    flashLayer.style.pointerEvents = 'none';
-    flashLayer.style.transition = 'none';
+    const layer = bindFlashHost(flashHost);
+    overlayPlayer = createOverlayPlayer({ layer, owned: false, flash: overlayProfile.flash });
   } else {
     throw new Error(`activation: unknown profile ${profile}`);
   }
-  if (profile === 'ghost') flashOwned = true;
+
+  const showFlash = () => overlayPlayer?.show();
+  const hideFlash = () => overlayPlayer?.hide();
+  const cleanupFlashLayer = () => {
+    overlayPlayer?.cleanup();
+    overlayPlayer = null;
+  };
 
   // Lightning sequence (same timing envelope as SporeBaseEffect)
   const L = GHOST_CONFIG.LIGHTNING;
@@ -318,8 +256,8 @@ export async function runActivation(opts) {
     try { n.__actionStop?.(); } catch (_) {}
     n.remove();
   });
-  flashParent.querySelectorAll('.activation-flash-layer, #effectOverlay').forEach((n) => n.remove());
-  container.querySelectorAll('.activation-flash-layer, #effectOverlay').forEach((n) => n.remove());
+  // Only owned layers — never strip a live flashHost or SporeBaseEffect by bare id.
+  clearOwnedFlashLayers(flashParent, container);
 
   // Gradual dark→light fade (activation flash stayed instant above)
   const liveFade = (typeof window !== 'undefined' && window.__yaitgEffect?.__liveStormResetMs)

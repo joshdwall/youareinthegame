@@ -495,7 +495,11 @@ class SporeBaseEffect {
      * Show effect overlay with flicker
      */
     showOverlay() {
-        if (!this.effectOverlay) return;
+        // Legacy climax path only. Primary climax uses OverlayPlayer (fresh layer each run).
+        if (!this.effectOverlay?.isConnected) {
+            this._ensureLegacyEffectOverlay();
+        }
+        if (!this.effectOverlay?.isConnected) return;
 
         const CONFIG = this.getConfig();
 
@@ -532,7 +536,11 @@ class SporeBaseEffect {
      * Hide effect overlay
      */
     hideOverlay() {
-        if (!this.effectOverlay) return;
+        if (!this.effectOverlay?.isConnected) {
+            this.effectOverlay = null;
+            this.overlayVisible = false;
+            return;
+        }
 
         const CONFIG = this.getConfig();
 
@@ -624,17 +632,34 @@ class SporeBaseEffect {
     }
 
     /**
-     * Create effect overlay
+     * Climax overlays are owned by OverlayPlayer / ActivationEngine (fresh each run).
+     * Do NOT keep a persistent #effectOverlay — ActivationEngine composite cleanup
+     * previously removed it and left this.effectOverlay pointing at a detached node,
+     * so later ghost cycles flashed opacity on nothing.
      * @returns {Promise<void>}
      */
     async createEffectOverlay() {
+        this.effectOverlay = null;
+    }
+
+    /**
+     * Legacy fallback only (if SporeBaseEffect.triggerLightningReset still runs).
+     * Creates a fresh overlay; never reuses a detached node.
+     */
+    _ensureLegacyEffectOverlay() {
+        if (this.effectOverlay && !this.effectOverlay.isConnected) {
+            this.effectOverlay = null;
+        }
+        if (this.effectOverlay?.isConnected || !this.container) return;
         const CONFIG = this.getConfig();
         const overlay = document.createElement('img');
         overlay.src = CONFIG.ASSETS.OVERLAY_IMAGE;
         overlay.alt = `${CONFIG.METADATA.name} Overlay`;
         overlay.className = 'effect-overlay';
-        overlay.id = 'effectOverlay';
+        // No fixed id — avoid colliding with ActivationEngine owned layers.
         overlay.draggable = false;
+        overlay.style.opacity = '0';
+        overlay.style.pointerEvents = 'none';
         this.container.appendChild(overlay);
         this.effectOverlay = overlay;
     }

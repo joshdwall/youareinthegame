@@ -5,6 +5,13 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
+## 2026-11-01 (America/Chicago) — OverlayPlayer standard: ghost never missing after cowboy
+
+- **Bug (prod `5466cc3` / deploy `43efdccb`):** First ghost climax overlay OK; cowboy `ActivationEngine` removed `#effectOverlay`; later ghost cycles called `SporeBaseEffect.showOverlay` on a **detached** node → flash with no visible overlay.
+- **Fix / standard:** Every culmination (ghost, cowboy, future) uses one **`OverlayPlayer`** lifecycle (`effects/activation/OverlayPlayer.js` + `overlayProfiles.js`): preload+decode, **fresh owned layer per run**, shared flash timings, cleanup removes owned layers only (never bare `#effectOverlay` / live `#overlayLayer` host). Apex threshold routes ghost through `activate({ profile: 'ghost' })` same as cowboy composite. `SporeBaseEffect` no longer keeps a persistent climax `#effectOverlay`. Host opacity reset to `'0'` (not `''`).
+- Checkpoint `checkpoint-2026-11-01-pre-overlay-standard-fix`. Manual Playwright ≥6 alternate cycles (+ mobile 390×844) — **not** wired into `npm run verify`. Screenshots `tmp/overlay-standard-verify/{desktop,mobile}/`.
+- Plans: knowledge-hub overlay-standard plan (pt50u). Keep prior: instant boot, image budget, logging, favicon, mobile clamp, cowboy scale.
+
 ## 2026-10-31 — Fix alternate cursor: last-played (not upcoming) so cowboy is not skipped
 
 - **Bug:** `yaitg.selectionCursor.lastId` was written when *picking upcoming*, so a reload advanced past the queued animation. After ghost → cowboy queued, refresh skipped cowboy and stuck on ghost; cowboy transition looked "missing".
