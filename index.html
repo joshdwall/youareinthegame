@@ -9,7 +9,7 @@
   <link rel="icon" type="image/png" href="/favicon.png" sizes="48x48">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css?v=ii-2">
+  <link rel="stylesheet" href="styles.css?v=ii-3">
 </head>
 
 <body>
@@ -52,6 +52,7 @@
             spore.src = SPORE;
             spore.className = 'spore';
             spore.draggable = false;
+            spore.setAttribute('draggable', 'false');
             var angle = (Math.PI * 2 * i) / per + (Math.random() - 0.5) * 0.3;
             var velocity = radius + Math.random() * 50;
             var d = clampBurst(x, y, angle, velocity);
@@ -80,12 +81,45 @@
         var rect = container.getBoundingClientRect();
         burst(e.clientX - rect.left, e.clientY - rect.top);
       }
+      function hardenImg(el) {
+        if (!el || el.nodeType !== 1) return;
+        if (el.tagName === 'IMG') {
+          el.draggable = false;
+          el.setAttribute('draggable', 'false');
+        }
+        if (el.querySelectorAll) {
+          el.querySelectorAll('img').forEach(function (img) {
+            img.draggable = false;
+            img.setAttribute('draggable', 'false');
+          });
+        }
+      }
+      function onContextMenu(e) {
+        var t = e.target;
+        if (!t) return;
+        if (t.closest && t.closest('input, textarea, select, [contenteditable="true"]')) return;
+        if (t.closest && t.closest('.container, .creature-rig, #mainCreature, .spore-sticker-picture, img, picture, .public-overlay, .activation-spore, .spore')) {
+          e.preventDefault();
+        }
+      }
       function attach() {
         creature = document.getElementById('mainCreature');
         container = document.querySelector('.container');
         if (!creature || !container) return;
+        hardenImg(creature);
+        hardenImg(container);
         creature.addEventListener('click', onCreature);
         container.addEventListener('click', onContainer);
+        document.addEventListener('contextmenu', onContextMenu, true);
+        try {
+          var mo = new MutationObserver(function (muts) {
+            for (var i = 0; i < muts.length; i++) {
+              var nodes = muts[i].addedNodes || [];
+              for (var j = 0; j < nodes.length; j++) hardenImg(nodes[j]);
+            }
+          });
+          mo.observe(container, { childList: true, subtree: true });
+        } catch (_) {}
         try { performance.mark('yaitg-listeners-ready'); } catch (_) {}
         window.__yaitgListenersReadyAt = Date.now();
         window.__yaitgListenersReady = true;
@@ -104,7 +138,7 @@
       else attach();
     })();
   </script>
-  <script type="module" src="script.js?v=ii-2"></script>
+  <script type="module" src="script.js?v=ii-3"></script>
   <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "a0a8c066c7c7450f8d4ccde07d01bfcf"}'></script>
 </body>
 

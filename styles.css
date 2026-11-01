@@ -44,6 +44,8 @@ body {
 img {
   /* Prevent text selection highlighting */
   -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  user-drag: none;
   /* iOS Safari */
   -webkit-user-select: none;
   /* Safari */
@@ -339,4 +341,15 @@ input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-sele
 }
 .activation-flash-host {
   /* flickered by ActivationEngine */
+}
+img.spore,
+.spore img,
+.activation-spore img,
+.firework-spore,
+.activation-prop {
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  user-drag: none;
+  -webkit-user-select: none;
+  user-select: none;
 }

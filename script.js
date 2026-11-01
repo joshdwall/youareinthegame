@@ -278,7 +278,30 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (e.target.closest && e.target.closest('input, textarea, select, [contenteditable="true"]')) return;
         e.preventDefault();
     };
+    const blockMenu = (e) => {
+        if (e.target.closest && e.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+        if (e.target.closest && e.target.closest('.container, .creature-rig, img, picture, .creature-hit-shield, .public-overlay')) {
+            e.preventDefault();
+        }
+    };
     document.addEventListener('mousedown', block);
     document.addEventListener('selectstart', block);
     document.addEventListener('dblclick', block);
+    document.addEventListener('contextmenu', blockMenu, true);
+    const harden = (root) => {
+        (root.querySelectorAll ? root.querySelectorAll('img') : []).forEach((img) => {
+            img.draggable = false;
+            img.setAttribute('draggable', 'false');
+        });
+        if (root.tagName === 'IMG') {
+            root.draggable = false;
+            root.setAttribute('draggable', 'false');
+        }
+    };
+    harden(document);
+    try {
+        new MutationObserver((muts) => {
+            for (const m of muts) for (const n of m.addedNodes) if (n.nodeType === 1) harden(n);
+        }).observe(document.body, { childList: true, subtree: true });
+    } catch (_) {}
 })();

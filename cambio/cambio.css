@@ -921,3 +921,20 @@ body.cambio-body #siteStage.container {
   justify-content: center !important;
   align-items: center !important;
 }
+
+/* Uniform actions: disabled stays visible but muted (tokens already on .btn:disabled / .ie-btn:disabled) */
+.cambio-row-actions .btn:disabled,
+.cambio-row-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.oa-type-fields.oa-fields-na {
+  opacity: 0.72;
+}
+.oa-type-fields.oa-fields-na .ie-row {
+  opacity: 0.85;
+}
+.oa-type-fields.oa-fields-na .ie-value {
+  color: var(--cambio-muted, #6c757d);
+}

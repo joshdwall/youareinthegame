@@ -5,6 +5,18 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
+## 2026-11-01 (America/Chicago) — Cambio uniform action buttons + public image protect
+
+- **Cambio (pt57u):** Every animation-list and edit-item row shows the **same** action buttons in the **same** order. N/A actions stay visible but **disabled** (`disabled` attr, muted tokens, `title` why) — never hidden. Shared `renderActionButtons` / `animListActionButtons` / `editItemActionButtons`. Ghost Archive disabled (API still blocks). OA textProjectile field cards always shown; pencils disabled when no OA. Implemented missing `toggleArchive` (DELETE soft-archive / PATCH restore).
+- **Public site image protect:** Creature, sticker, overlays, spore images: `draggable=false`, `contextmenu` preventDefault, CSS `-webkit-touch-callout:none`, `-webkit-user-drag:none`, `user-select:none`. No hit-shield / no `pointer-events:none` on creature (would steal threshold clicks). Clicks/taps, spore bursts, overlays unchanged.
+- Tests: `tests/cambio-uniform-actions-test.mjs`, `tests/image-protect-verify.mjs`. Screenshots `tmp/cambio-uniform-actions-*.png`, `tmp/image-protect-*.png`.
+- Checkpoint `checkpoint-2026-11-01-pre-cambio-uniform-buttons` @ `a7d7d10`.
+
+## 2026-11-01 (America/Chicago) — LIVE KV only: restore ghost BOO direction 90→-90
+
+- Restored production KV `cambio:placements` ghost `textProjectile.direction` **90 → -90** (user-approved). Backup key `cambio:placements:backup:2026-11-01-pre-boo-direction-restore-to-neg90`. Repo seed / `defaultPlacements` left at **90** (untouched; no deploy for this restore). Verified `/api/animations` after cache.
+
+
 ## 2026-11-01 (America/Chicago) — ghost BOO direction opposite (config)
 
 - KV `cambio:placements` ghost `textProjectile.direction` **-90 → 90** (exact opposite; same field Cambio OA editor saves). Backup key `cambio:placements:backup:2026-11-01-pre-boo-direction-flip`.

@@ -146,6 +146,155 @@ function slugify(label) {
     .slice(0, 40) || `anim-${Date.now()}`;
 }
 
+
+/**
+ * Uniform row action buttons: SAME set + order for every item.
+ * Non-applicable actions stay visible but disabled (title explains why).
+ * @param {Array<{
+ *   key?: string,
+ *   label: string,
+ *   enabled?: boolean,
+ *   disabledReason?: string,
+ *   title?: string,
+ *   className?: string,
+ *   attrs?: string
+ * }>} actionsSpec
+ * @param {{ wrapClass?: string, buttonStyle?: string }} [opts]
+ */
+function renderActionButtons(actionsSpec, opts = {}) {
+  const wrapClass = opts.wrapClass || 'cambio-row-actions';
+  const br = opts.buttonStyle != null ? opts.buttonStyle : ' style="border-radius:0"';
+  const html = (actionsSpec || []).map((a) => {
+    const enabled = a.enabled !== false;
+    const label = a.label != null ? String(a.label) : '';
+    const title = !enabled
+      ? (a.disabledReason || a.title || 'Not available for this item')
+      : (a.title || label);
+    const cls = a.className || 'btn btn-sm btn-outline-dark';
+    const disabledAttr = enabled ? '' : ' disabled aria-disabled="true"';
+    const attrs = a.attrs || '';
+    return `<button type="button" class="${cls}"${br}${attrs ? ' ' + attrs : ''} title="${escapeHtml(title)}"${disabledAttr}>${escapeHtml(label)}</button>`;
+  }).join('');
+  return `<div class="${wrapClass}">${html}</div>`;
+}
+
+function animListActionButtons(anim) {
+  const id = escapeHtml(anim.id);
+  const canFullEdit = anim.editable !== false && anim.placementEditable !== false;
+  const canArchive = anim.editable !== false && anim.id !== 'ghost';
+  let archiveReason = '';
+  if (anim.id === 'ghost') archiveReason = 'Ghost cannot be archived (core animation)';
+  else if (anim.editable === false) archiveReason = 'This animation is not editable / archivable';
+  const archiveLabel = anim.archived ? 'Restore' : 'Archive';
+  return renderActionButtons([
+    {
+      key: 'play',
+      label: 'Play',
+      className: 'btn btn-sm btn-primary',
+      title: 'Play this animation',
+      attrs: `data-act="play" data-id="${id}"`
+    },
+    {
+      key: 'edit',
+      label: 'Edit',
+      enabled: canFullEdit,
+      disabledReason: 'Placement editing is locked for this animation',
+      title: 'Open full animation editor',
+      attrs: `data-act="edit" data-id="${id}"`
+    },
+    {
+      key: 'click-preview',
+      label: 'Click',
+      title: "Preview this animation's per-click character effect",
+      attrs: `data-act="click-preview" data-id="${id}"`
+    },
+    {
+      key: 'archive',
+      label: archiveLabel,
+      enabled: canArchive,
+      disabledReason: archiveReason || 'Cannot archive',
+      title: anim.archived ? 'Restore from archive' : 'Soft-archive (hide from live pool)',
+      attrs: `data-act="archive" data-id="${id}"`
+    }
+  ]);
+}
+
+function editItemActionButtons(row) {
+  const id = escapeHtml(row.id);
+  const isAction = row.kind === 'action';
+  const isElement = row.kind === 'element';
+  const isEffect = row.kind === 'effect';
+  return renderActionButtons([
+    {
+      key: 'select',
+      label: 'Select',
+      title: 'Select on stage',
+      attrs: `data-edit-act="select" data-item-id="${id}"`
+    },
+    {
+      key: 'edit',
+      label: 'Edit',
+      enabled: isAction || isElement,
+      disabledReason: isEffect
+        ? 'Effects are edited via site settings / placement fields, not this row'
+        : 'Edit not available for this item',
+      title: isAction ? 'Edit action point' : 'Edit placement',
+      attrs: `data-edit-act="${isAction ? 'edit-action' : 'edit-element'}" data-item-id="${id}"`
+    },
+    {
+      key: 'delete',
+      label: 'Delete',
+      enabled: isAction,
+      disabledReason: isElement
+        ? 'Overlay elements cannot be deleted here'
+        : 'Only object actions can be removed from this list',
+      title: 'Remove action',
+      attrs: `data-edit-act="delete-action" data-item-id="${id}"`
+    }
+  ]);
+}
+
+async function toggleArchive(id) {
+  const pool = state.runtimeConfig?.animations || [];
+  const anim = pool.find((a) => a.id === id);
+  if (!anim) return;
+  if (anim.id === 'ghost') {
+    saveStatus.textContent = 'Ghost cannot be archived';
+    return;
+  }
+  if (anim.editable === false) {
+    saveStatus.textContent = 'This animation cannot be archived';
+    return;
+  }
+  try {
+    if (anim.archived) {
+      await patchAnimation(id, { archived: false });
+      saveStatus.textContent = `Restored ${anim.label || id}`;
+    } else {
+      const data = await apiJson(`/api/cambio/animations/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        body: '{}'
+      });
+      if (data.config) state.runtimeConfig = data.config;
+      else {
+        const idx = state.runtimeConfig.animations.findIndex((a) => a.id === id);
+        if (idx >= 0) {
+          state.runtimeConfig.animations[idx] = {
+            ...state.runtimeConfig.animations[idx],
+            archived: true,
+            live: false
+          };
+        }
+      }
+      syncManifestFromRuntime();
+      renderAnimList();
+      saveStatus.textContent = `Archived ${anim.label || id}`;
+    }
+  } catch (err) {
+    saveStatus.textContent = err.message || String(err);
+  }
+}
+
 function effectiveWeight(anim) {
   if (anim.weight != null && Number.isFinite(+anim.weight)) return Math.max(0, +anim.weight);
   const tierW = state.tiers?.[anim.tier]?.weight ?? 1;
@@ -397,20 +546,64 @@ function syncOaFieldViews() {
   const wrap = $('oaTextProjectileFields');
   const schema = schemaForActionType(act?.type);
   const isTp = act?.type === 'textProjectile' && schema.length > 0;
-  if (wrap) wrap.hidden = !isTp;
-  if (!isTp || !act) return;
+  // Always show the same textProjectile field cards; disable pencils when N/A
+  if (wrap) {
+    wrap.hidden = false;
+    wrap.classList.toggle('oa-fields-na', !isTp);
+  }
+  const reason = !act
+    ? 'No object action on this element'
+    : (!isTp
+      ? `Text fields apply to textProjectile only (current: ${act.type || 'unknown'})`
+      : '');
+  const pencilIds = [
+    'btnEditOaText',
+    'btnEditOaDuration',
+    'btnEditOaDistance',
+    'btnEditOaFontFamily',
+    'btnEditOaFontSize'
+  ];
+  for (const pid of pencilIds) {
+    const btn = $(pid);
+    if (!btn) continue;
+    const na = !isTp;
+    // Keep disabled while another mode is active OR fields N/A
+    btn.disabled = na || !!state.activeMode;
+    if (na) {
+      btn.title = reason;
+      btn.setAttribute('aria-disabled', 'true');
+    } else if (!state.activeMode) {
+      btn.removeAttribute('aria-disabled');
+      const defaults = {
+        btnEditOaText: 'Edit text',
+        btnEditOaDuration: 'Edit duration',
+        btnEditOaDistance: 'Edit distance',
+        btnEditOaFontFamily: 'Edit font',
+        btnEditOaFontSize: 'Edit font size'
+      };
+      btn.title = defaults[pid] || 'Edit';
+    }
+  }
   const tv = $('oaTextView');
-  if (tv) tv.textContent = act.text != null ? String(act.text) : 'BOO';
   const dv = $('oaDurationView');
+  const distV = $('oaDistanceView');
+  const ffV = $('oaFontFamilyView');
+  const fsV = $('oaFontSizeView');
+  if (!isTp || !act) {
+    if (tv) tv.textContent = '—';
+    if (dv) dv.textContent = '—';
+    if (distV) distV.textContent = '—';
+    if (ffV) ffV.textContent = '—';
+    if (fsV) fsV.textContent = '—';
+    return;
+  }
+  if (tv) tv.textContent = act.text != null ? String(act.text) : 'BOO';
   if (dv) {
     const ms = Number.isFinite(+act.durationMs) ? Math.round(+act.durationMs) : 1200;
     dv.textContent = `${ms} ms`;
   }
-  const distV = $('oaDistanceView');
   if (distV) distV.textContent = formatDistanceView(act);
-  const ffV = $('oaFontFamilyView');
   if (ffV) ffV.textContent = formatFontFamilyView(act);
-  const fsV = $('oaFontSizeView');
   if (fsV) fsV.textContent = formatFontSizeView(act);
 }
 
@@ -1094,10 +1287,18 @@ function syncModeUi() {
     row.querySelector('.ie-view')?.classList.toggle('hidden', editing);
     row.querySelector('.ie-edit')?.classList.toggle('hidden', !editing);
   });
-  // Disable other pencils while one mode active
+  // Disable other pencils while one mode active; OA N/A state reapplied via syncOaFieldViews
   document.querySelectorAll('.ie-view .ie-btn').forEach((btn) => {
-    btn.disabled = !!mode;
+    const rowMode = btn.closest('.ie-row')?.dataset?.mode;
+    if (mode) {
+      btn.disabled = true;
+    } else if (rowMode && OA_FIELD_MODES.has(rowMode)) {
+      // leave disabled flag to syncOaFieldViews
+    } else {
+      btn.disabled = false;
+    }
   });
+  if (!mode) syncOaFieldViews();
   overlay.classList.toggle('passthrough', mode === 'connector' && state.connectorPick === 'character');
   overlay.classList.toggle('mode-move', mode === 'move');
   overlay.classList.toggle('mode-rotation', mode === 'rotation');
@@ -1345,26 +1546,7 @@ function ensureAnimDeskList() {
       fit: 'content',
       sortType: 'none',
       className: 'cambio-col-actions ev-sl-col--tight text-end',
-      render: (anim) => {
-        // Full Edit = open right-rail editor (existed pre-pf-kit / envivo-ui remount; restore + keep visible)
-        const canFullEdit =
-          anim.editable !== false && anim.placementEditable !== false;
-        const canArchive = anim.editable !== false && anim.id !== 'ghost';
-        const br = ' style="border-radius:0"';
-        let actions =
-          `<button type="button" class="btn btn-sm btn-primary"${br} data-act="play" data-id="${escapeHtml(anim.id)}">Play</button>`;
-        if (canFullEdit) {
-          // enVivo standard row-action Edit (response-schemas / food-specials pattern)
-          actions += `<button type="button" class="btn btn-sm btn-outline-dark"${br} data-act="edit" data-id="${escapeHtml(anim.id)}" title="Open full animation editor">Edit</button>`;
-        }
-        actions += `<button type="button" class="btn btn-sm btn-outline-dark"${br} data-act="click-preview" data-id="${escapeHtml(anim.id)}" title="Preview this animation's per-click character effect">Click</button>`;
-        if (canArchive) {
-          actions += `<button type="button" class="btn btn-sm btn-outline-dark"${br} data-act="archive" data-id="${escapeHtml(anim.id)}">${
-            anim.archived ? 'Restore' : 'Archive'
-          }</button>`;
-        }
-        return `<div class="cambio-row-actions">${actions}</div>`;
-      }
+      render: (anim) => animListActionButtons(anim)
     }
   ];
 
@@ -1380,16 +1562,7 @@ function ensureAnimDeskList() {
     rowKey: (item) => String(item.id),
     detailHost,
     renderDetail: (anim) => {
-      const canFullEdit =
-        anim.editable !== false && anim.placementEditable !== false;
-      const br = ' style="border-radius:0"';
-      let html = `<strong class="me-2">${escapeHtml(anim.label)}</strong>`;
-      html += `<button type="button" class="btn btn-sm btn-primary"${br} data-act="play" data-id="${escapeHtml(anim.id)}">Play</button>`;
-      if (canFullEdit) {
-        html += `<button type="button" class="btn btn-sm btn-outline-dark"${br} data-act="edit" data-id="${escapeHtml(anim.id)}" title="Open full animation editor">Edit</button>`;
-      }
-      html += `<button type="button" class="btn btn-sm btn-outline-dark"${br} data-act="click-preview" data-id="${escapeHtml(anim.id)}">Click</button>`;
-      return html;
+      return `<strong class="me-2">${escapeHtml(anim.label)}</strong>` + animListActionButtons(anim);
     },
     headerActions: [
       { label: '+ Create', attrs: 'id="btnCreateAnim"' },
@@ -2116,18 +2289,7 @@ function ensureEditItemList() {
       fit: 'content',
       sortType: 'none',
       className: 'cambio-col-actions ev-sl-col--tight text-end',
-      render: (row) => {
-        let html = `<div class="cambio-row-actions">`;
-        html += `<button type="button" class="btn btn-sm btn-outline-dark"${br} data-edit-act="select" data-item-id="${escapeHtml(row.id)}" title="Select on stage">Select</button>`;
-        if (row.kind === 'action') {
-          html += `<button type="button" class="btn btn-sm btn-outline-dark"${br} data-edit-act="edit-action" data-item-id="${escapeHtml(row.id)}" title="Edit action point">Edit</button>`;
-          html += `<button type="button" class="btn btn-sm btn-outline-dark"${br} data-edit-act="delete-action" data-item-id="${escapeHtml(row.id)}" title="Remove action">Delete</button>`;
-        } else if (row.kind === 'element') {
-          html += `<button type="button" class="btn btn-sm btn-outline-dark"${br} data-edit-act="edit-element" data-item-id="${escapeHtml(row.id)}" title="Edit placement">Edit</button>`;
-        }
-        html += `</div>`;
-        return html;
-      }
+      render: (row) => editItemActionButtons(row)
     }
   ];
 
@@ -2178,11 +2340,13 @@ function handleEditItemAction(act, itemId) {
   const row = items.find((r) => r.id === itemId);
   if (!row) return;
   if (act === 'select' || act === 'edit-element') {
+    if (act === 'edit-element' && row.kind !== 'element' && row.kind !== 'action') return;
     selectEditItem(row);
     if (act === 'edit-element') selectedControls?.classList.remove('hidden');
     return;
   }
   if (act === 'edit-action') {
+    if (row.kind !== 'action') return;
     selectEditItem(row);
     // Open action pencil mode for this element only
     const btn = $('btnEditAction');
@@ -2190,6 +2354,7 @@ function handleEditItemAction(act, itemId) {
     return;
   }
   if (act === 'delete-action') {
+    if (row.kind !== 'action') return;
     const place = ensureAnimPlacement(state.selectedAnim.id);
     const st = place.elements?.[row.elementId];
     if (!st) return;
@@ -2465,6 +2630,10 @@ window.__cambioTest = {
   runActivationPlay: (id) => playAnimation(id),
   previewClick: (id) => previewClickAnimation(id),
   compositeElementsFor,
+  renderActionButtons,
+  animListActionButtons,
+  editItemActionButtons,
+  toggleArchive,
 
   getState: () => state,
   enterEdit,
