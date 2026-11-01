@@ -11,6 +11,7 @@ SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.co
 - **Fix / standard:** Every culmination (ghost, cowboy, future) uses one **`OverlayPlayer`** lifecycle (`effects/activation/OverlayPlayer.js` + `overlayProfiles.js`): preload+decode, **fresh owned layer per run**, shared flash timings, cleanup removes owned layers only (never bare `#effectOverlay` / live `#overlayLayer` host). Apex threshold routes ghost through `activate({ profile: 'ghost' })` same as cowboy composite. `SporeBaseEffect` no longer keeps a persistent climax `#effectOverlay`. Host opacity reset to `'0'` (not `''`).
 - Checkpoint `checkpoint-2026-11-01-pre-overlay-standard-fix`. Manual Playwright ≥6 alternate cycles (+ mobile 390×844) — **not** wired into `npm run verify`. Screenshots `tmp/overlay-standard-verify/{desktop,mobile}/`.
 - Plans: knowledge-hub overlay-standard plan (pt50u). Keep prior: instant boot, image budget, logging, favicon, mobile clamp, cowboy scale.
+- YAITG `7033a95` → CF Pages deploy `8050e161-e093-411b-b555-7a3c774047e0` (production aliases: apex, www, app). Prod manual Playwright 6 cycles desktop + mobile PASS.
 
 ## 2026-10-31 — Fix alternate cursor: last-played (not upcoming) so cowboy is not skipped
 
