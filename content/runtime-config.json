@@ -27,7 +27,7 @@
     {
       "id": "ghost",
       "label": "Ghost",
-      "editable": false,
+      "editable": true,
       "module": "./effects/spore/ghost/effect.js",
       "playMode": "legacy-ghost",
       "elements": [
@@ -46,7 +46,7 @@
       "overlayFlashMode": "image",
       "live": true,
       "archived": false,
-      "placementEditable": false,
+      "placementEditable": true,
       "tier": "legendary",
       "multiplier": 1,
       "weight": 1,

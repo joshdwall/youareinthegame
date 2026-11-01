@@ -5,6 +5,14 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
+## 2026-11-01 (America/Chicago) — Cambio ghost OA editor + promote BOO
+
+- **Cambio:** Ghost Edit unlocked (same CoreUI sidebar / ie-row ✎/✓/✕ as cowboy). Generic `textProjectile` field editors: text, duration until fade (`durationMs` ms), distance from origin (`distanceRatio` × width or `distance` px), fontFamily (safe fonts + custom), fontSize (`fontSizeRatio` × width or `fontSizePx`).
+- Schema: `cambio/objectActionFieldSchema.js`; runtime `fontFamily` + optional `fontSizePx` (defaults preserve current BOO look).
+- Saves → KV `cambio:placements` live. Boot merges seed when KV lacks ghost OA; `normalizeConfig` unlocks ghost editable flags.
+- Promote: ghost BOO textProjectile + longer hold-fade to production.
+- Checkpoint `checkpoint-2026-11-01-pre-ghost-cambio-edit`.
+
 ## 2026-11-01 (America/Chicago) — preview: ghost BOO textProjectile
 
 - New generic `objectActions` type **`textProjectile`** (config: text, color, fontWeight, durationMs, distance/distanceRatio, mouth `point`, direction, …).

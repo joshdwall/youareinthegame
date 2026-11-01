@@ -363,6 +363,28 @@
   margin: 0;
   font-size: 0.66rem;
 }
+
+#cambioRoot .cambio-settings-compact .cambio-field input[type="text"] {
+  width: auto;
+  min-width: 8ch;
+  max-width: 14rem;
+  box-sizing: border-box;
+  height: var(--cambio-ctrl-h, 1.55rem);
+  padding: 0 0.3rem;
+  font-size: var(--cambio-fs-ctrl, 0.7rem);
+  border-radius: var(--cambio-radius, 0);
+  flex: 0 1 auto;
+  background: #1a2430;
+  color: #fff;
+  border: 1px solid #3d4f63;
+}
+#cambioRoot .oa-type-fields {
+  display: contents; /* participate in parent .cambio-settings-compact flex wrap */
+}
+#cambioRoot .oa-type-fields[hidden] {
+  display: none !important;
+}
+
 #cambioRoot .cambio-site-settings > .card,
 #cambioRoot .cambio-edit-settings-card,
 #cambioRoot .selected-controls.card {

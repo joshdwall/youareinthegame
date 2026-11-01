@@ -1,7 +1,9 @@
 import { runActivation, previewClick, activate } from '/effects/activation/ActivationEngine.js';
 import { applyElementPlacement, measureCreatureBoxInHost } from '/effects/activation/placementMath.js';
+import { DEFAULT_PLACEMENTS_BY_ANIMATION } from '/effects/activation/defaultPlacements.js';
 import { escapeHtml } from '/cambio/vendor/envivo-ui/desk-list.mjs';
 import { mountEvScrollList } from '/cambio/vendor/envivo-ui/ev-scroll-list/mount.mjs';
+import { SAFE_FONT_OPTIONS, schemaForActionType } from '/cambio/objectActionFieldSchema.js';
 import { log, info, debug, warn, error } from '../js/log.js';
 
 /**
@@ -280,6 +282,282 @@ function migratePlacements(data) {
   return out;
 }
 
+/** Isolated OA field modes (textProjectile generic editor). */
+const OA_FIELD_MODES = new Set(['oaText', 'oaDuration', 'oaDistance', 'oaFontFamily', 'oaFontSize']);
+
+/**
+ * Merge KV live placements over seed: keep live values, fill missing anims/elements/OAs from seed.
+ * Prevents cowboy-only KV from wiping ghost objectActions in the editor.
+ */
+function mergePlacementsPreferLive(seedPlacements, livePlacements) {
+  const out = migratePlacements(livePlacements);
+  const seed = migratePlacements(seedPlacements);
+  for (const [animId, animPlace] of Object.entries(seed.byAnimation || {})) {
+    if (!out.byAnimation[animId]) {
+      out.byAnimation[animId] = deepClone(animPlace);
+      continue;
+    }
+    const liveEls = out.byAnimation[animId].elements || (out.byAnimation[animId].elements = {});
+    const seedEls = animPlace.elements || {};
+    for (const [elId, elPlace] of Object.entries(seedEls)) {
+      if (!liveEls[elId]) {
+        liveEls[elId] = deepClone(elPlace);
+        continue;
+      }
+      const liveOa = liveEls[elId].objectActions;
+      const seedOa = elPlace.objectActions;
+      if ((!Array.isArray(liveOa) || !liveOa.length) && Array.isArray(seedOa) && seedOa.length) {
+        liveEls[elId].objectActions = deepClone(seedOa);
+      }
+    }
+    if (!out.byAnimation[animId].transitionId && animPlace.transitionId) {
+      out.byAnimation[animId].transitionId = animPlace.transitionId;
+    }
+  }
+  return out;
+}
+
+/** Prefer textProjectile, else fire, else first — for generic OA editors. */
+function primaryObjectAction(st) {
+  const list = Array.isArray(st?.objectActions) ? st.objectActions : [];
+  return (
+    list.find((a) => a?.type === 'textProjectile') ||
+    list.find((a) => a?.type === 'fire') ||
+    list[0] ||
+    null
+  );
+}
+
+function ensurePrimaryActionOfType(st, type) {
+  if (!st) return null;
+  if (!Array.isArray(st.objectActions)) st.objectActions = [];
+  let act = st.objectActions.find((a) => a?.type === type);
+  if (act) return act;
+  if (type === 'textProjectile') {
+    act = {
+      type: 'textProjectile',
+      point: { x: 0.5, y: 0.6 },
+      direction: -90,
+      text: 'BOO',
+      color: '#000000',
+      fontWeight: '700',
+      fontFamily: '',
+      fontSizeRatio: 0.42,
+      durationMs: 1200,
+      holdRatio: 0.4,
+      distanceRatio: 0.62,
+      scaleFrom: 0.65,
+      scaleTo: 1.15,
+      pattern: 'once',
+      appliesTo: ['spore']
+    };
+  } else {
+    act = {
+      type: 'fire',
+      point: { x: 0.5, y: 0.5 },
+      direction: 0,
+      pattern: 'alternate',
+      rate: 3.2,
+      jitter: 0.5,
+      appliesTo: ['spore', 'activation']
+    };
+  }
+  st.objectActions = [...st.objectActions.filter((a) => a?.type !== type), act];
+  return act;
+}
+
+function formatDistanceView(act) {
+  if (!act) return '—';
+  if (Number.isFinite(+act.distance) && +act.distance > 0) {
+    return `${Math.round(+act.distance)} px`;
+  }
+  const r = Number.isFinite(+act.distanceRatio) ? +act.distanceRatio : 0.55;
+  return `${r.toFixed(2)} × width`;
+}
+
+function formatFontSizeView(act) {
+  if (!act) return '—';
+  if (Number.isFinite(+act.fontSizePx) && +act.fontSizePx > 0) {
+    return `${Math.round(+act.fontSizePx)} px`;
+  }
+  const r = Number.isFinite(+act.fontSizeRatio) ? +act.fontSizeRatio : 0.4;
+  return `${r.toFixed(2)} × width`;
+}
+
+function formatFontFamilyView(act) {
+  const ff = (act?.fontFamily != null ? String(act.fontFamily).trim() : '');
+  if (!ff) return 'Default';
+  const known = SAFE_FONT_OPTIONS.find((o) => o.value === ff);
+  return known ? known.label : ff;
+}
+
+function syncOaFieldViews() {
+  const st = currentElement();
+  const act = primaryObjectAction(st);
+  const wrap = $('oaTextProjectileFields');
+  const schema = schemaForActionType(act?.type);
+  const isTp = act?.type === 'textProjectile' && schema.length > 0;
+  if (wrap) wrap.hidden = !isTp;
+  if (!isTp || !act) return;
+  const tv = $('oaTextView');
+  if (tv) tv.textContent = act.text != null ? String(act.text) : 'BOO';
+  const dv = $('oaDurationView');
+  if (dv) {
+    const ms = Number.isFinite(+act.durationMs) ? Math.round(+act.durationMs) : 1200;
+    dv.textContent = `${ms} ms`;
+  }
+  const distV = $('oaDistanceView');
+  if (distV) distV.textContent = formatDistanceView(act);
+  const ffV = $('oaFontFamilyView');
+  if (ffV) ffV.textContent = formatFontFamilyView(act);
+  const fsV = $('oaFontSizeView');
+  if (fsV) fsV.textContent = formatFontSizeView(act);
+}
+
+function snapshotOaField(mode, act) {
+  if (!act) return {};
+  if (mode === 'oaText') return { text: act.text != null ? String(act.text) : 'BOO' };
+  if (mode === 'oaDuration') {
+    return { durationMs: Number.isFinite(+act.durationMs) ? +act.durationMs : 1200 };
+  }
+  if (mode === 'oaDistance') {
+    if (Number.isFinite(+act.distance) && +act.distance > 0) {
+      return { unit: 'px', value: +act.distance };
+    }
+    return {
+      unit: 'ratio',
+      value: Number.isFinite(+act.distanceRatio) ? +act.distanceRatio : 0.55
+    };
+  }
+  if (mode === 'oaFontFamily') {
+    return { fontFamily: act.fontFamily != null ? String(act.fontFamily) : '' };
+  }
+  if (mode === 'oaFontSize') {
+    if (Number.isFinite(+act.fontSizePx) && +act.fontSizePx > 0) {
+      return { unit: 'px', value: +act.fontSizePx };
+    }
+    return {
+      unit: 'ratio',
+      value: Number.isFinite(+act.fontSizeRatio) ? +act.fontSizeRatio : 0.4
+    };
+  }
+  return {};
+}
+
+function fillOaFieldInputs(mode, snapOrAct) {
+  if (mode === 'oaText') {
+    const input = $('oaTextInput');
+    if (input) {
+      input.value =
+        snapOrAct?.text != null
+          ? String(snapOrAct.text)
+          : (snapOrAct && 'text' in snapOrAct ? '' : 'BOO');
+    }
+  } else if (mode === 'oaDuration') {
+    const input = $('oaDurationInput');
+    if (input) {
+      const ms = Number.isFinite(+snapOrAct?.durationMs) ? +snapOrAct.durationMs : 1200;
+      input.value = String(Math.round(ms));
+    }
+  } else if (mode === 'oaDistance') {
+    const unitEl = $('oaDistanceUnit');
+    const valEl = $('oaDistanceInput');
+    let unit = snapOrAct?.unit;
+    let value = snapOrAct?.value;
+    if (!unit) {
+      if (Number.isFinite(+snapOrAct?.distance) && +snapOrAct.distance > 0) {
+        unit = 'px';
+        value = +snapOrAct.distance;
+      } else {
+        unit = 'ratio';
+        value = Number.isFinite(+snapOrAct?.distanceRatio) ? +snapOrAct.distanceRatio : 0.55;
+      }
+    }
+    if (unitEl) unitEl.value = unit === 'px' ? 'px' : 'ratio';
+    if (valEl) valEl.value = String(value);
+  } else if (mode === 'oaFontFamily') {
+    const sel = $('oaFontFamilySelect');
+    const custom = $('oaFontFamilyCustom');
+    const wrap = $('oaFontFamilyCustomWrap');
+    const ff = snapOrAct?.fontFamily != null ? String(snapOrAct.fontFamily) : '';
+    const known = SAFE_FONT_OPTIONS.some((o) => o.value === ff);
+    if (sel) {
+      if (!ff || known) {
+        sel.value = ff;
+        if (wrap) wrap.hidden = true;
+      } else {
+        sel.value = '__custom__';
+        if (wrap) wrap.hidden = false;
+        if (custom) custom.value = ff;
+      }
+    }
+  } else if (mode === 'oaFontSize') {
+    const unitEl = $('oaFontSizeUnit');
+    const valEl = $('oaFontSizeInput');
+    let unit = snapOrAct?.unit;
+    let value = snapOrAct?.value;
+    if (!unit) {
+      if (Number.isFinite(+snapOrAct?.fontSizePx) && +snapOrAct.fontSizePx > 0) {
+        unit = 'px';
+        value = +snapOrAct.fontSizePx;
+      } else {
+        unit = 'ratio';
+        value = Number.isFinite(+snapOrAct?.fontSizeRatio) ? +snapOrAct.fontSizeRatio : 0.4;
+      }
+    }
+    if (unitEl) unitEl.value = unit === 'px' ? 'px' : 'ratio';
+    if (valEl) valEl.value = String(value);
+  }
+}
+
+/** Commit ONE textProjectile field; never touch other element / OA fields. */
+function applyOaFieldCommit(mode) {
+  const st = currentElement();
+  if (!st) return;
+  const act = ensurePrimaryActionOfType(st, 'textProjectile');
+  if (!act) return;
+  if (mode === 'oaText') {
+    const v = ($('oaTextInput')?.value ?? 'BOO').trim() || 'BOO';
+    act.text = v.slice(0, 32);
+  } else if (mode === 'oaDuration') {
+    let ms = Number($('oaDurationInput')?.value);
+    if (!Number.isFinite(ms)) ms = 1200;
+    act.durationMs = Math.max(200, Math.min(4000, Math.round(ms)));
+  } else if (mode === 'oaDistance') {
+    const unit = $('oaDistanceUnit')?.value === 'px' ? 'px' : 'ratio';
+    let value = Number($('oaDistanceInput')?.value);
+    if (unit === 'px') {
+      if (!Number.isFinite(value) || value <= 0) value = 40;
+      act.distance = Math.max(4, Math.min(2000, value));
+      delete act.distanceRatio;
+    } else {
+      if (!Number.isFinite(value) || value <= 0) value = 0.55;
+      act.distanceRatio = Math.max(0.05, Math.min(3, value));
+      delete act.distance;
+    }
+  } else if (mode === 'oaFontFamily') {
+    const sel = $('oaFontFamilySelect')?.value ?? '';
+    if (sel === '__custom__') {
+      act.fontFamily = ($('oaFontFamilyCustom')?.value || '').trim();
+    } else {
+      act.fontFamily = sel;
+    }
+  } else if (mode === 'oaFontSize') {
+    const unit = $('oaFontSizeUnit')?.value === 'px' ? 'px' : 'ratio';
+    let value = Number($('oaFontSizeInput')?.value);
+    if (unit === 'px') {
+      if (!Number.isFinite(value) || value <= 0) value = 24;
+      act.fontSizePx = Math.max(8, Math.min(400, value));
+      delete act.fontSizeRatio;
+    } else {
+      if (!Number.isFinite(value) || value <= 0) value = 0.42;
+      act.fontSizeRatio = Math.max(0.05, Math.min(2, value));
+      delete act.fontSizePx;
+    }
+  }
+}
+
+
 async function boot() {
   const [manifestSeed, anchors, seed, runtimeSeed] = await Promise.all([
     loadJson('/content/animations-manifest.json'),
@@ -288,7 +566,8 @@ async function boot() {
     loadJson('/content/runtime-config.json').catch(() => null)
   ]);
   state.anchors = anchors;
-  state.placements = migratePlacements(seed);
+  const seedPlacements = migratePlacements(seed);
+  state.placements = seedPlacements;
   state.runtimeConfig = runtimeSeed;
   try {
     const rc = await apiJson('/api/cambio/runtime-config');
@@ -317,7 +596,7 @@ async function boot() {
     if (r.ok) {
       const data = await r.json();
       if (data?.ok && data.placements) {
-        state.placements = migratePlacements(data.placements);
+        state.placements = mergePlacementsPreferLive(seedPlacements, data.placements);
       }
     }
   } catch (_) { /* seed only */ }
@@ -380,6 +659,26 @@ async function boot() {
   $('btnEditAction').addEventListener('click', () => enterMode('action'));
   $('btnSaveAction').addEventListener('click', () => commitMode());
   $('btnCancelAction').addEventListener('click', () => cancelMode());
+
+  $('btnEditOaText')?.addEventListener('click', () => enterMode('oaText'));
+  $('btnSaveOaText')?.addEventListener('click', () => commitMode());
+  $('btnCancelOaText')?.addEventListener('click', () => cancelMode());
+  $('btnEditOaDuration')?.addEventListener('click', () => enterMode('oaDuration'));
+  $('btnSaveOaDuration')?.addEventListener('click', () => commitMode());
+  $('btnCancelOaDuration')?.addEventListener('click', () => cancelMode());
+  $('btnEditOaDistance')?.addEventListener('click', () => enterMode('oaDistance'));
+  $('btnSaveOaDistance')?.addEventListener('click', () => commitMode());
+  $('btnCancelOaDistance')?.addEventListener('click', () => cancelMode());
+  $('btnEditOaFontFamily')?.addEventListener('click', () => enterMode('oaFontFamily'));
+  $('btnSaveOaFontFamily')?.addEventListener('click', () => commitMode());
+  $('btnCancelOaFontFamily')?.addEventListener('click', () => cancelMode());
+  $('btnEditOaFontSize')?.addEventListener('click', () => enterMode('oaFontSize'));
+  $('btnSaveOaFontSize')?.addEventListener('click', () => commitMode());
+  $('btnCancelOaFontSize')?.addEventListener('click', () => cancelMode());
+  $('oaFontFamilySelect')?.addEventListener('change', () => {
+    const wrap = $('oaFontFamilyCustomWrap');
+    if (wrap) wrap.hidden = $('oaFontFamilySelect')?.value !== '__custom__';
+  });
 
   creature.addEventListener('pointerdown', onCreaturePointerDown);
   window.addEventListener('resize', () => {
@@ -523,6 +822,31 @@ function enterMode(mode) {
     syncModeUi();
     return;
   }
+  // Generic per-type OA field editors (isolated; inputs are draft until ✓)
+  if (OA_FIELD_MODES.has(mode)) {
+    if (!state.editMode || !state.selectedAnim || !state.selectedElementId) return;
+    if (state.activeMode && state.activeMode !== mode) cancelMode();
+    const act = primaryObjectAction(currentElement());
+    if (!act || act.type !== 'textProjectile') return;
+    state.activeMode = mode;
+    state.modeSnapshot = snapshotOaField(mode, act);
+    fillOaFieldInputs(mode, act);
+    if (mode === 'oaFontFamily') {
+      const sel = $('oaFontFamilySelect');
+      sel?.addEventListener?.(
+        'change',
+        () => {
+          const wrap = $('oaFontFamilyCustomWrap');
+          if (wrap) wrap.hidden = sel.value !== '__custom__';
+        },
+        { once: false }
+      );
+      const wrap = $('oaFontFamilyCustomWrap');
+      if (wrap) wrap.hidden = sel?.value !== '__custom__';
+    }
+    syncModeUi();
+    return;
+  }
   if (!state.editMode || !state.selectedAnim) return;
   if (mode !== 'transition' && mode !== 'previewObjectActions' && !state.selectedElementId) return;
   if (state.activeMode && state.activeMode !== mode) {
@@ -550,12 +874,23 @@ function enterMode(mode) {
   }
   if (mode === 'action') {
     const st = currentElement();
-    const existing = (st?.objectActions || []).find((a) => a.type === 'fire') || null;
-    state.actionDraft = existing
-      ? { ...existing, point: { ...existing.point } }
-      : { type: 'fire', point: { x: 0.5, y: 0.5 }, direction: 0, pattern: 'alternate', rate: 3.2, jitter: 0.5, appliesTo: ['spore', 'activation'] };
+    const existing = primaryObjectAction(st);
+    if (existing) {
+      state.actionDraft = { ...existing, point: { ...(existing.point || { x: 0.5, y: 0.5 }) } };
+    } else {
+      state.actionDraft = {
+        type: 'fire',
+        point: { x: 0.5, y: 0.5 },
+        direction: 0,
+        pattern: 'alternate',
+        rate: 3.2,
+        jitter: 0.5,
+        appliesTo: ['spore', 'activation']
+      };
+    }
     const ah = $('actionHint');
-    if (ah) ah.textContent = `Click the muzzle on the ${selectedLabel()}.`;
+    const kind = state.actionDraft.type === 'textProjectile' ? 'origin (mouth)' : 'muzzle';
+    if (ah) ah.textContent = `Click the ${kind} on the ${selectedLabel()}.`;
   }
   if (mode === 'move') {
     const st = currentElement();
@@ -571,11 +906,16 @@ function enterMode(mode) {
 
 async function commitMode() {
   if (!state.activeMode) return;
-  // Isolation: action mode writes ONLY objectActions on commit.
+  // Isolation: OA field modes write ONLY that field on the primary textProjectile.
+  if (OA_FIELD_MODES.has(state.activeMode)) {
+    applyOaFieldCommit(state.activeMode);
+  }
+  // Isolation: action mode writes ONLY the matching objectAction type on commit.
   if (state.activeMode === 'action' && state.actionDraft) {
     const st = currentElement();
     if (st) {
-      const others = (st.objectActions || []).filter((a) => a.type !== 'fire');
+      const t = state.actionDraft.type || 'fire';
+      const others = (st.objectActions || []).filter((a) => a.type !== t);
       st.objectActions = [...others, { ...state.actionDraft, point: { ...state.actionDraft.point } }];
     }
   }
@@ -723,6 +1063,9 @@ function cancelMode() {
     if (!Number.isFinite(o)) o = 0.8;
     if (input) input.value = String(o);
     syncInteractionOpacityView();
+  } else if (OA_FIELD_MODES.has(mode)) {
+    // Field modes never mutate the element until ✓ — just restore inputs
+    fillOaFieldInputs(mode, state.modeSnapshot || {});
   } else {
     const st = currentElement();
     if (st && state.modeSnapshot) {
@@ -796,11 +1139,16 @@ function refreshViews() {
   $('scaleSlider').value = String(st.scale || 0.3);
   const av = $('actionView');
   if (av) {
-    const fire = (st.objectActions || []).find((a) => a.type === 'fire');
-    av.textContent = fire
-      ? `fire @ (${(+fire.point?.x || 0).toFixed(2)},${(+fire.point?.y || 0).toFixed(2)}) → ${Math.round(+fire.direction || 0)}°`
-      : 'none';
+    const act = primaryObjectAction(st);
+    if (act) {
+      const typ = act.type || 'action';
+      av.textContent =
+        `${typ} @ (${(+act.point?.x || 0).toFixed(2)},${(+act.point?.y || 0).toFixed(2)}) → ${Math.round(+act.direction || 0)}°`;
+    } else {
+      av.textContent = 'none';
+    }
   }
+  syncOaFieldViews();
 }
 
 function onTransitionChange() {
@@ -1000,7 +1348,7 @@ function ensureAnimDeskList() {
       render: (anim) => {
         // Full Edit = open right-rail editor (existed pre-pf-kit / envivo-ui remount; restore + keep visible)
         const canFullEdit =
-          anim.editable !== false && anim.placementEditable !== false && anim.id !== 'ghost';
+          anim.editable !== false && anim.placementEditable !== false;
         const canArchive = anim.editable !== false && anim.id !== 'ghost';
         const br = ' style="border-radius:0"';
         let actions =
@@ -1008,8 +1356,6 @@ function ensureAnimDeskList() {
         if (canFullEdit) {
           // enVivo standard row-action Edit (response-schemas / food-specials pattern)
           actions += `<button type="button" class="btn btn-sm btn-outline-dark"${br} data-act="edit" data-id="${escapeHtml(anim.id)}" title="Open full animation editor">Edit</button>`;
-        } else if (anim.id === 'ghost') {
-          actions += `<span class="text-body-secondary" style="font-size:.7rem">placement locked</span>`;
         }
         actions += `<button type="button" class="btn btn-sm btn-outline-dark"${br} data-act="click-preview" data-id="${escapeHtml(anim.id)}" title="Preview this animation's per-click character effect">Click</button>`;
         if (canArchive) {
@@ -1035,7 +1381,7 @@ function ensureAnimDeskList() {
     detailHost,
     renderDetail: (anim) => {
       const canFullEdit =
-        anim.editable !== false && anim.placementEditable !== false && anim.id !== 'ghost';
+        anim.editable !== false && anim.placementEditable !== false;
       const br = ' style="border-radius:0"';
       let html = `<strong class="me-2">${escapeHtml(anim.label)}</strong>`;
       html += `<button type="button" class="btn btn-sm btn-primary"${br} data-act="play" data-id="${escapeHtml(anim.id)}">Play</button>`;
@@ -1280,6 +1626,12 @@ function creatureBoxInRig() {
 }
 
 function defaultElementState(anim, el) {
+  const fromCode = DEFAULT_PLACEMENTS_BY_ANIMATION[anim?.id]?.elements?.[el.id];
+  if (fromCode) {
+    const cloned = deepClone(fromCode);
+    if (Object.prototype.hasOwnProperty.call(el, 'flipX')) cloned.flipX = !!el.flipX;
+    return cloned;
+  }
   const anchor = state.anchors.anchors[el.anchor] || { x: 0.5, y: 0.5 };
   return {
     objectAnchor: { x: 0.5, y: 0.5 },
@@ -1479,13 +1831,16 @@ function bindPropPointer(img, animId, elementId) {
       const ny = Math.max(0, Math.min(1, (e.clientY - rect.top) / Math.max(1, rect.height)));
       if (state.actionPick === 'point' || !state.actionDraft) {
         if (!state.actionDraft) {
-          state.actionDraft = { type: 'fire', point: { x: nx, y: ny }, direction: 0, pattern: 'alternate', rate: 3.2, jitter: 0.5, appliesTo: ['spore', 'activation'] };
+          const existing = primaryObjectAction(currentElement());
+          state.actionDraft = existing
+            ? { ...existing, point: { x: nx, y: ny } }
+            : { type: 'fire', point: { x: nx, y: ny }, direction: 0, pattern: 'alternate', rate: 3.2, jitter: 0.5, appliesTo: ['spore', 'activation'] };
         } else {
           state.actionDraft.point = { x: nx, y: ny };
         }
         state.actionPick = 'direction';
         const ah = $('actionHint');
-        if (ah) ah.textContent = 'Click or drag to set fire direction, then ✓.';
+        if (ah) ah.textContent = 'Click or drag to set direction, then ✓.';
         renderActionMarkers(animId, elementId);
         const move = (ev) => {
           const dx = ev.clientX - (rect.left + state.actionDraft.point.x * rect.width);
@@ -1866,7 +2221,7 @@ function refreshEditItemList(animId) {
 function enterEdit(animId) {
   const pool = state.runtimeConfig?.animations || state.manifest?.animations || [];
   const anim = pool.find((a) => a.id === animId) || state.manifest?.animations?.find((a) => a.id === animId);
-  if (!anim || anim.editable === false || anim.id === 'ghost') return;
+  if (!anim || anim.editable === false || anim.placementEditable === false) return;
   if (!state.manifest?.animations?.some((a) => a.id === animId) && state.manifest) {
     state.manifest.animations.push(anim);
   }

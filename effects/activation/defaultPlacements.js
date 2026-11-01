@@ -24,6 +24,7 @@ export const DEFAULT_PLACEMENTS_BY_ANIMATION = {
             text: 'BOO',
             color: '#000000',
             fontWeight: '700',
+            fontFamily: '',
             fontSizeRatio: 0.42,
             durationMs: 1200,
             holdRatio: 0.4,

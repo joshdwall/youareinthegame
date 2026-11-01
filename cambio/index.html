@@ -309,7 +309,7 @@
         </div>
       </div>
 
-      <!-- Action point (muzzle / direction for objectActions) -->
+      <!-- Action point (muzzle / mouth / direction for objectActions) -->
       <div class="ie-row" data-mode="action">
         <div class="ie-view">
           <span class="ie-label">Action point</span>
@@ -317,10 +317,126 @@
           <button type="button" class="ie-btn" id="btnEditAction" title="Edit action point" aria-label="Edit action point">✎</button>
         </div>
         <div class="ie-edit hidden">
-          <p id="actionHint" class="cambio-status">Click the muzzle on the object, then click/drag to set direction.</p>
+          <p id="actionHint" class="cambio-status">Click the origin on the object, then click/drag to set direction.</p>
           <div class="ie-actions">
             <button type="button" class="ie-btn ie-save" id="btnSaveAction" title="Save">✓</button>
             <button type="button" class="ie-btn ie-cancel" id="btnCancelAction" title="Cancel">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- textProjectile fields (generic per-type OA editor; shown when primary OA is textProjectile) -->
+      <div id="oaTextProjectileFields" class="oa-type-fields" data-oa-type="textProjectile" hidden>
+        <div class="ie-row" data-mode="oaText">
+          <div class="ie-view">
+            <span class="ie-label">Text</span>
+            <span class="ie-value" id="oaTextView">—</span>
+            <button type="button" class="ie-btn" id="btnEditOaText" title="Edit text" aria-label="Edit text">✎</button>
+          </div>
+          <div class="ie-edit hidden">
+            <label class="cambio-field">Text
+              <input type="text" id="oaTextInput" maxlength="32" autocomplete="off" />
+            </label>
+            <div class="ie-actions">
+              <button type="button" class="ie-btn ie-save" id="btnSaveOaText" title="Save">✓</button>
+              <button type="button" class="ie-btn ie-cancel" id="btnCancelOaText" title="Cancel">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="ie-row" data-mode="oaDuration">
+          <div class="ie-view">
+            <span class="ie-label">Duration until fade</span>
+            <span class="ie-value" id="oaDurationView">—</span>
+            <button type="button" class="ie-btn" id="btnEditOaDuration" title="Edit duration" aria-label="Edit duration">✎</button>
+          </div>
+          <div class="ie-edit hidden">
+            <label class="cambio-field">ms
+              <input type="number" id="oaDurationInput" min="200" max="4000" step="50" />
+            </label>
+            <div class="ie-actions">
+              <button type="button" class="ie-btn ie-save" id="btnSaveOaDuration" title="Save">✓</button>
+              <button type="button" class="ie-btn ie-cancel" id="btnCancelOaDuration" title="Cancel">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="ie-row" data-mode="oaDistance">
+          <div class="ie-view">
+            <span class="ie-label">Distance from origin</span>
+            <span class="ie-value" id="oaDistanceView">—</span>
+            <button type="button" class="ie-btn" id="btnEditOaDistance" title="Edit distance" aria-label="Edit distance">✎</button>
+          </div>
+          <div class="ie-edit hidden">
+            <label class="cambio-field">Unit
+              <select id="oaDistanceUnit">
+                <option value="ratio">× element width</option>
+                <option value="px">px</option>
+              </select>
+            </label>
+            <label class="cambio-field">Value
+              <input type="number" id="oaDistanceInput" min="0.05" max="2000" step="0.01" />
+            </label>
+            <div class="ie-actions">
+              <button type="button" class="ie-btn ie-save" id="btnSaveOaDistance" title="Save">✓</button>
+              <button type="button" class="ie-btn ie-cancel" id="btnCancelOaDistance" title="Cancel">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="ie-row" data-mode="oaFontFamily">
+          <div class="ie-view">
+            <span class="ie-label">Font</span>
+            <span class="ie-value" id="oaFontFamilyView">—</span>
+            <button type="button" class="ie-btn" id="btnEditOaFontFamily" title="Edit font" aria-label="Edit font">✎</button>
+          </div>
+          <div class="ie-edit hidden">
+            <label class="cambio-field">Family
+              <select id="oaFontFamilySelect">
+                <option value="">Default (current look)</option>
+                <option value="system-ui, sans-serif">system-ui</option>
+                <option value="Arial, Helvetica, sans-serif">Arial</option>
+                <option value="Helvetica, Arial, sans-serif">Helvetica</option>
+                <option value="Verdana, Geneva, sans-serif">Verdana</option>
+                <option value="Georgia, serif">Georgia</option>
+                <option value="'Times New Roman', Times, serif">Times New Roman</option>
+                <option value="'Courier New', Courier, monospace">Courier New</option>
+                <option value="Impact, Haettenschweiler, sans-serif">Impact</option>
+                <option value="cursive">cursive</option>
+                <option value="fantasy">fantasy</option>
+                <option value="__custom__">Custom…</option>
+              </select>
+            </label>
+            <label class="cambio-field" id="oaFontFamilyCustomWrap" hidden>Custom
+              <input type="text" id="oaFontFamilyCustom" maxlength="120" placeholder="e.g. 'Comic Sans MS', cursive" autocomplete="off" />
+            </label>
+            <div class="ie-actions">
+              <button type="button" class="ie-btn ie-save" id="btnSaveOaFontFamily" title="Save">✓</button>
+              <button type="button" class="ie-btn ie-cancel" id="btnCancelOaFontFamily" title="Cancel">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="ie-row" data-mode="oaFontSize">
+          <div class="ie-view">
+            <span class="ie-label">Font size</span>
+            <span class="ie-value" id="oaFontSizeView">—</span>
+            <button type="button" class="ie-btn" id="btnEditOaFontSize" title="Edit font size" aria-label="Edit font size">✎</button>
+          </div>
+          <div class="ie-edit hidden">
+            <label class="cambio-field">Unit
+              <select id="oaFontSizeUnit">
+                <option value="ratio">× element width</option>
+                <option value="px">px</option>
+              </select>
+            </label>
+            <label class="cambio-field">Value
+              <input type="number" id="oaFontSizeInput" min="0.05" max="400" step="0.01" />
+            </label>
+            <div class="ie-actions">
+              <button type="button" class="ie-btn ie-save" id="btnSaveOaFontSize" title="Save">✓</button>
+              <button type="button" class="ie-btn ie-cancel" id="btnCancelOaFontSize" title="Cancel">✕</button>
+            </div>
           </div>
         </div>
       </div>
@@ -336,6 +452,6 @@
   </div>
   </div><!-- /#cambioRoot -->
 
-  <script type="module" src="/cambio/cambio.js?v=cards-hscroll1"></script>
+  <script type="module" src="/cambio/cambio.js?v=ghost-oa-edit1"></script>
 </body>
 </html>

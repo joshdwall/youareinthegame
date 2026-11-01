@@ -218,9 +218,9 @@ function resolveActionNode(root, el) {
 
 /**
  * Generic short-lived text projectile from an anchor point (mouth, muzzle, etc.).
- * Config (reusable): text, color, fontWeight, fontSizeRatio, durationMs, holdRatio,
- * distance | distanceRatio, point (anchor), direction (local deg), scaleFrom, scaleTo,
- * pattern ('once' | 'repeat'), rate, jitter, appliesTo.
+ * Config (reusable): text, color, fontWeight, fontFamily, fontSizeRatio | fontSizePx,
+ * durationMs, holdRatio, distance | distanceRatio, point (anchor), direction (local deg),
+ * scaleFrom, scaleTo, pattern ('once' | 'repeat'), rate, jitter, appliesTo.
  */
 export function textProjectileOnce({ root, el, action }) {
   if (!root?.isConnected) return;
@@ -275,7 +275,9 @@ export function textProjectileOnce({ root, el, action }) {
       const worldAng = rootRot + rad;
       const wtx = Math.cos(worldAng) * dist;
       const wty = Math.sin(worldAng) * dist;
-      const fontSizeApprox = Math.max(10, w * (Number(action.fontSizeRatio) || 0.4));
+      const fontSizeApprox = Number.isFinite(+action.fontSizePx) && +action.fontSizePx > 0
+        ? Math.max(8, +action.fontSizePx)
+        : Math.max(10, w * (Number(action.fontSizeRatio) || 0.4));
       const clamped = clampBurstDelta(mouthX, mouthY, wtx, wty, {
         width: fontSizeApprox * 2.4,
         height: fontSizeApprox * 1.2,
@@ -301,16 +303,20 @@ export function textProjectileOnce({ root, el, action }) {
   const scaleFrom = Number.isFinite(+action.scaleFrom) ? +action.scaleFrom : 0.65;
   const scaleTo = Number.isFinite(+action.scaleTo) ? +action.scaleTo : 1.12;
   const fontSizeRatio = Number.isFinite(+action.fontSizeRatio) ? +action.fontSizeRatio : 0.4;
-  const fontSize = Math.max(10, w * fontSizeRatio);
+  // fontSizePx (absolute) wins when set; else ratio of element width (current default look)
+  const fontSize = Number.isFinite(+action.fontSizePx) && +action.fontSizePx > 0
+    ? Math.max(8, +action.fontSizePx)
+    : Math.max(10, w * fontSizeRatio);
   const rawText = (action.text != null ? String(action.text) : 'BOO');
   const color = action.color || '#000';
   const fontWeight = action.fontWeight != null ? String(action.fontWeight) : '700';
+  const fontFamily = (action.fontFamily != null ? String(action.fontFamily).trim() : '');
 
   const tip = document.createElement('div');
   tip.className = 'activation-text-projectile';
   tip.setAttribute('data-text-projectile-for', el?.id || 'spore');
   tip.textContent = rawText;
-  tip.style.cssText = [
+  const cssParts = [
     'position:absolute',
     `left:${mx}px`,
     `top:${my}px`,
@@ -326,7 +332,9 @@ export function textProjectileOnce({ root, el, action }) {
     'user-select:none',
     `transform:translate(-50%,-50%) translate(0px,0px) scale(${scaleFrom})`,
     'opacity:1'
-  ].join(';');
+  ];
+  if (fontFamily) cssParts.splice(5, 0, `font-family:${fontFamily}`);
+  tip.style.cssText = cssParts.join(';');
   root.appendChild(tip);
 
   const midX = endX * holdRatio;

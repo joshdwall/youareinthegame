@@ -133,7 +133,8 @@
               "pattern": "once",
               "appliesTo": [
                 "spore"
-              ]
+              ],
+              "fontFamily": ""
             }
           ]
         }

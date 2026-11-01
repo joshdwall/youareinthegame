@@ -38,13 +38,21 @@ export const BUILTIN_SEED = {
     {
       id: 'ghost',
       label: 'Ghost',
-      editable: false,
-      placementEditable: false,
+      editable: true,
+      placementEditable: true,
       live: true,
       archived: false,
       module: './effects/spore/ghost/effect.js',
       playMode: 'legacy-ghost',
-      elements: [],
+      elements: [
+        {
+          id: 'ghostBody',
+          role: 'sporeBody',
+          anchor: 'mouth',
+          src: 'effects/spore/ghost/img/mushroom-platypus-ghost-spores.png',
+          defaultWidthFrac: 1
+        }
+      ],
       transitionsAvailable: ['lightning'],
       type: 'character-overlay-activation',
       overlayFlashMode: 'image',
@@ -137,7 +145,17 @@ export function normalizeConfig(raw) {
     if (!a || typeof a !== 'object') return a;
     const o = Number(a.order);
     const order = Number.isFinite(o) ? o : i;
-    return { ...a, order };
+    const out = { ...a, order };
+    // Unlock ghost placement/objectActions editing (Cambio OA editor); keep archive-protected in UI.
+    if (out.id === 'ghost') {
+      out.editable = true;
+      out.placementEditable = true;
+      const seedGhost = seedAnims.find((s) => s && s.id === 'ghost');
+      if ((!Array.isArray(out.elements) || !out.elements.length) && seedGhost?.elements?.length) {
+        out.elements = seedGhost.elements.map((el) => ({ ...el }));
+      }
+    }
+    return out;
   });
 
   return {
