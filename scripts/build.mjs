@@ -10,7 +10,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SITE_DIR = path.resolve(__dirname, '..');
 const OUT_DIR = path.join(SITE_DIR, 'dist');
 
-const FILES = ['_headers', 'index.html', 'styles.css', 'script.js', 'mainConfig.js'];
+const FILES = ['_headers', 'index.html', 'styles.css', 'script.js', 'mainConfig.js', 'favicon.ico', 'favicon.png', 'favicon.svg', 'apple-touch-icon.png'];
 const DIRS = [
   'effects',
   'img',
