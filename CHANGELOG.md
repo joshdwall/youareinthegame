@@ -11,9 +11,9 @@ SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.co
 - Schema: `cambio/objectActionFieldSchema.js`; runtime `fontFamily` + optional `fontSizePx` (defaults preserve current BOO look).
 - Saves → KV `cambio:placements` live. Boot merges seed when KV lacks ghost OA; `normalizeConfig` unlocks ghost editable flags.
 - Promote: ghost BOO textProjectile + longer hold-fade to production.
-- **Prod fix:** Stale CF edge cache served pre-`textProjectile` `objectActions.js` (immutable `/effects/*`) → BOO missing in browsers. Purged zone prefixes; `_headers` now `must-revalidate` for effects/runtime/cambio JS (images stay immutable). Seeded KV `cambio:placements` with ghost OA alongside cowboy.
+- **Prod fix:** Stale CF edge cache served pre-`textProjectile` `objectActions.js` (immutable `/effects/*`) → BOO missing in browsers. Purged zone prefixes; `_headers` uses `max-age=60, must-revalidate` for all `/effects/*`, `/runtime/*`, `/cambio/*` (unhashed modules; `/img`+`/assets` stay immutable). Seeded KV `cambio:placements` with ghost OA alongside cowboy.
 - Checkpoint `checkpoint-2026-11-01-pre-ghost-cambio-edit`.
-- YAITG `290a242` → CF Pages deploy `6c5a1890-aea9-4872-ad7a-c783114f3a58` (production); follow-up headers commit on `main`.
+- YAITG `290a242` → deploy `6c5a1890-aea9-4872-ad7a-c783114f3a58`; cache fix `b84895e` (+ headers follow-up) → deploy `8b59a6db-29d8-403d-b4d2-4eff30d58806` (production aliases: apex, www, app). Live cycle verify PASS (ghost BOO + cowboy guns, desktop+mobile).
 
 ## 2026-11-01 (America/Chicago) — preview: ghost BOO textProjectile
 
