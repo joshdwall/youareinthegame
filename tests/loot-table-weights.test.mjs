@@ -21,6 +21,7 @@ const config = {
     legendary: { label: 'Legendary', weight: 1 }
   },
   flags: { noRepeatTwice: false },
+  settings: { selectionMode: 'weighted' },
   seasons: [],
   animations: [
     { id: 'ghost', live: true, archived: false, weight: 1, tier: 'legendary', multiplier: 1 },

@@ -27,7 +27,9 @@ export const BUILTIN_SEED = {
     clickThresholdMin: 3,
     clickThresholdMax: 5,
     // Dark→light background fade on reset (was ANIMATIONS.STORM_RESET_DURATION 1500). Flash stays instant.
-    stormResetDurationMs: 1500
+    stormResetDurationMs: 1500,
+    // alternate = round-robin by order; weighted = loot table. Live-editable in Cambio.
+    selectionMode: 'alternate'
   },
   seasons: [],
   animations: [
@@ -47,6 +49,7 @@ export const BUILTIN_SEED = {
       tier: 'legendary',
       multiplier: 1,
       weight: 1,
+      order: 0,
       previewObjectActions: false
     },
     {
@@ -68,8 +71,9 @@ export const BUILTIN_SEED = {
       type: 'character-overlay-activation',
       overlayFlashMode: 'composite',
       tier: 'legendary',
-      multiplier: 3,
-      weight: 3,
+      multiplier: 1,
+      weight: 1,
+      order: 1,
       previewObjectActions: false
     }
   ]
@@ -81,7 +85,8 @@ export function normalizeConfig(raw) {
   const seedSettings = seed.settings || {
     clickThresholdMin: 3,
     clickThresholdMax: 5,
-    stormResetDurationMs: 1500
+    stormResetDurationMs: 1500,
+    selectionMode: 'alternate'
   };
   const rawSettings = base.settings && typeof base.settings === 'object' ? base.settings : {};
   let clickThresholdMin = Number(rawSettings.clickThresholdMin ?? seedSettings.clickThresholdMin);
@@ -100,16 +105,33 @@ export function normalizeConfig(raw) {
   clickThresholdMax = Math.floor(clickThresholdMax);
   stormResetDurationMs = Math.floor(stormResetDurationMs);
 
+  let selectionMode = String(
+    rawSettings.selectionMode ?? seedSettings.selectionMode ?? 'alternate'
+  );
+  if (selectionMode !== 'weighted' && selectionMode !== 'alternate') {
+    selectionMode = 'alternate';
+  }
+
+  const seedAnims = seed.animations || [];
+  let animations =
+    Array.isArray(base.animations) && base.animations.length
+      ? base.animations
+      : seedAnims;
+  animations = animations.map((a, i) => {
+    if (!a || typeof a !== 'object') return a;
+    const o = Number(a.order);
+    const order = Number.isFinite(o) ? o : i;
+    return { ...a, order };
+  });
+
   return {
     schemaVersion: base.schemaVersion || 1,
     updatedAt: base.updatedAt || new Date().toISOString(),
     tiers: base.tiers || seed.tiers,
     flags: { noRepeatTwice: false, ...(base.flags || {}) },
-    settings: { clickThresholdMin, clickThresholdMax, stormResetDurationMs },
+    settings: { clickThresholdMin, clickThresholdMax, stormResetDurationMs, selectionMode },
     seasons: Array.isArray(base.seasons) ? base.seasons : [],
-    animations: Array.isArray(base.animations) && base.animations.length
-      ? base.animations
-      : seed.animations
+    animations
   };
 }
 
@@ -140,7 +162,7 @@ export function publicView(config) {
     updatedAt: config.updatedAt,
     tiers: config.tiers,
     flags: config.flags,
-    settings: config.settings || { clickThresholdMin: 3, clickThresholdMax: 5, stormResetDurationMs: 1500 },
+    settings: config.settings || { clickThresholdMin: 3, clickThresholdMax: 5, stormResetDurationMs: 1500, selectionMode: 'alternate' },
     seasons: config.seasons,
     animations: live
   };

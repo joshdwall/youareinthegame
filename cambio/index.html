@@ -87,6 +87,27 @@
               <button type="button" class="ie-btn ie-cancel" id="btnCancelStormReset" title="Cancel">✕</button>
             </div>
           </div>
+
+        <div class="ie-row" id="selectionModeRow" data-mode="selectionMode">
+          <div class="ie-view">
+            <span class="ie-label">Selection</span>
+            <span class="ie-value" id="selectionModeView">Alternate</span>
+            <button type="button" class="ie-btn" id="btnEditSelectionMode" title="Edit selection mode" aria-label="Edit selection mode">✎</button>
+          </div>
+          <div class="ie-edit hidden">
+            <label class="cambio-field">Method
+              <select id="selectionModeInput">
+                <option value="alternate">Alternate (round-robin)</option>
+                <option value="weighted">Weighted (loot table)</option>
+              </select>
+            </label>
+            <p class="cambio-status" style="font-size:.72rem">How the next live animation is chosen. Alternate cycles by Order. Live ~15s, no redeploy.</p>
+            <div class="ie-actions">
+              <button type="button" class="ie-btn ie-save" id="btnSaveSelectionMode" title="Save">✓</button>
+              <button type="button" class="ie-btn ie-cancel" id="btnCancelSelectionMode" title="Cancel">✕</button>
+            </div>
+          </div>
+        </div>
         </div>
           </div><!-- /.card-body -->
         </div><!-- /.card -->

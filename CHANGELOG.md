@@ -5,6 +5,15 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
+## 2026-10-31 — Selection mode: alternate (round-robin) + 50/50 weights
+
+- **`settings.selectionMode`**: `alternate` (default) or `weighted`. Live in Cambio Site settings (✎/✓/✕); served on `/api/animations` (~15s); no redeploy to switch.
+- **Alternate**: cycles LIVE eligible animations by stable `order` (then id). Per-visitor cursor in `localStorage` (`yaitg.selectionCursor`: index + lastId); survives add/remove by continuing after last-played id. Character-click preview = next pick. Scales to 1000+.
+- **Order** column in Cambio list (immediate PATCH). New anims get max(order)+1.
+- **Weights** cowboy/ghost set to **1/1 (50/50)** in seed + live KV (was 3/1 → 75/25).
+- Tests: `tests/loot-table-alternate.test.mjs` (A,B,A,B; 1,2,3,1; 1000 synthetic; mid-cycle; mode switch); weight test pinned to `weighted`.
+- Plans: Site-Master + Random-Seasonal-Animations-Cambio (pt40u). Checkpoint `checkpoint-2026-10-31-pre-selection-mode-alternate`.
+
 ## 2026-10-30 (America/Chicago) — Cambio content-fit columns + sidebar normalize
 
 - **Ask:** Column headers in scroll lists too wide for content — investigate original enVivo `mountEvScrollList` (fixed cols / `table-layout:fixed` / `width:100%` / th min-width / colgroup); use recommended content-fit so each column auto-fits its widest cell/header with horizontal scroll for overflow. Also standardize/normalize/compact **both** Cambio sidebars (uniform enVivo btn-sm, one label size, one input height, consistent card pad/gap); define scoped CSS tokens under `#cambioRoot`.

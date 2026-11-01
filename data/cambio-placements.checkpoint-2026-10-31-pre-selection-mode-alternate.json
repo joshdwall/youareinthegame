@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-10-31T00:25:12.597Z",
+  "byAnimation": {
+    "cowboy": {
+      "transitionId": "lightning",
+      "elements": {
+        "hat": {
+          "objectAnchor": {
+            "x": 0.5,
+            "y": 0.9
+          },
+          "characterAnchor": {
+            "x": 0.85,
+            "y": -0.14999995246583483
+          },
+          "rotation": 0,
+          "scale": 0.55,
+          "transition": null,
+          "flipX": false
+        },
+        "mustache": {
+          "objectAnchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "characterAnchor": {
+            "x": 0.5,
+            "y": 0.56
+          },
+          "rotation": 0,
+          "scale": 0.38,
+          "transition": null,
+          "flipX": false
+        },
+        "pistolL": {
+          "objectAnchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "characterAnchor": {
+            "x": 0.14,
+            "y": 0.72
+          },
+          "rotation": -20,
+          "scale": 0.28,
+          "transition": null,
+          "flipX": false,
+          "objectActions": [
+            {
+              "type": "fire",
+              "point": {
+                "x": 0.08,
+                "y": 0.32
+              },
+              "direction": 180,
+              "pattern": "alternate",
+              "rate": 3.2,
+              "jitter": 0.5,
+              "appliesTo": [
+                "spore",
+                "activation"
+              ]
+            }
+          ]
+        },
+        "pistolR": {
+          "objectAnchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "characterAnchor": {
+            "x": 0.86,
+            "y": 0.72
+          },
+          "rotation": 20,
+          "scale": 0.28,
+          "transition": null,
+          "flipX": false,
+          "objectActions": [
+            {
+              "type": "fire",
+              "point": {
+                "x": 0.92,
+                "y": 0.32
+              },
+              "direction": 0,
+              "pattern": "alternate",
+              "rate": 3.2,
+              "jitter": 0.5,
+              "appliesTo": [
+                "spore",
+                "activation"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

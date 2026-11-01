@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-31T00:30:00.000Z",
+  "updatedAt": "2026-11-01T01:15:00.000Z",
   "tiers": {
     "common": {
       "label": "Common",
@@ -45,7 +45,8 @@
       "clickEffect": {
         "type": "ghost-spores"
       },
-      "previewObjectActions": false
+      "previewObjectActions": false,
+      "order": 0
     },
     {
       "id": "cowboy",
@@ -91,19 +92,21 @@
       "archived": false,
       "placementEditable": true,
       "tier": "legendary",
-      "multiplier": 3,
-      "weight": 3,
+      "multiplier": 1,
+      "weight": 1,
       "clickEffect": {
         "type": "composite-spores",
         "count": 16,
         "scale": 0.18
       },
-      "previewObjectActions": false
+      "previewObjectActions": false,
+      "order": 1
     }
   ],
   "settings": {
     "clickThresholdMin": 3,
     "clickThresholdMax": 5,
-    "stormResetDurationMs": 1500
+    "stormResetDurationMs": 1500,
+    "selectionMode": "alternate"
   }
 }

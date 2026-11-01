@@ -24,6 +24,39 @@ const CACHE_MS = 15_000;
 let upcoming = null;
 let lastPickedId = null;
 
+
+const SELECTION_CURSOR_KEY = 'yaitg.selectionCursor';
+
+/** @returns {{ index: number, lastId: string|null }} */
+export function readSelectionCursor() {
+  try {
+    if (typeof localStorage === 'undefined') return { index: -1, lastId: null };
+    const raw = localStorage.getItem(SELECTION_CURSOR_KEY);
+    if (!raw) return { index: -1, lastId: null };
+    const parsed = JSON.parse(raw);
+    const index = Number.isFinite(Number(parsed?.index)) ? Math.floor(Number(parsed.index)) : -1;
+    const lastId = parsed?.lastId != null ? String(parsed.lastId) : null;
+    return { index, lastId };
+  } catch {
+    return { index: -1, lastId: null };
+  }
+}
+
+/** @param {{ index?: number, lastId?: string|null }} cursor */
+export function writeSelectionCursor(cursor) {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(
+      SELECTION_CURSOR_KEY,
+      JSON.stringify({
+        index: Number.isFinite(Number(cursor?.index)) ? Math.floor(Number(cursor.index)) : -1,
+        lastId: cursor?.lastId != null ? String(cursor.lastId) : null
+      })
+    );
+  } catch (_) {}
+}
+
+
 /** Prepared payload for the current upcoming (placements, elements, urls). */
 let prepared = null;
 
@@ -174,9 +207,16 @@ export async function pickUpcoming({ forceRefresh = false, creature = null } = {
   } else if (!config) {
     upcoming = { id: 'ghost', anim: { id: 'ghost', playMode: 'legacy-ghost' } };
   } else {
-    const pick = pickAnimation(config, { lastId: lastPickedId });
+    const cursor = readSelectionCursor();
+    const lastId = lastPickedId || cursor.lastId;
+    const pick = pickAnimation(config, {
+      lastId,
+      cursorIndex: cursor.index
+    });
     upcoming = pick || { id: 'ghost', anim: { id: 'ghost', playMode: 'legacy-ghost' } };
     lastPickedId = upcoming.id;
+    const nextIndex = Number.isFinite(pick?.index) ? pick.index : cursor.index;
+    writeSelectionCursor({ index: nextIndex, lastId: upcoming.id });
   }
   exposeUpcoming();
   const cre = creature || (typeof document !== 'undefined' ? document.getElementById('mainCreature') : null);

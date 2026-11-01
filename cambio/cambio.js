@@ -86,7 +86,7 @@ const state = {
   selectedElementId: null,
   dirty: false,
   animFilter: '',
-  /** null | 'connector' | 'rotation' | 'move' | 'size' | 'transition' | 'action' | 'previewObjectActions' | 'clickThreshold' | 'stormResetDuration' */
+  /** null | 'connector' | 'rotation' | 'move' | 'size' | 'transition' | 'action' | 'previewObjectActions' | 'clickThreshold' | 'stormResetDuration' | 'selectionMode' */
   activeMode: null,
   /** Deep clone of element (or transitionId) when mode opened */
   modeSnapshot: null,
@@ -173,7 +173,7 @@ function syncManifestFromRuntime() {
   state.seasons = state.runtimeConfig.seasons || [];
   syncClickThresholdView();
   syncStormResetView();
-  syncStormResetView();
+  syncSelectionModeView();
 }
 
 async function apiJson(url, opts = {}) {
@@ -303,8 +303,9 @@ async function boot() {
         live: a.id === 'ghost' || a.id === 'cowboy',
         archived: false,
         tier: 'legendary',
-        multiplier: a.id === 'cowboy' ? 3 : 1,
-        weight: a.id === 'cowboy' ? 3 : 1
+        multiplier: 1,
+        weight: 1,
+        order: a.id === 'ghost' ? 0 : 1
       }))
     };
   }
@@ -344,6 +345,9 @@ async function boot() {
   $('btnEditStormReset')?.addEventListener('click', () => enterMode('stormResetDuration'));
   $('btnSaveStormReset')?.addEventListener('click', () => commitMode());
   $('btnCancelStormReset')?.addEventListener('click', () => cancelMode());
+  $('btnEditSelectionMode')?.addEventListener('click', () => enterMode('selectionMode'));
+  $('btnSaveSelectionMode')?.addEventListener('click', () => commitMode());
+  $('btnCancelSelectionMode')?.addEventListener('click', () => cancelMode());
   $('btnSavePreviewObjectActions')?.addEventListener('click', () => commitMode());
   $('btnCancelPreviewObjectActions')?.addEventListener('click', () => cancelMode());
   transitionSelect.addEventListener('change', onTransitionChange);
@@ -426,6 +430,25 @@ function syncStormResetView() {
   if (input && state.activeMode !== 'stormResetDuration') input.value = String(ms);
 }
 
+function getSelectionModeSetting() {
+  const s = state.settings || state.runtimeConfig?.settings || {};
+  const m = s.selectionMode === 'weighted' ? 'weighted' : 'alternate';
+  return m;
+}
+
+function selectionModeLabel(mode) {
+  return mode === 'weighted' ? 'Weighted' : 'Alternate';
+}
+
+function syncSelectionModeView() {
+  const mode = getSelectionModeSetting();
+  const view = $('selectionModeView');
+  if (view) view.textContent = selectionModeLabel(mode);
+  const input = $('selectionModeInput');
+  if (input && state.activeMode !== 'selectionMode') input.value = mode;
+}
+
+
 function syncClickThresholdView() {
   const { clickThresholdMin: min, clickThresholdMax: max } = getClickThresholdSettings();
   const view = $('clickThresholdView');
@@ -502,8 +525,14 @@ function enterMode(mode) {
     const mh = $('moveHint');
     if (mh) mh.textContent = `Drag the ${selectedLabel()} to where it should stick.`;
   }
+  if (mode === 'selectionMode') {
+    const cur = getSelectionModeSetting();
+    state.modeSnapshot = { selectionMode: cur };
+    const input = $('selectionModeInput');
+    if (input) input.value = cur;
+  }
   syncModeUi();
-  mountProps(state.selectedAnim.id, { interactive: true });
+  if (state.selectedAnim) mountProps(state.selectedAnim.id, { interactive: true });
 }
 
 async function commitMode() {
@@ -575,6 +604,22 @@ async function commitMode() {
       $('poolHint').textContent = `Reset fade save failed: ${e.message || e}`;
     }
   }
+  if (state.activeMode === 'selectionMode') {
+    const raw = $('selectionModeInput')?.value;
+    const mode = raw === 'weighted' ? 'weighted' : 'alternate';
+    const prev = state.runtimeConfig?.settings || state.settings || {};
+    const settings = { ...prev, selectionMode: mode };
+    state.settings = settings;
+    if (state.runtimeConfig) state.runtimeConfig.settings = settings;
+    try {
+      await persistRuntime('selection-mode');
+      syncSelectionModeView();
+      $('poolHint').textContent = `Selection ${selectionModeLabel(mode)} live (next visitors ~15s, no redeploy)`;
+    } catch (e) {
+      console.error(e);
+      $('poolHint').textContent = `Selection mode save failed: ${e.message || e}`;
+    }
+  }
   state.activeMode = null;
   state.modeSnapshot = null;
   state.connectorPick = null;
@@ -615,6 +660,11 @@ function cancelMode() {
     const input = $('stormResetInput');
     if (input) input.value = String(snap.stormResetDurationMs ?? 1500);
     syncStormResetView();
+  } else if (mode === 'selectionMode') {
+    const snap = state.modeSnapshot || {};
+    const input = $('selectionModeInput');
+    if (input) input.value = snap.selectionMode === 'weighted' ? 'weighted' : 'alternate';
+    syncSelectionModeView();
   } else {
     const st = currentElement();
     if (st && state.modeSnapshot) {
@@ -850,6 +900,17 @@ function ensureAnimDeskList() {
       }
     },
     {
+      key: 'order',
+      label: 'Order',
+      fit: 'content',
+      sortType: 'number',
+      className: 'cambio-col-num',
+      render: (anim) => {
+        const order = anim.order != null && Number.isFinite(+anim.order) ? +anim.order : 0;
+        return `<input type="number" step="1" data-act="order" data-id="${escapeHtml(anim.id)}" value="${escapeHtml(String(order))}" title="Alternate cycle order (lower first)" />`;
+      }
+    },
+    {
       key: 'weight',
       label: 'Weight',
       fit: 'content',
@@ -911,7 +972,7 @@ function ensureAnimDeskList() {
     columns,
     minRows: 10,
     maxHeightCss: 'min(70vh, 36rem)',
-    emptyHtml: `<tr><td colspan="6" class="ev-hint">No animations yet</td></tr>`,
+    emptyHtml: `<tr><td colspan="7" class="ev-hint">No animations yet</td></tr>`,
     rowKey: (item) => String(item.id),
     detailHost,
     renderDetail: (anim) => {
@@ -1036,6 +1097,19 @@ function wireAnimListActions() {
           renderAnimList();
         }
       })();
+    } else if (act === 'order' && el instanceof HTMLInputElement) {
+      const o = Number(el.value);
+      if (!Number.isFinite(o)) return;
+      const order = Math.floor(o);
+      (async () => {
+        try {
+          await patchAnimation(id, { order });
+          saveStatus.textContent = `${anim.label} order=${order}`;
+        } catch (e) {
+          console.error(e);
+          saveStatus.textContent = `Order save failed: ${e.message || e}`;
+        }
+      })();
     } else if (act === 'weight' && el instanceof HTMLInputElement) {
       void (async () => {
         const w = Math.max(0, +el.value || 0);
@@ -1106,6 +1180,8 @@ async function onCreateSubmit(ev) {
       });
     }
     const mult = Math.max(0, +fd.get('multiplier') || 1);
+    const existingOrders = (state.runtimeConfig?.animations || []).map((a) => Number(a.order)).filter(Number.isFinite);
+    const nextOrder = existingOrders.length ? Math.max(...existingOrders) + 1 : 0;
     const body = {
       id,
       label,
@@ -1113,6 +1189,7 @@ async function onCreateSubmit(ev) {
       tier: fd.get('tier') || 'legendary',
       multiplier: mult,
       weight: mult,
+      order: nextOrder,
       live: !!fd.get('live'),
       archived: false,
       editable: true,
