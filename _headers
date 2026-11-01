@@ -1,2 +1,29 @@
-/*
+/
   Cache-Control: no-cache
+
+/index.html
+  Cache-Control: no-cache
+
+/script.js
+  Cache-Control: public, max-age=300, must-revalidate
+
+/styles.css
+  Cache-Control: public, max-age=300, must-revalidate
+
+/mainConfig.js
+  Cache-Control: public, max-age=300, must-revalidate
+
+/img/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/effects/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/content/*
+  Cache-Control: public, max-age=60, must-revalidate
+
+/api/*
+  Cache-Control: public, max-age=15, stale-while-revalidate=30

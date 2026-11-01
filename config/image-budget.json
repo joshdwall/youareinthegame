@@ -1,0 +1,24 @@
+{
+  "maxBytes": 153600,
+  "maxEdgePxByKind": {
+    "creature": 800,
+    "sticker": 256,
+    "spore": 128,
+    "overlay": 800,
+    "prop": 512,
+    "default": 1024
+  },
+  "scanGlobs": [
+    "img/**/*",
+    "effects/**/*.{png,jpg,jpeg,webp,avif,gif}",
+    "assets/**/*.{png,jpg,jpeg,webp,avif,gif}"
+  ],
+  "ignoreGlobs": [
+    "**/node_modules/**",
+    "**/.git/**",
+    "**/capture/**",
+    "**/test-results/**",
+    "**/cambio/vendor/**"
+  ],
+  "allowlist": []
+}

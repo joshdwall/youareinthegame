@@ -1,0 +1,95 @@
+{
+  "at": "2026-11-01T15:49:52.815Z",
+  "report": [
+    {
+      "kind": "sticker",
+      "src": "img/Now With Spores Large Image Circular Blue Orange.png",
+      "out": "img/now-with-spores.webp",
+      "before": 1902591,
+      "after": 19306,
+      "format": "webp",
+      "quality": 82,
+      "maxEdge": 256
+    },
+    {
+      "kind": "sticker",
+      "src": "img/Now With Spores Large Image Circular Blue Orange.png",
+      "out": "img/now-with-spores.avif",
+      "before": 1902591,
+      "after": 13138,
+      "format": "avif",
+      "quality": 50,
+      "maxEdge": 256
+    },
+    {
+      "kind": "sticker",
+      "src": "img/Now With Spores Large Image Circular Blue Orange.png",
+      "out": "img/now-with-spores.png",
+      "before": 1902591,
+      "after": 22351,
+      "format": "png",
+      "quality": 80,
+      "maxEdge": 256
+    },
+    {
+      "kind": "creature",
+      "src": "img/mushroom-platypus.png",
+      "out": "img/mushroom-platypus.webp",
+      "before": 266459,
+      "after": 31244,
+      "format": "webp",
+      "quality": 82,
+      "maxEdge": 800
+    },
+    {
+      "kind": "creature",
+      "src": "img/mushroom-platypus.png",
+      "out": "img/mushroom-platypus.png",
+      "before": 266459,
+      "after": 46335,
+      "format": "png",
+      "quality": 80,
+      "maxEdge": 800
+    },
+    {
+      "kind": "overlay",
+      "src": "effects/spore/ghost/img/ghost-platypus.png",
+      "out": "effects/spore/ghost/img/ghost-platypus.webp",
+      "before": 165986,
+      "after": 28620,
+      "format": "webp",
+      "quality": 82,
+      "maxEdge": 800
+    },
+    {
+      "kind": "overlay",
+      "src": "effects/spore/ghost/img/ghost-platypus.png",
+      "out": "effects/spore/ghost/img/ghost-platypus.png",
+      "before": 165986,
+      "after": 31158,
+      "format": "png",
+      "quality": 80,
+      "maxEdge": 800
+    },
+    {
+      "kind": "prop",
+      "src": "assets/characters/pirate-mushroom/hat.png",
+      "out": "assets/characters/pirate-mushroom/hat.webp",
+      "before": 1902591,
+      "after": 63876,
+      "format": "webp",
+      "quality": 82,
+      "maxEdge": 512
+    },
+    {
+      "kind": "prop",
+      "src": "assets/characters/pirate-mushroom/hat.png",
+      "out": "assets/characters/pirate-mushroom/hat.png",
+      "before": 1902591,
+      "after": 78223,
+      "format": "png",
+      "quality": 80,
+      "maxEdge": 512
+    }
+  ]
+}

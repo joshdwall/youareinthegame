@@ -13,7 +13,7 @@
       "weight": 10,
       "assets": {
         "baseSprite": "img/mushroom-platypus.png",
-        "sticker": "img/Now With Spores Large Image Circular Blue Orange.png"
+        "sticker": "img/now-with-spores.webp"
       },
       "defaultVignetteId": "spores",
       "allowedVignetteIds": ["spores", "ghost-storm", "cannons"],
@@ -32,7 +32,7 @@
       "weight": 5,
       "assets": {
         "baseSprite": "img/mushroom-platypus.png",
-        "sticker": "img/Now With Spores Large Image Circular Blue Orange.png"
+        "sticker": "img/now-with-spores.webp"
       },
       "defaultVignetteId": "cannons",
       "allowedVignetteIds": ["cannons", "spores"],
