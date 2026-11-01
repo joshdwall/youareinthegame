@@ -30,7 +30,15 @@
       "editable": false,
       "module": "./effects/spore/ghost/effect.js",
       "playMode": "legacy-ghost",
-      "elements": [],
+      "elements": [
+        {
+          "id": "ghostBody",
+          "role": "sporeBody",
+          "anchor": "mouth",
+          "src": "effects/spore/ghost/img/mushroom-platypus-ghost-spores.png",
+          "defaultWidthFrac": 1
+        }
+      ],
       "transitionsAvailable": [
         "lightning"
       ],

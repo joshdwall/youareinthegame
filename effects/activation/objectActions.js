@@ -218,7 +218,7 @@ function resolveActionNode(root, el) {
 
 /**
  * Generic short-lived text projectile from an anchor point (mouth, muzzle, etc.).
- * Config (reusable): text, color, fontWeight, fontSizeRatio, durationMs,
+ * Config (reusable): text, color, fontWeight, fontSizeRatio, durationMs, holdRatio,
  * distance | distanceRatio, point (anchor), direction (local deg), scaleFrom, scaleTo,
  * pattern ('once' | 'repeat'), rate, jitter, appliesTo.
  */
@@ -293,8 +293,11 @@ export function textProjectileOnce({ root, el, action }) {
 
   const durationMs = Math.max(
     200,
-    Math.min(2000, Number(action.durationMs) || 550)
+    Math.min(4000, Number(action.durationMs) || 1200)
   );
+  // holdRatio: fraction of duration spent fully opaque (gentle hold then fade)
+  let holdRatio = Number.isFinite(+action.holdRatio) ? +action.holdRatio : 0.4;
+  holdRatio = Math.min(0.85, Math.max(0, holdRatio));
   const scaleFrom = Number.isFinite(+action.scaleFrom) ? +action.scaleFrom : 0.65;
   const scaleTo = Number.isFinite(+action.scaleTo) ? +action.scaleTo : 1.12;
   const fontSizeRatio = Number.isFinite(+action.fontSizeRatio) ? +action.fontSizeRatio : 0.4;
@@ -326,18 +329,28 @@ export function textProjectileOnce({ root, el, action }) {
   ].join(';');
   root.appendChild(tip);
 
+  const midX = endX * holdRatio;
+  const midY = endY * holdRatio;
+  const midScale = scaleFrom + (scaleTo - scaleFrom) * holdRatio;
   const anim = tip.animate(
     [
       {
+        offset: 0,
         transform: `translate(-50%, -50%) translate(0px, 0px) scale(${scaleFrom})`,
         opacity: 1
       },
       {
+        offset: holdRatio,
+        transform: `translate(-50%, -50%) translate(${midX}px, ${midY}px) scale(${midScale})`,
+        opacity: 1
+      },
+      {
+        offset: 1,
         transform: `translate(-50%, -50%) translate(${endX}px, ${endY}px) scale(${scaleTo})`,
         opacity: 0
       }
     ],
-    { duration: durationMs, easing: 'ease-out', fill: 'forwards' }
+    { duration: durationMs, easing: 'linear', fill: 'forwards' }
   );
   const done = () => {
     try { tip.remove(); } catch (_) {}

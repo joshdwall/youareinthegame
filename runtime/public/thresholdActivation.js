@@ -15,6 +15,7 @@ import {
 import { mountOverlayProps } from '../../effects/activation/mountOverlayProps.js';
 import { fadeStormResetToLight } from '../../effects/activation/fadeStormReset.js';
 import { GHOST_CONFIG } from '../../effects/spore/ghost/config.js';
+import { resolvePlacementsForAnimation } from '../../effects/activation/defaultPlacements.js';
 
 let cachedConfig = null;
 let cacheAt = 0;
@@ -185,20 +186,29 @@ async function loadPlacementsFallback(animId) {
     const placeRes = await fetch('/content/cambio-placements.json');
     if (placeRes.ok) {
       const pj = await placeRes.json();
-      return pj?.byAnimation?.[animId]?.elements || {};
+      const fromSeed = pj?.byAnimation?.[animId]?.elements || {};
+      if (Object.keys(fromSeed).length) return fromSeed;
     }
   } catch (_) {}
-  return {};
+  return resolvePlacementsForAnimation(null, animId);
 }
 
 function buildCompositeElements(anim, placementsById) {
-  return (anim.elements || []).map((el) => ({
-    id: el.id,
-    src: el.src.startsWith('/') || el.src.startsWith('http')
-      ? el.src
-      : '/' + el.src.replace(/^\//, ''),
-    placement: placementsById[el.id] || el.placement
-  }));
+  return (anim.elements || []).map((el) => {
+    const src = el.src
+      ? (el.src.startsWith('/') || el.src.startsWith('http')
+          ? el.src
+          : '/' + el.src.replace(/^\//, ''))
+      : null;
+    return {
+      id: el.id,
+      src,
+      role: el.role || null,
+      anchor: el.anchor || null,
+      defaultWidthFrac: el.defaultWidthFrac,
+      placement: placementsById[el.id] || el.placement || null
+    };
+  });
 }
 
 function assetUrls(anim, compositeElements, creature) {
@@ -223,34 +233,60 @@ function assetUrls(anim, compositeElements, creature) {
  */
 export async function prepareUpcoming(creature) {
   prepared = null;
-  if (!upcoming || isGhostPick(upcoming)) {
-    const urls = [
-      GHOST_CONFIG.ASSETS.OVERLAY_IMAGE,
-      GHOST_CONFIG.ASSETS.SPORE_IMAGE,
-      creature?.getAttribute?.('src') || '/img/mushroom-platypus.png'
-    ].filter(Boolean);
-    await preloadActivationAssets(urls, 'ghost');
-    prepared = { kind: 'ghost', ready: true, urls };
-    exposeUpcoming();
-    return prepared;
-  }
   const config = cachedConfig;
-  let placementsById = placementsFor(config, upcoming.id);
-  if (!Object.keys(placementsById).length) {
-    placementsById = await loadPlacementsFallback(upcoming.id);
+  const animId = upcoming?.id || 'ghost';
+  const ghost = !upcoming || isGhostPick(upcoming);
+  const anim = upcoming?.anim || { id: 'ghost', playMode: 'legacy-ghost', elements: [] };
+
+  // Ensure ghost has sporeBody element definition even if runtime-config omitted it
+  // (seed/defaults still supply placements.objectActions).
+  let animForBuild = anim;
+  if (ghost && !(anim.elements || []).length) {
+    animForBuild = {
+      ...anim,
+      elements: [{
+        id: 'ghostBody',
+        role: 'sporeBody',
+        anchor: 'mouth',
+        src: GHOST_CONFIG.ASSETS.SPORE_IMAGE || '/effects/spore/ghost/img/mushroom-platypus-ghost-spores.png',
+        defaultWidthFrac: 1
+      }]
+    };
   }
-  const compositeElements = buildCompositeElements(upcoming.anim, placementsById);
-  const elements = (upcoming.anim.elements || []).map((el) => ({
+
+  let placementsById = placementsFor(config, animId);
+  // If API/KV returned placements for other anims but not this one, still fall back.
+  if (!Object.keys(placementsById).length) {
+    placementsById = await loadPlacementsFallback(animId);
+  } else if (ghost && !placementsById.ghostBody) {
+    // Partial KV (cowboy only): merge code/seed ghost defaults for missing keys
+    const fb = await loadPlacementsFallback(animId);
+    placementsById = { ...fb, ...placementsById };
+  }
+  placementsById = resolvePlacementsForAnimation(placementsById, animId);
+
+  const compositeElements = buildCompositeElements(animForBuild, placementsById);
+  const elements = (animForBuild.elements || []).map((el) => ({
     ...el,
     placement: placementsById[el.id]
   }));
-  const urls = assetUrls(upcoming.anim, compositeElements, creature);
-  await preloadActivationAssets(urls);
+
+  const urls = ghost
+    ? [
+        GHOST_CONFIG.ASSETS.OVERLAY_IMAGE,
+        GHOST_CONFIG.ASSETS.SPORE_IMAGE,
+        creature?.getAttribute?.('src') || '/img/mushroom-platypus.png',
+        ...compositeElements.map((e) => e.src)
+      ].filter(Boolean)
+    : assetUrls(animForBuild, compositeElements, creature);
+
+  await preloadActivationAssets([...new Set(urls)], ghost ? 'ghost' : (animId || 'composite'));
+
   prepared = {
-    kind: 'composite',
+    kind: ghost ? 'ghost' : 'composite',
     ready: true,
-    id: upcoming.id,
-    anim: upcoming.anim,
+    id: animId,
+    anim: animForBuild,
     placementsById,
     elements,
     compositeElements,
@@ -371,11 +407,13 @@ export function installThresholdLootHook(effect) {
       // Default: unchanged image burst. When previewObjectActions, route through
       // previewClick so ghost textProjectile (BOO) runs on click-preview spores.
       if (up.anim?.previewObjectActions === true) {
+        const placementsById = prepared?.placementsById || placementsFor(cachedConfig, up.id);
+        const elements = prepared?.compositeElements || buildCompositeElements(up.anim, placementsById);
         return previewClick({
           container: this.container,
           creature: this.creature,
           animation: up.anim,
-          compositeElements: [],
+          compositeElements: elements,
           x,
           y,
           sporeHost: this.container,
@@ -444,6 +482,10 @@ export function installThresholdLootHook(effect) {
           creatureRig: rig,
           sporeHost: container,
           profile: 'ghost',
+          composite: {
+            baseSrc: creature.getAttribute('src') || '/img/mushroom-platypus.png',
+            elements: prep?.compositeElements || []
+          },
           assetsPreloaded: true
         });
       } else {

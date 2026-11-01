@@ -8,7 +8,7 @@
  * Owned flash layers are always created fresh per run and removed on cleanup.
  */
 import { FireworkManager } from '../spore/finale.js';
-import { GHOST_CONFIG, ghostSporeActionElements } from '../spore/ghost/config.js';
+import { GHOST_CONFIG } from '../spore/ghost/config.js';
 import { fadeStormResetToLight } from './fadeStormReset.js';
 import { buildCharacterComposite, measureCreatureBox } from './CharacterComposite.js';
 import { runObjectActions } from './objectActions.js';
@@ -187,77 +187,68 @@ export async function runActivation(opts) {
   const launchX = window.innerWidth / 2 + fw.LAUNCH_OFFSET_X;
   const launchY = window.innerHeight / 2 + fw.LAUNCH_OFFSET_Y;
 
+  // Object-action elements: same data shape for every character (placements → composite.elements).
+  // Ghost image spores and cowboy composites both run runObjectActions from this list.
+  const actionElements = Array.isArray(composite?.elements) ? composite.elements : [];
+  const sporeBodyEl = actionElements.find((e) => e?.role === 'sporeBody' || e?.id === 'ghostBody')
+    || actionElements.find((e) => e?.placement?.objectActions?.length)
+    || null;
+  const imageSporeSrc = sporeBodyEl?.src
+    || (profile === 'ghost' ? (fw.SPORE_IMAGE || GHOST_CONFIG.ASSETS.SPORE_IMAGE) : null);
+
   const sporeDone = new Promise((resolve) => {
-    if (profile === 'ghost') {
-      // Image spores + textProjectile objectActions (BOO from mouth) — same OA system as cowboy guns.
-      const fwGhost = {
-        ...fw,
-        createSporeElement(sporeInst, dims) {
+    const charBox = { width: boxInContainer.width, height: boxInContainer.height };
+    const fwLaunch = {
+      ...fw,
+      SPORE_COUNT: spore.count ?? fw.SPORE_COUNT,
+      createSporeElement(sporeInst, dims) {
+        const sporeIndex = sporeInst?.id ?? Math.floor(Math.random() * 1000);
+        let node;
+
+        if (profile === 'composite') {
+          // Mini character replicas (cowboy etc.)
+          const targetW = dims?.width ?? (fw.BASE_WIDTH * sporeInst.size);
+          const scale = targetW / Math.max(1, charBox.width);
+          node = buildCharacterComposite({
+            baseSrc: composite.baseSrc,
+            elements: actionElements,
+            box: charBox,
+            scale
+          });
+          node.classList.add('activation-spore');
+          node.style.position = 'absolute';
+          node.style.width = `${charBox.width * scale}px`;
+          node.style.height = `${charBox.height * scale}px`;
+          node.style.zIndex = '25';
+          node.style.opacity = '1';
+          node.style.overflow = 'visible';
+        } else {
+          // Image spore (ghost): single sprite + OA anchors from placements data
           const w = dims?.width ?? (fw.BASE_WIDTH * sporeInst.size);
           const h = dims?.height ?? (fw.BASE_HEIGHT * sporeInst.size);
-          const wrap = document.createElement('div');
-          wrap.classList.add('activation-spore');
-          wrap.style.position = 'absolute';
-          wrap.style.width = `${w}px`;
-          wrap.style.height = `${h}px`;
-          wrap.style.zIndex = '25';
-          wrap.style.opacity = '1';
-          wrap.style.overflow = 'visible';
+          node = document.createElement('div');
+          node.classList.add('activation-spore');
+          node.style.position = 'absolute';
+          node.style.width = `${w}px`;
+          node.style.height = `${h}px`;
+          node.style.zIndex = '25';
+          node.style.opacity = '1';
+          node.style.overflow = 'visible';
           const img = document.createElement('img');
-          img.src = fw.SPORE_IMAGE;
+          img.src = imageSporeSrc || fw.SPORE_IMAGE;
           img.draggable = false;
-          img.dataset.elementId = 'ghostBody';
+          img.dataset.elementId = sporeBodyEl?.id || 'ghostBody';
           img.alt = '';
           img.style.width = '100%';
           img.style.height = '100%';
           img.style.display = 'block';
           img.style.pointerEvents = 'none';
-          wrap.appendChild(img);
-          const sporeIndex = sporeInst?.id ?? Math.floor(Math.random() * 1000);
-          const ctrl = runObjectActions({
-            root: wrap,
-            elements: ghostSporeActionElements(),
-            target: 'spore',
-            sporeIndex
-          });
-          wrap.__actionStop = ctrl.stop;
-          return wrap;
+          node.appendChild(img);
         }
-      };
-      fireworkManager = new FireworkManager(fwGhost);
-      fireworkManager.launch(launchX, launchY, sporeHost, () => resolve());
-      track(setTimeout(resolve, 6000));
-      return;
-    }
 
-    // Cowboy (composite): mini replicas via the SAME FireworkManager origin/timing/physics.
-    // Prior path used character-local coords on the page container (wrong space), z-index under
-    // the creature-rig, and a short radial fade — spores launched but were effectively invisible.
-    const charBox = { width: boxInContainer.width, height: boxInContainer.height };
-    const fwComposite = {
-      ...fw,
-      SPORE_COUNT: spore.count ?? fw.SPORE_COUNT,
-      createSporeElement(sporeInst, dims) {
-        // Size similar to ghost spore sprites (BASE_WIDTH × character aspect)
-        const targetW = dims?.width ?? (fw.BASE_WIDTH * sporeInst.size);
-        const scale = targetW / Math.max(1, charBox.width);
-        const node = buildCharacterComposite({
-          baseSrc: composite.baseSrc,
-          elements: composite.elements,
-          box: charBox,
-          scale
-        });
-        node.classList.add('activation-spore');
-        node.style.position = 'absolute';
-        node.style.width = `${charBox.width * scale}px`;
-        node.style.height = `${charBox.height * scale}px`;
-        node.style.zIndex = '25';
-        node.style.opacity = '1';
-        node.style.overflow = 'visible';
-        const sporeIndex = sporeInst?.id ?? Math.floor(Math.random() * 1000);
         const ctrl = runObjectActions({
           root: node,
-          elements: composite.elements || [],
+          elements: actionElements,
           target: 'spore',
           sporeIndex
         });
@@ -265,7 +256,7 @@ export async function runActivation(opts) {
         return node;
       }
     };
-    fireworkManager = new FireworkManager(fwComposite);
+    fireworkManager = new FireworkManager(fwLaunch);
     fireworkManager.launch(launchX, launchY, sporeHost, () => resolve());
     track(setTimeout(resolve, 6000));
   });
@@ -347,7 +338,10 @@ export function previewClick(opts) {
     // Otherwise keep legacy fallback (SporeBaseEffect.createSporeExplosion) unchanged.
     if (animation?.previewObjectActions === true) {
       const img = fx.sporeImage || '/effects/spore/ghost/img/mushroom-platypus-ghost-spores.png';
-      spawnImageBurst(sporeHost, x, y, img, fx.count || 16, { runObjectActions: true });
+      spawnImageBurst(sporeHost, x, y, img, fx.count || 16, {
+        runObjectActions: true,
+        elements: compositeElements
+      });
       return { ok: true, type: fx.type, via: 'image-actions' };
     }
     if (typeof fallback === 'function') {
@@ -432,7 +426,7 @@ function spawnImageBurst(host, x, y, src, count, opts = {}) {
   const perLayer = Math.max(1, Math.floor(count / layers));
   const sw = 76, sh = 50;
   const runActions = opts.runObjectActions === true;
-  const actionElements = runActions ? ghostSporeActionElements() : [];
+  const actionElements = runActions && Array.isArray(opts.elements) ? opts.elements : [];
   for (let layer = 0; layer < layers; layer++) {
     const layerRadius = (layer + 1) * 60;
     for (let i = 0; i < perLayer; i++) {
