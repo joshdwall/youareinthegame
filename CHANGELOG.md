@@ -11,6 +11,7 @@ SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.co
 - **`settings.interactionOpacityDuringAnimation`** (0–1, default **0.8**): live in Cambio Site settings (✎/✓/✕); served on `/api/animations` (~15s); no redeploy. Applies **only** to default click-spawned spore bursts while busy — not the activation overlay, flash, or pre-threshold preview clicks.
 - CSS `--spore-opacity` on `@keyframes explode`; `__stormResetFadeUntil` covers composite fade after finale flags clear.
 - Tests: `tests/always-interactive-opacity-test.mjs` (+ fixture). Plans: Site-Master + Animations-Cambio (pt42u). Checkpoint `checkpoint-2026-10-31-pre-always-interactive-opacity`.
+- YAITG `f591b4f` → CF Pages deploy `d6b91824-573d-49e0-8fb2-e30529dea5d8` (production aliases: apex, www, app). Live KV verified: opacity 0.55 → API without redeploy; restored to 0.8.
 
 ## 2026-10-31 — Selection mode: alternate (round-robin) + 50/50 weights
 
