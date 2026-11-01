@@ -5,6 +5,13 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
+## 2026-10-31 — Fix alternate cursor: last-played (not upcoming) so cowboy is not skipped
+
+- **Bug:** `yaitg.selectionCursor.lastId` was written when *picking upcoming*, so a reload advanced past the queued animation. After ghost → cowboy queued, refresh skipped cowboy and stuck on ghost; cowboy transition looked "missing".
+- **Fix:** Cursor schema **v2** stores `lastPlayedId` only in `recordPlayed()` after activation completes (ghost `onFinaleComplete` + composite path). `pickUpcoming` no longer mutates the cursor. v1 blobs ignored (clean start).
+- Tests: `tests/selection-cursor-last-played.test.mjs`; Playwright `tests/alternate-reload-cowboy-test.mjs` (ghost↔cowboy with/without reload; cowboy flash/overlays/spores/guns). Screenshots `/workspace/cowboy-transition-shots/`.
+- Plans: Site-Master + Random-Seasonal-Animations-Cambio (pt43u). Checkpoint `checkpoint-2026-10-31-pre-alternate-cursor-fix`.
+
 ## 2026-10-31 — Always interactive during transitions + interactionOpacityDuringAnimation
 
 - **Always interactive:** During activation flash, running activation, and reset fade (any former click-ignore window), click/tap still spawns the **default spore burst** at the point — no overlays / object actions. **Decorative only** (does not increment click threshold, storm progress, or next-pick). Overlay `pointer-events:none` kept so clicks pass through.
@@ -16,7 +23,7 @@ SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.co
 ## 2026-10-31 — Selection mode: alternate (round-robin) + 50/50 weights
 
 - **`settings.selectionMode`**: `alternate` (default) or `weighted`. Live in Cambio Site settings (✎/✓/✕); served on `/api/animations` (~15s); no redeploy to switch.
-- **Alternate**: cycles LIVE eligible animations by stable `order` (then id). Per-visitor cursor in `localStorage` (`yaitg.selectionCursor`: index + lastId); survives add/remove by continuing after last-played id. Character-click preview = next pick. Scales to 1000+.
+- **Alternate**: cycles LIVE eligible animations by stable `order` (then id). Per-visitor cursor in `localStorage` (`yaitg.selectionCursor` v2: index + lastPlayedId written on activation complete); survives add/remove by continuing after last-played id. (v1 wrote upcoming-as-lastId — fixed 2026-10-31.) Character-click preview = next pick. Scales to 1000+.
 - **Order** column in Cambio list (immediate PATCH). New anims get max(order)+1.
 - **Weights** cowboy/ghost set to **1/1 (50/50)** in seed + live KV (was 3/1 → 75/25).
 - Tests: `tests/loot-table-alternate.test.mjs` (A,B,A,B; 1,2,3,1; 1000 synthetic; mid-cycle; mode switch); weight test pinned to `weighted`.

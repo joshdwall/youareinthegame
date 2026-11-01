@@ -22,37 +22,84 @@ const CACHE_MS = 15_000;
 
 /** @type {{ id: string, anim: object, prepared?: object } | null} */
 let upcoming = null;
-let lastPickedId = null;
+/** Last completed activation id (memory). Not the upcoming pick. */
+let lastPlayedId = null;
 
 
 const SELECTION_CURSOR_KEY = 'yaitg.selectionCursor';
+/** Cursor schema v2: lastPlayedId is the animation that finished activating — NOT the upcoming pick.
+ *  Writing upcoming.id as lastId (v1) caused reloads to skip the queued anim (stuck on ghost when
+ *  cowboy was upcoming). v1 blobs are ignored so visitors start clean. */
+const SELECTION_CURSOR_VERSION = 2;
 
-/** @returns {{ index: number, lastId: string|null }} */
+/** @returns {{ index: number, lastPlayedId: string|null, lastId: string|null }} */
 export function readSelectionCursor() {
   try {
-    if (typeof localStorage === 'undefined') return { index: -1, lastId: null };
+    if (typeof localStorage === 'undefined') {
+      return { index: -1, lastPlayedId: null, lastId: null };
+    }
     const raw = localStorage.getItem(SELECTION_CURSOR_KEY);
-    if (!raw) return { index: -1, lastId: null };
+    if (!raw) return { index: -1, lastPlayedId: null, lastId: null };
     const parsed = JSON.parse(raw);
+    // Drop v1 cursors (lastId meant "upcoming") — they skip the queued animation on reload.
+    if (Number(parsed?.v) !== SELECTION_CURSOR_VERSION) {
+      return { index: -1, lastPlayedId: null, lastId: null };
+    }
     const index = Number.isFinite(Number(parsed?.index)) ? Math.floor(Number(parsed.index)) : -1;
-    const lastId = parsed?.lastId != null ? String(parsed.lastId) : null;
-    return { index, lastId };
+    const lastPlayedId =
+      parsed?.lastPlayedId != null
+        ? String(parsed.lastPlayedId)
+        : parsed?.lastId != null
+          ? String(parsed.lastId)
+          : null;
+    return { index, lastPlayedId, lastId: lastPlayedId };
   } catch {
-    return { index: -1, lastId: null };
+    return { index: -1, lastPlayedId: null, lastId: null };
   }
 }
 
-/** @param {{ index?: number, lastId?: string|null }} cursor */
+/**
+ * Persist last-played cursor. Prefer lastPlayedId; lastId kept as alias for older readers.
+ * @param {{ index?: number, lastPlayedId?: string|null, lastId?: string|null }} cursor
+ */
 export function writeSelectionCursor(cursor) {
   try {
     if (typeof localStorage === 'undefined') return;
+    const lastPlayedId =
+      cursor?.lastPlayedId != null
+        ? String(cursor.lastPlayedId)
+        : cursor?.lastId != null
+          ? String(cursor.lastId)
+          : null;
     localStorage.setItem(
       SELECTION_CURSOR_KEY,
       JSON.stringify({
+        v: SELECTION_CURSOR_VERSION,
         index: Number.isFinite(Number(cursor?.index)) ? Math.floor(Number(cursor.index)) : -1,
-        lastId: cursor?.lastId != null ? String(cursor.lastId) : null
+        lastPlayedId,
+        lastId: lastPlayedId
       })
     );
+  } catch (_) {}
+}
+
+/**
+ * Mark an animation as finished (activation complete). Next pickUpcoming advances past this id.
+ * Must NOT be called when merely selecting the upcoming pick.
+ * @param {string|null|undefined} playedId
+ * @param {number} [playedIndex]
+ */
+export function recordPlayed(playedId, playedIndex = -1) {
+  lastPlayedId = playedId != null && playedId !== '' ? String(playedId) : null;
+  const prev = readSelectionCursor();
+  const index = Number.isFinite(Number(playedIndex)) && Number(playedIndex) >= 0
+    ? Math.floor(Number(playedIndex))
+    : prev.index;
+  writeSelectionCursor({ lastPlayedId, index });
+  try {
+    if (typeof window !== 'undefined') {
+      window.__yaitgSelectionCursor = readSelectionCursor();
+    }
   } catch (_) {}
 }
 
@@ -101,8 +148,19 @@ export function getPrepared() {
 
 export function setUpcomingForTests(pick) {
   upcoming = pick;
-  if (pick?.id) lastPickedId = pick.id;
   prepared = null;
+}
+
+/** @param {string|null} id */
+export function setLastPlayedForTests(id) {
+  lastPlayedId = id != null && id !== '' ? String(id) : null;
+}
+
+export function clearSelectionCursorForTests() {
+  lastPlayedId = null;
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.removeItem(SELECTION_CURSOR_KEY);
+  } catch (_) {}
 }
 
 function resolveForcePick(config) {
@@ -203,22 +261,27 @@ export async function pickUpcoming({ forceRefresh = false, creature = null } = {
   const forced = resolveForcePick(config);
   if (forced) {
     upcoming = forced;
-    lastPickedId = forced.id;
+    // Do not record forced as played — only activation complete advances the cursor.
   } else if (!config) {
     upcoming = { id: 'ghost', anim: { id: 'ghost', playMode: 'legacy-ghost' } };
   } else {
     const cursor = readSelectionCursor();
-    const lastId = lastPickedId || cursor.lastId;
+    // Advance past last *played* id (memory wins over storage within a session).
+    const lastId = lastPlayedId || cursor.lastPlayedId || cursor.lastId;
     const pick = pickAnimation(config, {
       lastId,
       cursorIndex: cursor.index
     });
     upcoming = pick || { id: 'ghost', anim: { id: 'ghost', playMode: 'legacy-ghost' } };
-    lastPickedId = upcoming.id;
-    const nextIndex = Number.isFinite(pick?.index) ? pick.index : cursor.index;
-    writeSelectionCursor({ index: nextIndex, lastId: upcoming.id });
+    // Intentionally do NOT write upcoming.id into the cursor — that skipped the
+    // queued animation on reload (cowboy never played → stuck on ghost).
   }
   exposeUpcoming();
+  try {
+    if (typeof window !== 'undefined') {
+      window.__yaitgSelectionCursor = readSelectionCursor();
+    }
+  } catch (_) {}
   const cre = creature || (typeof document !== 'undefined' ? document.getElementById('mainCreature') : null);
   await prepareUpcoming(cre);
   return upcoming;
@@ -399,29 +462,32 @@ export function installThresholdLootHook(effect) {
       this.effectOverlay.className = this.effectOverlay.className.replace(/storm-level-\d+/g, '');
     }
 
+    const playedId = pick?.id || null;
+    const playedIndex = Number.isFinite(pick?.index) ? pick.index : -1;
     upcoming = null;
     prepared = null;
+    recordPlayed(playedId, playedIndex);
     await pickUpcoming({ forceRefresh: true, creature });
   };
 
-  // Ghost climax end: after fireworks path, pick next upcoming (+ preload)
+  // Ghost climax end: fireworks path; next pick happens in onFinaleComplete after recordPlayed
   effect.endLightningSequence = function patchedEnd() {
     const pick = resolveForcePick(cachedConfig) || upcoming;
     // If somehow composite reached here, do nothing (trigger already handled)
     if (!isGhostPick(pick)) {
       return;
     }
-    lastPickedId = 'ghost';
     origEnd();
-    // Pick next after a short delay so finaleComplete can run; also hook onFinaleComplete
   };
 
   const origFinale = effect.onFinaleComplete?.bind(effect);
   if (origFinale) {
     effect.onFinaleComplete = async function patchedFinale() {
       await origFinale();
+      const playedIndex = Number.isFinite(upcoming?.index) ? upcoming.index : 0;
       upcoming = null;
       prepared = null;
+      recordPlayed('ghost', playedIndex);
       await pickUpcoming({ creature: this.creature });
     };
   }
@@ -445,5 +511,10 @@ export default {
   getUpcoming,
   getPrepared,
   setUpcomingForTests,
+  setLastPlayedForTests,
+  clearSelectionCursorForTests,
+  recordPlayed,
+  readSelectionCursor,
+  writeSelectionCursor,
   forceIdFromQuery
 };
