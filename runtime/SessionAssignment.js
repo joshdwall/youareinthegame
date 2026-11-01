@@ -1,6 +1,7 @@
 /**
  * Load or create session assignment — server Worker when enabled, else sessionStorage fallback.
  */
+import { log, info, debug, warn, error } from '../js/log.js';
 import {
   weightedPickFromPool,
   rollNewAssignment,
@@ -95,7 +96,7 @@ export async function resolveSessionAssignment() {
         assignment: { ...assignment, source: assignment.source || 'server' }
       };
     } catch (err) {
-      console.warn('YAITG server assignment failed, falling back to client session:', err.message);
+      warn('YAITG server assignment failed, falling back to client session:', err.message);
       if (err.retryAfterSec) {
         const fallback = rollNewAssignment(policy, charactersRegistry, vignettesRegistry);
         return {

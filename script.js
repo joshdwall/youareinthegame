@@ -5,6 +5,7 @@
  */
 import { CONFIG } from './mainConfig.js';
 import { createDefaultSporeExplosion } from './effects/spore/defaultSpore.js';
+import { log, info, debug, warn, error } from './js/log.js';
 
 class MushroomPlatypusApp {
     constructor() {
@@ -28,7 +29,7 @@ class MushroomPlatypusApp {
 
     async init() {
         try {
-            console.log('Mushroom Platypus: Initializing...');
+            log('Mushroom Platypus: Initializing...');
 
             this.creature = document.getElementById('mainCreature');
             this.container = document.querySelector('.container');
@@ -50,15 +51,15 @@ class MushroomPlatypusApp {
             this.markListenersReady();
             this.logConsoleArt();
             this.isInitialized = true;
-            console.log('Mushroom Platypus: listeners ready (effects loading…)');
+            log('Mushroom Platypus: listeners ready (effects loading…)');
 
             // Background: ghost / ActivationEngine / loot / CSS / images.
             await this.initializeEffects();
             this.flushPendingThresholdClicks();
             this.effectsReady = true;
-            console.log('Mushroom Platypus: Initialization complete');
+            log('Mushroom Platypus: Initialization complete');
         } catch (error) {
-            console.error('Failed to initialize Mushroom Platypus:', error);
+            error('Failed to initialize Mushroom Platypus:', error);
             this.handleInitializationError(error);
         }
     }
@@ -92,12 +93,12 @@ class MushroomPlatypusApp {
 
         installThresholdLootHook(this.currentEffect);
         window.__yaitgEffect = this.currentEffect;
-        console.log('Loaded initial effect:', this.currentEffect.constructor.name);
+        log('Loaded initial effect:', this.currentEffect.constructor.name);
 
         if (CONFIG.EFFECTS.AUTO_PRELOAD_NEXT) {
             setTimeout(() => {
                 effectLoader.preloadNextEffect().catch(err =>
-                    console.warn('Failed to preload next effect:', err)
+                    log('Failed to preload next effect:', err)
                 );
             }, 5000);
         }
@@ -200,14 +201,14 @@ class MushroomPlatypusApp {
         if (!CONFIG.EFFECTS.AUTO_PRELOAD_NEXT) return;
         if (!this.effectsReady || !this.effectLoader) return;
         try {
-            console.log('Considering effect transition...');
+            log('Considering effect transition...');
             if (this.currentEffect && this.currentEffect.onClimax) {
                 await this.currentEffect.onClimax();
                 await new Promise(resolve => setTimeout(resolve, 5000));
             }
             await this.transitionToNewEffect();
         } catch (error) {
-            console.error('Effect transition failed:', error);
+            error('Effect transition failed:', error);
         }
     }
 
@@ -218,16 +219,16 @@ class MushroomPlatypusApp {
             }
             this.currentEffect = await this.effectLoader.selectRandomEffect();
             window.__yaitgEffect = this.currentEffect;
-            console.log('Transitioned to new effect:', this.currentEffect.constructor.name);
+            log('Transitioned to new effect:', this.currentEffect.constructor.name);
             if (CONFIG.EFFECTS.AUTO_PRELOAD_NEXT) {
                 setTimeout(() => {
                     this.effectLoader.preloadNextEffect().catch(err =>
-                        console.warn('Failed to preload next effect:', err)
+                        log('Failed to preload next effect:', err)
                     );
                 }, 5000);
             }
         } catch (error) {
-            console.error('Failed to transition to new effect:', error);
+            error('Failed to transition to new effect:', error);
         }
     }
 
@@ -268,7 +269,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     await app.init();
     window.mushroomPlatypusApp = app;
     if (CONFIG.DEV_MODE || CONFIG.APP.DEBUG_MODE) {
-        console.log('Debug mode enabled. Access app via window.mushroomPlatypusApp');
+        log('Debug mode enabled. Access app via window.mushroomPlatypusApp');
     }
 });
 

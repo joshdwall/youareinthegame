@@ -4,6 +4,7 @@
  * Fixed for mobile compatibility and reliable animation
  */
 import { getViewportSpreadScale } from './sporeBurstMath.js';
+import { log, info, debug, warn, error } from '../../js/log.js';
 
 
 /**
@@ -247,7 +248,7 @@ class FireworkManager {
      * @param {Function} onComplete - Callback function to call when all fireworks complete
      */
     launch(x, y, container, onComplete) {
-        console.log('FireworkManager: Launching firework spores');
+        log('FireworkManager: Launching firework spores');
 
         this.container = container;
         this.completionCallback = onComplete;
@@ -283,7 +284,7 @@ class FireworkManager {
         this.isAnimating = true;
         this.lastUpdateTime = performance.now();
 
-        console.log(`FireworkManager: Starting animation (fallback mode: ${this.useFallbackAnimation})`);
+        log(`FireworkManager: Starting animation (fallback mode: ${this.useFallbackAnimation})`);
 
         if (this.useFallbackAnimation) {
             this.startFallbackAnimation();
@@ -383,11 +384,11 @@ class FireworkManager {
             this.animationTimeoutId = null;
         }
 
-        console.log('FireworkManager: Animation stopped');
+        log('FireworkManager: Animation stopped');
 
         // Call completion callback if set
         if (this.completionCallback && typeof this.completionCallback === 'function') {
-            console.log('FireworkManager: Calling completion callback');
+            log('FireworkManager: Calling completion callback');
             this.completionCallback();
             this.completionCallback = null; // Clear callback after calling
         }

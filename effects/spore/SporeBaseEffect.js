@@ -7,6 +7,7 @@
 import { FireworkManager } from './finale.js';
 import { fadeStormResetToLight } from '../activation/fadeStormReset.js';
 import { computeClampedBurstDelta } from './sporeBurstMath.js';
+import { log, info, debug, warn, error } from '../../js/log.js';
 
 /**
  * Base class for spore effects with storm and lightning mechanics
@@ -65,7 +66,7 @@ class SporeBaseEffect {
      */
     async init() {
         const CONFIG = this.getConfig();
-        console.log(`${CONFIG.METADATA.name} Effect: Initializing`);
+        log(`${CONFIG.METADATA.name} Effect: Initializing`);
 
         // Initialize firework manager with config
         this.fireworkManager = new FireworkManager(CONFIG.FIREWORKS);
@@ -86,7 +87,7 @@ class SporeBaseEffect {
         // Reset visual state
         this.resetVisuals();
 
-        console.log(`${CONFIG.METADATA.name} Effect: Initialized successfully`);
+        log(`${CONFIG.METADATA.name} Effect: Initialized successfully`);
     }
 
     /**
@@ -115,7 +116,7 @@ class SporeBaseEffect {
             });
         }
 
-        console.log(`${CONFIG.METADATA.name} Effect: Stylesheets loaded`);
+        log(`${CONFIG.METADATA.name} Effect: Stylesheets loaded`);
     }
 
     /**
@@ -192,7 +193,7 @@ class SporeBaseEffect {
         }
 
         const CONFIG = this.getConfig();
-        console.log(`${CONFIG.METADATA.name} Effect: Starting climax sequence`);
+        log(`${CONFIG.METADATA.name} Effect: Starting climax sequence`);
 
         // Force trigger lightning if not already at threshold
         if (this.clickCount < this.resetThreshold) {
@@ -208,7 +209,7 @@ class SporeBaseEffect {
      */
     async reset() {
         const CONFIG = this.getConfig();
-        console.log(`${CONFIG.METADATA.name} Effect: Resetting`);
+        log(`${CONFIG.METADATA.name} Effect: Resetting`);
 
         // Clear all timeouts and intervals
         this.clearAllTimers();
@@ -241,7 +242,7 @@ class SporeBaseEffect {
         // Calculate new threshold
         this.calculateResetThreshold();
 
-        console.log(`${CONFIG.METADATA.name} Effect: Reset complete`);
+        log(`${CONFIG.METADATA.name} Effect: Reset complete`);
     }
 
     /**
@@ -475,7 +476,7 @@ class SporeBaseEffect {
      * Called when firework animation is complete
      */
     onFinaleComplete() {
-        console.log('Finale complete - resetting effect state');
+        log('Finale complete - resetting effect state');
 
         // Reset click count to 0
         this.clickCount = 0;
@@ -487,7 +488,7 @@ class SporeBaseEffect {
         this.lightningSequenceActive = false;
         this.finaleInProgress = false;
 
-        console.log(`New threshold: ${this.resetThreshold}, clicks reset to: ${this.clickCount}`);
+        log(`New threshold: ${this.resetThreshold}, clicks reset to: ${this.clickCount}`);
     }
 
     /**
@@ -660,9 +661,9 @@ class SporeBaseEffect {
 
         try {
             await Promise.all(loadPromises);
-            console.log(`${CONFIG.METADATA.name} Effect: Assets preloaded`);
+            log(`${CONFIG.METADATA.name} Effect: Assets preloaded`);
         } catch (error) {
-            console.error(`${CONFIG.METADATA.name} Effect: Failed to preload assets`, error);
+            error(`${CONFIG.METADATA.name} Effect: Failed to preload assets`, error);
         }
     }
 

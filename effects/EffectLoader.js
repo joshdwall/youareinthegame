@@ -3,6 +3,7 @@
  * Dynamically loads and manages effects from the manifest
  * Handles random selection and effect lifecycle
  */
+import { log, info, debug, warn, error } from '../js/log.js';
 
 class EffectLoader {
     /**
@@ -27,12 +28,12 @@ class EffectLoader {
             this.availableEffects = manifestModule.effects || [];
 
             if (this.availableEffects.length === 0) {
-                console.warn('No effects found in manifest');
+                log('No effects found in manifest');
             }
 
-            console.log(`EffectLoader: Loaded ${this.availableEffects.length} effects from manifest`);
+            log(`EffectLoader: Loaded ${this.availableEffects.length} effects from manifest`);
         } catch (error) {
-            console.error('Failed to load effects manifest:', error);
+            error('Failed to load effects manifest:', error);
             this.availableEffects = [];
         }
     }
@@ -64,7 +65,7 @@ class EffectLoader {
             const randomIndex = Math.floor(Math.random() * this.availableEffects.length);
             const effectPath = this.availableEffects[randomIndex];
 
-            console.log(`EffectLoader: Selected effect ${effectPath}`);
+            log(`EffectLoader: Selected effect ${effectPath}`);
 
             // Load the effect
             const effect = await this.loadEffect(effectPath);
@@ -84,7 +85,7 @@ class EffectLoader {
     async loadEffect(effectPath) {
         // Check cache first
         if (this.loadedEffects.has(effectPath)) {
-            console.log(`EffectLoader: Using cached effect ${effectPath}`);
+            log(`EffectLoader: Using cached effect ${effectPath}`);
             const CachedEffect = this.loadedEffects.get(effectPath);
             const instance = new CachedEffect();
             await instance.init();
@@ -92,7 +93,7 @@ class EffectLoader {
         }
 
         try {
-            console.log(`EffectLoader: Loading effect from ${effectPath}`);
+            log(`EffectLoader: Loading effect from ${effectPath}`);
 
             // Load the effect module
             const effectModule = await import(effectPath);
@@ -114,7 +115,7 @@ class EffectLoader {
 
             return instance;
         } catch (error) {
-            console.error(`Failed to load effect ${effectPath}:`, error);
+            error(`Failed to load effect ${effectPath}:`, error);
             throw error;
         }
     }
@@ -152,7 +153,7 @@ class EffectLoader {
             try {
                 await this.currentEffect.reset();
             } catch (error) {
-                console.error('Error cleaning up effect:', error);
+                error('Error cleaning up effect:', error);
             }
         }
         this.currentEffect = null;
@@ -192,10 +193,10 @@ class EffectLoader {
 
             if (EffectClass) {
                 this.loadedEffects.set(nextEffectPath, EffectClass);
-                console.log(`EffectLoader: Preloaded ${nextEffectPath}`);
+                log(`EffectLoader: Preloaded ${nextEffectPath}`);
             }
         } catch (error) {
-            console.warn('Failed to preload next effect:', error);
+            log('Failed to preload next effect:', error);
         }
     }
 

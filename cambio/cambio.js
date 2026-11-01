@@ -2,6 +2,7 @@ import { runActivation, previewClick, activate } from '/effects/activation/Activ
 import { applyElementPlacement, measureCreatureBoxInHost } from '/effects/activation/placementMath.js';
 import { escapeHtml } from '/cambio/vendor/envivo-ui/desk-list.mjs';
 import { mountEvScrollList } from '/cambio/vendor/envivo-ui/ev-scroll-list/mount.mjs';
+import { log, info, debug, warn, error } from '../js/log.js';
 
 /**
  * Content-fit columns for Cambio rails (enVivo SL-27 measure, without grow-to-fill).
@@ -585,7 +586,7 @@ async function commitMode() {
     try {
       await patchAnimation(state.selectedAnim.id, { previewObjectActions: val });
     } catch (e) {
-      console.error(e);
+      error(e);
       $('saveStatus').textContent = `Preview object actions save failed: ${e.message || e}`;
     }
   }
@@ -612,7 +613,7 @@ async function commitMode() {
       syncClickThresholdView();
       $('poolHint').textContent = `Click threshold ${min}–${max} live (next visitors ~15s, no redeploy)`;
     } catch (e) {
-      console.error(e);
+      error(e);
       $('poolHint').textContent = `Click threshold save failed: ${e.message || e}`;
     }
   }
@@ -633,7 +634,7 @@ async function commitMode() {
       syncStormResetView();
       $('poolHint').textContent = `Reset fade ${ms}ms live (next visitors ~15s, no redeploy)`;
     } catch (e) {
-      console.error(e);
+      error(e);
       $('poolHint').textContent = `Reset fade save failed: ${e.message || e}`;
     }
   }
@@ -649,7 +650,7 @@ async function commitMode() {
       syncSelectionModeView();
       $('poolHint').textContent = `Selection ${selectionModeLabel(mode)} live (next visitors ~15s, no redeploy)`;
     } catch (e) {
-      console.error(e);
+      error(e);
       $('poolHint').textContent = `Selection mode save failed: ${e.message || e}`;
     }
   }
@@ -666,7 +667,7 @@ async function commitMode() {
       syncInteractionOpacityView();
       $('poolHint').textContent = `Click opacity ${Math.round(o * 100)}% during animation live (next visitors ~15s, no redeploy)`;
     } catch (e) {
-      console.error(e);
+      error(e);
       $('poolHint').textContent = `Interaction opacity save failed: ${e.message || e}`;
     }
   }
@@ -1163,7 +1164,7 @@ function wireAnimListActions() {
           await patchAnimation(id, { order });
           saveStatus.textContent = `${anim.label} order=${order}`;
         } catch (e) {
-          console.error(e);
+          error(e);
           saveStatus.textContent = `Order save failed: ${e.message || e}`;
         }
       })();
@@ -2065,7 +2066,7 @@ async function playAnimation(animId) {
     }
     $('stageHint').textContent = `${anim.label} play finished`;
   } catch (err) {
-    console.error('activation failed', err);
+    error('activation failed', err);
     $('stageHint').textContent = `Play failed: ${err.message || err}`;
     overlay.innerHTML = '';
     overlay.style.opacity = '';
@@ -2183,5 +2184,5 @@ window.__cambioTest = {
 
 boot().catch((err) => {
   saveStatus.textContent = `Boot failed: ${err.message}`;
-  console.error(err);
+  error(err);
 });

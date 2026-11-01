@@ -5,6 +5,7 @@
  * ghost pre-flash, no await fetch/decode at threshold time.
  */
 import { pickAnimation } from '../loot/LootTable.js';
+import { log, info, debug, warn, error } from '../../js/log.js';
 import {
   activate,
   previewClick,
@@ -119,7 +120,7 @@ export async function fetchAnimationConfig(force = false) {
       return data;
     }
   } catch (e) {
-    console.warn('animation config fetch failed', e);
+    warn('animation config fetch failed', e);
   }
   return cachedConfig;
 }
@@ -428,7 +429,7 @@ export function installThresholdLootHook(effect) {
         assetsPreloaded: true
       });
     } catch (err) {
-      console.error('composite activation failed; falling back to ghost', err);
+      error('composite activation failed; falling back to ghost', err);
       overlay.innerHTML = '';
       this.lightningSequenceActive = false;
       this.finaleInProgress = false;
