@@ -5,6 +5,11 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
+## 2026-11-01 (America/Chicago) — ghost BOO direction opposite (config)
+
+- KV `cambio:placements` ghost `textProjectile.direction` **-90 → 90** (exact opposite; same field Cambio OA editor saves). Backup key `cambio:placements:backup:2026-11-01-pre-boo-direction-flip`.
+- Seed `content/cambio-placements.json` + `defaultPlacements.js` matched. Commit `6d99046`.
+
 ## 2026-11-01 (America/Chicago) — Cambio ghost OA editor + promote BOO
 
 - **Cambio:** Ghost Edit unlocked (same CoreUI sidebar / ie-row ✎/✓/✕ as cowboy). Generic `textProjectile` field editors: text, duration until fade (`durationMs` ms), distance from origin (`distanceRatio` × width or `distance` px), fontFamily (safe fonts + custom), fontSize (`fontSizeRatio` × width or `fontSizePx`).
