@@ -103,7 +103,8 @@ export function bindFlashHost(host) {
  * @param {boolean} opts.owned - if true, cleanup() removes the layer
  * @param {object} [opts.flash] - opacity timing (defaults OVERLAY_FLASH)
  */
-export function createOverlayPlayer({ layer, owned, flash = OVERLAY_FLASH }) {
+export function createOverlayPlayer({ layer, owned, flash = OVERLAY_FLASH, secondaryLayers=[] }) {
+  const setStyle=(name,value)=>{for(const n of [layer,...secondaryLayers])if(n?.isConnected)n.style[name]=value;};
   let flickerInterval = null;
   const timers = new Set();
 
@@ -133,8 +134,8 @@ export function createOverlayPlayer({ layer, owned, flash = OVERLAY_FLASH }) {
       const opacity =
         (flash.MIN_OPACITY ?? 0.3) +
         Math.random() * ((flash.MAX_OPACITY ?? 0.6) - (flash.MIN_OPACITY ?? 0.3));
-      layer.style.transition = `opacity ${flash.FADE_IN_MS ?? 50}ms ease`;
-      layer.style.opacity = String(opacity);
+      setStyle('transition',`opacity ${flash.FADE_IN_MS ?? 50}ms ease`);
+      setStyle('opacity',String(opacity));
       if (flash.FLICKER_ENABLED) {
         flickerInterval = setInterval(() => {
           if (!layer.isConnected) return;
@@ -142,7 +143,7 @@ export function createOverlayPlayer({ layer, owned, flash = OVERLAY_FLASH }) {
             (flash.FLICKER_MIN_OPACITY ?? 0.2) +
             Math.random() *
               ((flash.FLICKER_MAX_OPACITY ?? 0.9) - (flash.FLICKER_MIN_OPACITY ?? 0.2));
-          layer.style.opacity = String(fo);
+          setStyle('opacity',String(fo));
         }, flash.FLICKER_SPEED_MS ?? 80);
         timers.add(flickerInterval);
       }
@@ -151,8 +152,8 @@ export function createOverlayPlayer({ layer, owned, flash = OVERLAY_FLASH }) {
       if (!layer) return;
       clearFlicker();
       if (!layer.isConnected) return;
-      layer.style.transition = `opacity ${flash.FADE_OUT_MS ?? 150}ms ease`;
-      layer.style.opacity = '0';
+      setStyle('transition',`opacity ${flash.FADE_OUT_MS ?? 150}ms ease`);
+      setStyle('opacity','0');
     },
     /** End of run: hide; remove if owned; leave host at opacity 0. */
     cleanup() {
@@ -171,6 +172,7 @@ export function createOverlayPlayer({ layer, owned, flash = OVERLAY_FLASH }) {
         layer.style.transition = '';
       }
       layer = null;
+      secondaryLayers.forEach(n=>n.remove());secondaryLayers=[];
     }
   };
 }

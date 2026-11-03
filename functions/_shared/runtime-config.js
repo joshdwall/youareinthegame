@@ -1,3 +1,5 @@
+import {readCostumeLibrary,writeCostumeLibrary,verifyCostumeAssets} from './costume-library.js';
+import {validateAnimationDraft} from '../../runtime/costumes/contracts.js';
 export const RUNTIME_KV_KEY = 'cambio:runtime-config';
 export const PLACEMENTS_KV_KEY = 'cambio:placements';
 export const R2_QUOTA_KV_KEY = 'cambio:r2-quota';
@@ -179,20 +181,28 @@ export async function readRuntimeConfig(env) {
   if (env?.YAITG_SESSION_KV) {
     try {
       const raw = await env.YAITG_SESSION_KV.get(RUNTIME_KV_KEY, 'json');
-      if (raw) return { config: normalizeConfig(raw), source: 'kv' };
+      if (raw) return { config: await withCostumes(env,normalizeConfig(raw)), source: 'kv' };
     } catch (_) { /* fall through */ }
   }
-  return { config: normalizeConfig(BUILTIN_SEED), source: 'seed' };
+  return { config: await withCostumes(env,normalizeConfig(BUILTIN_SEED)), source: 'seed' };
 }
+
+async function withCostumes(env,config){const library=await readCostumeLibrary(env);const all=new Map(config.animations.map(a=>[a.id,a]));for(const a of library.animations)all.set(a.id,a);return {...config,animations:[...all.values()],costumeLibraryRevision:library.revision};}
 
 export async function writeRuntimeConfig(env, config) {
   if (!env?.YAITG_SESSION_KV) throw new Error('kv_missing');
+  const library=await readCostumeLibrary(env);
+  if(config.costumeLibraryRevision!==undefined&&config.costumeLibraryRevision!==library.revision)throw Error('Costume library changed; reload before saving');
+  const costumes=(config.animations||[]).filter(a=>a.costumeRef);
+  for(const a of costumes){validateAnimationDraft(a);const authored=library.costumes[a.costumeRef];if(!authored)throw Error('Unregistered costume version');const expected=new Map(authored.costume.elements.map(e=>[e.id,e.asset]));if(a.elements.length!==expected.size||a.elements.some(e=>expected.get(e.id)!==e.asset))throw Error('Accessory versions must change through a new costume version');if(a.live){const refs=new Set(a.elements.map(e=>e.asset));const assets=library.assets.filter(x=>refs.has(`${x.id}@${x.version}`));if(assets.length!==refs.size)throw Error('Unresolved accessory version');await verifyCostumeAssets(env,assets);}}
+  if(JSON.stringify(costumes)!==JSON.stringify(library.animations)){library.animations=costumes;await writeCostumeLibrary(env,library);}
   const normalized = normalizeConfig({
     ...config,
+    animations:(config.animations||[]).filter(a=>!a.costumeRef),
     updatedAt: new Date().toISOString()
   });
   await env.YAITG_SESSION_KV.put(RUNTIME_KV_KEY, JSON.stringify(normalized));
-  return normalized;
+  return withCostumes(env,normalized);
 }
 
 export function publicView(config) {

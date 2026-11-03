@@ -1,0 +1,196 @@
+{
+  "schemaVersion": 1,
+  "assets": [
+    {
+      "id": "cowboy-hat",
+      "version": 1,
+      "src": "assets/costumes/cowboy-hat/1/dc291515376e4d38.webp",
+      "width": 1024,
+      "height": 473,
+      "bytes": 91694,
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sha256": "dc291515376e4d3825a7d1c0a60e314c75f39396d4fb4ed0cd4d9adaf6806c7f",
+      "provenance": "Existing operator-owned cowboy accessory; attribution retained in assets/animations/cowboy/ATTRIBUTION.md"
+    },
+    {
+      "id": "cowboy-mustache",
+      "version": 1,
+      "src": "assets/costumes/cowboy-mustache/1/8598e73ebf905766.webp",
+      "width": 523,
+      "height": 173,
+      "bytes": 26348,
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sha256": "8598e73ebf90576647f213d0486494560e5dc777446d7078263534966fc14cd6",
+      "provenance": "Existing operator-owned cowboy accessory; attribution retained in assets/animations/cowboy/ATTRIBUTION.md"
+    },
+    {
+      "id": "cowboy-revolver-left",
+      "version": 1,
+      "src": "assets/costumes/cowboy-revolver-left/1/9786264c67cc1239.webp",
+      "width": 335,
+      "height": 431,
+      "bytes": 24228,
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sha256": "9786264c67cc1239d2e3405b50709c94cdf818525c6fba730a1778f409094687",
+      "provenance": "Existing operator-owned cowboy accessory; attribution retained in assets/animations/cowboy/ATTRIBUTION.md"
+    },
+    {
+      "id": "cowboy-revolver-right",
+      "version": 1,
+      "src": "assets/costumes/cowboy-revolver-right/1/f68a2428285c5729.webp",
+      "width": 335,
+      "height": 431,
+      "bytes": 24864,
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sha256": "f68a2428285c572941dced9be394aea786074f2f317753ef68a8cfb192a990bd",
+      "provenance": "Existing operator-owned cowboy accessory; attribution retained in assets/animations/cowboy/ATTRIBUTION.md"
+    }
+  ],
+  "costume": {
+    "id": "cowboy-reusable",
+    "version": 1,
+    "label": "Cowboy reusable draft",
+    "rig": "mushroom-platypus@1",
+    "preset": "classic-lightning@1",
+    "elements": [
+      {
+        "id": "hat",
+        "asset": "cowboy-hat@1",
+        "placement": {
+          "attachment": {
+            "rig": "mushroom-platypus@1",
+            "point": "head"
+          },
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "objectAnchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "scale": 1.05,
+          "rotation": 0,
+          "flipX": false,
+          "layer": "foreground",
+          "order": 0
+        }
+      },
+      {
+        "id": "mustache",
+        "asset": "cowboy-mustache@1",
+        "placement": {
+          "attachment": {
+            "rig": "mushroom-platypus@1",
+            "point": "mouth"
+          },
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "objectAnchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "scale": 0.38,
+          "rotation": 0,
+          "flipX": false,
+          "layer": "foreground",
+          "order": 0
+        }
+      },
+      {
+        "id": "revolver-left",
+        "asset": "cowboy-revolver-left@1",
+        "placement": {
+          "attachment": {
+            "rig": "mushroom-platypus@1",
+            "point": "handL"
+          },
+          "offset": {
+            "x": -0.0475,
+            "y": -0.04
+          },
+          "objectAnchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "scale": 0.28,
+          "rotation": -20,
+          "flipX": false,
+          "layer": "foreground",
+          "order": 0,
+          "objectActions": [
+            {
+              "type": "fire",
+              "point": {
+                "x": 0.08,
+                "y": 0.32
+              },
+              "direction": 180,
+              "pattern": "alternate",
+              "rate": 3.2,
+              "jitter": 0.5,
+              "appliesTo": [
+                "spore",
+                "activation"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "revolver-right",
+        "asset": "cowboy-revolver-right@1",
+        "placement": {
+          "attachment": {
+            "rig": "mushroom-platypus@1",
+            "point": "handR"
+          },
+          "offset": {
+            "x": -0.0134,
+            "y": -0.0087
+          },
+          "objectAnchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "scale": 0.28,
+          "rotation": 20,
+          "flipX": false,
+          "layer": "foreground",
+          "order": 0,
+          "objectActions": [
+            {
+              "type": "fire",
+              "point": {
+                "x": 0.92,
+                "y": 0.32
+              },
+              "direction": 0,
+              "pattern": "alternate",
+              "rate": 3.2,
+              "jitter": 0.5,
+              "appliesTo": [
+                "spore",
+                "activation"
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

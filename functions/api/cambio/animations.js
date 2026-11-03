@@ -5,6 +5,7 @@
 import { requireAccess, json } from '../../_shared/cambio-auth.js';
 import { readRuntimeConfig, writeRuntimeConfig } from '../../_shared/runtime-config.js';
 import { livePercents } from '../../_shared/loot-table.js';
+import {validateAnimationDraft} from '../../../runtime/costumes/contracts.js';
 
 function slugify(name) {
   return String(name || '')
@@ -55,7 +56,7 @@ export async function onRequestPost(context) {
   const anim = {
     id,
     label: body.label || body.name || id,
-    live: body.live !== false,
+    live: false,
     archived: false,
     editable: true,
     placementEditable: true,
@@ -70,6 +71,9 @@ export async function onRequestPost(context) {
     preloadedAccessories: false,
     previewObjectActions: body.previewObjectActions === true
   };
+  if(body.clickEffect)anim.clickEffect=body.clickEffect;
+  if(body.animationPreset)anim.animationPreset=body.animationPreset;
+  try{validateAnimationDraft(anim);}catch(e){return json({ok:false,error:e.message},422);}
   config.animations.push(anim);
   const saved = await writeRuntimeConfig(env, config);
   return json({ ok: true, animation: anim, config: saved }, 201);

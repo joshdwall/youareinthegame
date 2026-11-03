@@ -8,10 +8,11 @@ import {
   applyElementPlacement,
   defaultObjectAnchor
 } from './placementMath.js';
+import {resolvePlacement} from '../../runtime/costumes/contracts.js';
 
 export function migrateElement(st) {
   if (!st || typeof st !== 'object') return defaultElementState(null, {});
-  if (st.characterAnchor && st.objectAnchor) return { ...st };
+  if (st.attachment || (st.characterAnchor && st.objectAnchor)) return resolvePlacement(st);
   // v1 x/y → v2; scale already means width-fraction when present
   const out = {
     objectAnchor: defaultObjectAnchor(),
@@ -53,17 +54,20 @@ export function mountOverlayProps(overlayHost, opts) {
   if (!overlayHost || !creature) return [];
 
   overlayHost.innerHTML = '';
+  overlayHost.__costumeBackLayer?.remove();
+  overlayHost.__costumeBackLayer=null;
   overlayHost.style.pointerEvents = 'none';
 
   const rig = creatureRig || creature.parentElement;
   const box = measureCreatureBoxInHost(creature, rig);
 
   const mounted = [];
-  for (const el of elements) {
+  for (const el of [...elements].sort((a,b)=>(resolvePlacement(placementsById[a.id]||a.placement).order-resolvePlacement(placementsById[b.id]||b.placement).order))) {
     let st = placementsById[el.id] || el.placement;
     st = migrateElement(st || defaultElementState(null, el));
     if (Object.prototype.hasOwnProperty.call(el, 'flipX')) st.flipX = !!el.flipX;
 
+    st=resolvePlacement(st);
     const img = document.createElement('img');
     const src = el.src.startsWith('/') || el.src.startsWith('http')
       ? el.src
@@ -74,11 +78,14 @@ export function mountOverlayProps(overlayHost, opts) {
     img.dataset.elementId = el.id;
     img.draggable = false;
     img.style.pointerEvents = 'none';
-    img.style.zIndex = '5';
+    img.style.zIndex = String(st.layer==='behind-character'?1:5);
 
     applyElementPlacement(img, st, box);
 
-    overlayHost.appendChild(img);
+    if(st.layer==='behind-character'){
+      if(!overlayHost.__costumeBackLayer){const back=document.createElement('div');back.className='costume-back-layer';back.style.cssText='position:absolute;inset:0;z-index:1;pointer-events:none;overflow:visible;opacity:0';rig.insertBefore(back,creature);overlayHost.__costumeBackLayer=back;}
+      overlayHost.__costumeBackLayer.appendChild(img);
+    }else overlayHost.appendChild(img);
     mounted.push({ el, st, img, box });
   }
   return mounted;

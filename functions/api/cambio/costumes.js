@@ -1,0 +1,5 @@
+import {requireAccess,json} from '../../_shared/cambio-auth.js';
+import {readCostumeLibrary,importCostumeBundle} from '../../_shared/costume-library.js';
+import {MUSHROOM_RIG,PRESETS,ACTION_TYPES,LIMITS} from '../../../runtime/costumes/contracts.js';
+export async function onRequestGet({request,env}){const denied=requireAccess(request,new URL(request.url));if(denied)return denied;const library=await readCostumeLibrary(env);return json({ok:true,library,rig:MUSHROOM_RIG,presets:PRESETS,actions:ACTION_TYPES,limits:LIMITS});}
+export async function onRequestPost({request,env}){const denied=requireAccess(request,new URL(request.url));if(denied)return denied;try{const text=await request.text();if(text.length>1_000_000)return json({ok:false,error:'Costume bundle exceeds 1 MB'},413);const body=JSON.parse(text);const result=await importCostumeBundle(env,body.bundle,{commit:body.commit===true,expectedRevision:body.expectedRevision});return json({ok:true,...result},body.commit===true?201:200);}catch(e){return json({ok:false,error:e.message},e.status||422);}}

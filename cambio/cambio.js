@@ -5,6 +5,7 @@ import { escapeHtml } from '/cambio/vendor/envivo-ui/desk-list.mjs';
 import { mountEvScrollList } from '/cambio/vendor/envivo-ui/ev-scroll-list/mount.mjs';
 import { SAFE_FONT_OPTIONS, schemaForActionType } from '/cambio/objectActionFieldSchema.js';
 import { log, info, debug, warn, error } from '../js/log.js';
+import {editorPlacement,normalizeEditedPlacement} from '/runtime/costumes/contracts.js';
 
 /**
  * Content-fit columns for Cambio rails (enVivo SL-27 measure, without grow-to-fill).
@@ -384,11 +385,13 @@ async function loadJson(url) {
 
 function migrateElement(raw) {
   if (!raw || typeof raw !== 'object') return null;
+  if(raw.attachment)return editorPlacement(raw);
   const actions = Array.isArray(raw.objectActions)
     ? raw.objectActions.map((a) => ({ ...a, point: a.point ? { x: +a.point.x, y: +a.point.y } : { x: 0.5, y: 0.5 } }))
     : undefined;
   if (raw.characterAnchor && raw.objectAnchor) {
     const out = {
+      ...raw,
       objectAnchor: { x: +raw.objectAnchor.x, y: +raw.objectAnchor.y },
       characterAnchor: { x: +raw.characterAnchor.x, y: +raw.characterAnchor.y },
       rotation: Number.isFinite(+raw.rotation) ? +raw.rotation : (+raw.rotationDeg || 0),
@@ -2601,6 +2604,7 @@ async function savePlacements() {
   saveStatus.textContent = 'Saving…';
   try {
     const migrated = migratePlacements(state.placements);
+    for(const layout of Object.values(migrated.byAnimation||{}))for(const [id,p]of Object.entries(layout.elements||{}))if(p.attachment)layout.elements[id]=normalizeEditedPlacement(p);
     const body = {
       ...migrated,
       schemaVersion: 2,

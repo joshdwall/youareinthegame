@@ -49,10 +49,14 @@ export async function onRequestPost(context) {
   if (!key.startsWith('animations/')) key = `animations/${key}`;
 
   const quota = await readR2Quota(env);
+  const sha256=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(x=>x.toString(16).padStart(2,'0')).join('');
+  const existing=await env.YAITG_ASSETS_R2.get(key);
+  if(existing){const oldHash=existing.customMetadata?.sha256||[...new Uint8Array(await crypto.subtle.digest('SHA-256',await existing.arrayBuffer()))].map(x=>x.toString(16).padStart(2,'0')).join('');if(oldHash!==sha256)return json({ok:false,error:'Asset key is immutable; upload under a new version or hash'},409);return json({ok:true,key,url:`/api/assets/${key}`,bytes:bytes.byteLength,sha256,reused:true});}
   const gate = r2Allowed(quota, 'classA', bytes.byteLength);
   if (!gate.ok) return json({ ok: false, ...gate }, 429);
 
   await env.YAITG_ASSETS_R2.put(key, bytes, {
+    customMetadata: {sha256},
     httpMetadata: { contentType }
   });
   quota.classA += 1;
@@ -64,6 +68,7 @@ export async function onRequestPost(context) {
     key,
     url: `/api/assets/${key}`,
     bytes: bytes.byteLength,
+    sha256,
     warn: gate.warn,
     quota
   });
