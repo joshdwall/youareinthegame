@@ -1,5 +1,5 @@
 import {readCostumeLibrary,writeCostumeLibrary,verifyCostumeAssets} from './costume-library.js';
-import {validateAnimationDraft} from '../../runtime/costumes/contracts.js';
+import {validateAnimationDraft,compileBundle} from '../../runtime/costumes/contracts.js';
 export const RUNTIME_KV_KEY = 'cambio:runtime-config';
 export const PLACEMENTS_KV_KEY = 'cambio:placements';
 export const R2_QUOTA_KV_KEY = 'cambio:r2-quota';
@@ -194,7 +194,7 @@ export async function writeRuntimeConfig(env, config) {
   const library=await readCostumeLibrary(env);
   if(config.costumeLibraryRevision!==undefined&&config.costumeLibraryRevision!==library.revision)throw Error('Costume library changed; reload before saving');
   const costumes=(config.animations||[]).filter(a=>a.costumeRef);
-  for(const a of costumes){validateAnimationDraft(a);const authored=library.costumes[a.costumeRef];if(!authored)throw Error('Unregistered costume version');const expected=new Map(authored.costume.elements.map(e=>[e.id,e.asset]));if(a.elements.length!==expected.size||a.elements.some(e=>expected.get(e.id)!==e.asset||library.assets.find(x=>`${x.id}@${x.version}`===e.asset)?.src!==e.src))throw Error('Accessory versions must change through a new costume version');if(`${a.animationPreset?.id}@${a.animationPreset?.version}`!==authored.costume.preset)throw Error('Preset changes require a new costume version');if(a.live){const refs=new Set(a.elements.map(e=>e.asset));const assets=library.assets.filter(x=>refs.has(`${x.id}@${x.version}`));if(assets.length!==refs.size)throw Error('Unresolved accessory version');await verifyCostumeAssets(env,assets);}}
+  for(const a of costumes){validateAnimationDraft(a);const authored=library.costumes[a.costumeRef];if(!authored)throw Error('Unregistered costume version');const expected=new Map(authored.costume.elements.map(e=>[e.id,e.asset]));if(a.elements.length!==expected.size||a.elements.some(e=>expected.get(e.id)!==e.asset||library.assets.find(x=>`${x.id}@${x.version}`===e.asset)?.src!==e.src))throw Error('Accessory versions must change through a new costume version');if(`${a.animationPreset?.id}@${a.animationPreset?.version}`!==authored.costume.preset)throw Error('Preset changes require a new costume version');const canonical=compileBundle(authored,library).animation.animationPreset;if(JSON.stringify(a.animationPreset)!==JSON.stringify(canonical))throw Error('Preset content is immutable; create a new preset version');const prior=library.animations.find(x=>x.id===a.id);if(prior?.publishedAt)a.publishedAt=prior.publishedAt;else delete a.publishedAt;if(a.live){const refs=new Set(a.elements.map(e=>e.asset));const assets=library.assets.filter(x=>refs.has(`${x.id}@${x.version}`));if(assets.length!==refs.size)throw Error('Unresolved accessory version');await verifyCostumeAssets(env,assets);}}
   for(const a of costumes)if(a.live&&!a.publishedAt)a.publishedAt=new Date().toISOString();
   if(JSON.stringify(costumes)!==JSON.stringify(library.animations)){library.animations=costumes;await writeCostumeLibrary(env,library);}
   const normalized = normalizeConfig({

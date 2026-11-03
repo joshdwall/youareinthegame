@@ -7,11 +7,11 @@ const evidence=path.resolve('.preview-evidence');fs.mkdirSync(evidence,{recursiv
 const save=(name,value)=>fs.writeFileSync(path.join(evidence,name),JSON.stringify(value,null,2));
 const sensitive=new Set([process.env.INFISICAL_CLIENT_ID,process.env.INFISICAL_CLIENT_SECRET].filter(Boolean));
 const redact=s=>{let x=String(s);for(const v of sensitive)if(v)x=x.replaceAll(v,'[redacted]');return x;};
-let infToken,cfToken,account,site,common;const usage={builds:0,deploys:0,cfApiCalls:0,wranglerCalls:0,startedAt:new Date().toISOString()};
+let infToken,cfToken,accessToken,account,site,common;const usage={builds:0,deploys:0,cfApiCalls:0,wranglerCalls:0,startedAt:new Date().toISOString()};
 const workspace='41982513-3430-4531-a227-9aa124fe024d';
 async function inf(p,body){const r=await fetch('https://app.infisical.com'+p,{method:body?'POST':'GET',headers:{'content-type':'application/json',...(infToken?{authorization:'Bearer '+infToken}:{})},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(30000)});if(!r.ok)throw Error('Infisical HTTP '+r.status);return r.json();}
 async function secrets(folder){const q=new URLSearchParams({projectId:workspace,environment:'prod',secretPath:folder,viewSecretValue:'true',expandSecretReferences:'true',includeImports:'true'});const data=await inf('/api/v4/secrets?'+q);const rows=[...(data.secrets||[]),...(data.imports||[]).flatMap(i=>i.secrets||[])];const out=Object.fromEntries(rows.map(s=>[s.secretKey,s.secretValue]));for(const v of Object.values(out))if(v)sensitive.add(v);return out;}
-async function cf(p,method='GET',body,raw=false){usage.cfApiCalls++;const r=await fetch('https://api.cloudflare.com/client/v4'+p.replaceAll('{account}',account),{method,headers:{authorization:'Bearer '+cfToken,'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(45000)});if(raw){if(!r.ok)throw Error(`Cloudflare ${method} ${p}: HTTP ${r.status}`);return r.text();}const j=await r.json();if(!r.ok||j.success===false)throw Error(`Cloudflare ${method} ${p}: HTTP ${r.status} (${(j.errors||[]).map(e=>e.code).join(',')})`);return j.result;}
+async function cf(p,method='GET',body,raw=false){usage.cfApiCalls++;const r=await fetch('https://api.cloudflare.com/client/v4'+p.replaceAll('{account}',account),{method,headers:{authorization:'Bearer '+(p.includes('/access/')&&accessToken?accessToken:cfToken),'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(45000)});if(raw){if(!r.ok)throw Error(`Cloudflare ${method} ${redact(p)}: HTTP ${r.status}`);return r.text();}const j=await r.json();if(!r.ok||j.success===false)throw Error(`Cloudflare ${method} ${redact(p)}: HTTP ${r.status} (${(j.errors||[]).map(e=>e.code).join(',')})`);return j.result;}
 function run(exe,args,env={}){const r=spawnSync(exe,args,{encoding:'utf8',env:{...process.env,...env},maxBuffer:20e6});if(r.status!==0)throw Error(`${exe} failed: ${redact(r.stdout||'')} ${redact(r.stderr||'')}`);return r.stdout||'';}
 function wrangler(args){usage.wranglerCalls++;return run('npx',['--yes',`wrangler@${cfg.wranglerVersion}`,...args],{CLOUDFLARE_API_TOKEN:cfToken,CLOUDFLARE_ACCOUNT_ID:account});}
 const apiBase=()=>`/accounts/{account}/pages/projects/${cfg.project}`;
@@ -22,8 +22,8 @@ async function ensurePreviewAccess(apps){
  let admin=policies.find(p=>p.name?.toLowerCase()==='admin'&&p.decision==='allow'),template;
  let gameApps=apps,adminBase='/accounts/{account}/access';
  if(!gameApps.some(a=>a.domain?.startsWith('app.youareinthegame.com'))){
-  const zones=await cf('/zones?name=youareinthegame.com');
-  if(zones.length===1){adminBase=`/zones/${zones[0].id}/access`;gameApps=await cf(adminBase+'/apps');}
+ const zones=await cf('/zones?name=youareinthegame.com');
+  if(zones.length===1){sensitive.add(zones[0].id);adminBase=`/zones/${zones[0].id}/access`;gameApps=await cf(adminBase+'/apps');}
  }
  const gameAdmin=gameApps.find(a=>a.domain?.startsWith('app.youareinthegame.com'));
  if(gameAdmin){
@@ -81,7 +81,7 @@ async function main(){
  save('baseline.json',backup);save('asset-manifest.json',{sources:assetSources,staticAssetsPinnedByCheckpoint:true});
  const recent=await cf(apiBase()+'/deployments?env=preview&per_page=25');if(recent.length===25)recent.push(...await cf(apiBase()+'/deployments?env=preview&per_page=25&page=2'));const month=new Date().toISOString().slice(0,7);
  if(recent.filter(d=>(d.created_on||'').startsWith(month)).length>=cfg.maxMonthlyPreviewRuns)throw Error('Monthly preview run budget reached');
- const accessApps=await cf('/accounts/{account}/access/apps');
+ accessToken=site['site.youareinthegame.cloudflare.api_token']||cfToken;const accessApps=await cf('/accounts/{account}/access/apps');
  const previewHost='costume-scalable-workflow.'+cfg.project+'.pages.dev';
  const covers=domain=>domain&&new RegExp('^'+domain.replace(/[.+?^${}()|[\]\\]/g,'\\$&').replaceAll('*','.*')+'$').test(previewHost);
  if(!accessApps.some(a=>covers(a.domain)||(a.self_hosted_domains||[]).some(covers)))await ensurePreviewAccess(accessApps);
