@@ -57,11 +57,11 @@ async function ensurePreviewAccess(apps){
 function headers(){return {'CF-Access-Client-Id':common.CF_ACCESS_PAGES_PREVIEW_CLIENT_ID,'CF-Access-Client-Secret':common.CF_ACCESS_PAGES_PREVIEW_CLIENT_SECRET};}
 async function verifyAccess(url){
  const u=new URL(url);if(!u.hostname.endsWith('.'+cfg.project+'.pages.dev'))throw Error('Unexpected preview host');
- const publicResponse=await fetch(new URL('/cambio/',u),{redirect:'manual'});
+ const publicResponse=await fetch(new URL('/cambio/',u),{redirect:'manual',headers:{'user-agent':'YAITG automated monitor'}});
  const loc=publicResponse.headers.get('location')||'';
  if(![302,303].includes(publicResponse.status)||!loc.includes('/cdn-cgi/access/login'))throw Error('Preview Access protection not confirmed; refusing to expose authoring');
  const checks=[];
- for(const p of ['/','/cambio/','/api/animations']){const r=await fetch(new URL(p,u),{headers:headers(),redirect:'manual'});checks.push({path:p,status:r.status});if(r.status!==200)throw Error(`Protected preview check ${p}: HTTP ${r.status}`);}
+ for(const p of ['/','/cambio/','/api/animations']){const r=await fetch(new URL(p,u),{headers:{...headers(),'user-agent':'YAITG automated monitor'},redirect:'manual'});checks.push({path:p,status:r.status});if(r.status!==200)throw Error(`Protected preview check ${p}: HTTP ${r.status}`);}
  return checks;
 }
 async function verifyReady(url){let last;for(let attempt=1;attempt<=8;attempt++){try{return await verifyAccess(url);}catch(e){last=e;if(attempt<8)await new Promise(resolve=>setTimeout(resolve,10000));}}throw last;}
@@ -96,7 +96,7 @@ async function main(){
  if(process.argv.includes('--production-only')){
   if(process.env.GITHUB_REF_NAME!=='main')throw Error('Production verification must run on main');
   let ready=false;for(let i=0;i<40;i++){const p=await cf(apiBase());const d=p.canonical_deployment;if(d?.deployment_trigger?.metadata?.commit_hash===process.env.GITHUB_SHA&&d.latest_stage?.status==='success'){ready=true;break;}await new Promise(r=>setTimeout(r,10000));}if(!ready)throw Error('Approved production commit has not finished deploying');
-  const url='https://youareinthegame.com';for(const path of ['/','/api/animations']){const r=await fetch(url+path);if(r.status!==200)throw Error('Production HTTP check failed: '+path);}
+  const url='https://youareinthegame.com';for(const path of ['/','/api/animations']){const r=await fetch(url+path,{headers:{'user-agent':'YAITG automated monitor'}});if(r.status!==200)throw Error('Production HTTP check failed: '+path);}
   const {chromium}=await import('playwright'),b=await chromium.launch();try{const page=await b.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));const {verifyResetBoundary}=await import('../tests/helpers/reset-boundary.mjs');const results=await verifyResetBoundary(page,url);if(errors.length)throw Error(errors.join('; '));save('production.json',{url,commit:process.env.GITHUB_SHA,resetCycles:results,browserErrors:errors});await page.screenshot({path:path.join(evidence,'production.png')});console.log('Production reset verification passed:',url);}finally{await b.close();}return;
  }
  if(process.argv.includes('--browser-only')){const url=process.env.COSTUME_PREVIEW_URL;await verifyReady(url);await browser(url);return;}
@@ -134,7 +134,7 @@ async function main(){
  run('npm',['run','build']);usage.builds++;
  const configFile=path.resolve('wrangler.toml');const original=fs.readFileSync('wrangler.toml','utf8');
  const productionMap=worldmap&&!original.includes('YAITG_WORLDMAP_DB')?`\n[[d1_databases]]\nbinding = "YAITG_WORLDMAP_DB"\ndatabase_name = "${worldmap.production.name}"\ndatabase_id = "${worldmap.production.id}"\n`:'';
- fs.writeFileSync(configFile,original+productionMap+`\n[env.preview]\n[env.preview.vars]\nYAITG_RATE_MAX = "120"\nYAITG_RATE_WINDOW_SEC = "3600"\n[[env.preview.kv_namespaces]]\nbinding = "YAITG_SESSION_KV"\nid = "${kv.id}"\n[[env.preview.r2_buckets]]\nbinding = "YAITG_ASSETS_R2"\nbucket_name = "${cfg.previewBucket}"\n`+(worldmap?`\n[[env.preview.d1_databases]]\nbinding = "YAITG_WORLDMAP_DB"\ndatabase_name = "${worldmap.preview.name}"\ndatabase_id = "${worldmap.preview.id}"\n`:''));
+ fs.writeFileSync(configFile,original+productionMap+`\n[env.preview]\n[env.preview.vars]\nYAITG_WORLDMAP_PREVIEW = "1"\nYAITG_RATE_MAX = "120"\nYAITG_RATE_WINDOW_SEC = "3600"\n[[env.preview.kv_namespaces]]\nbinding = "YAITG_SESSION_KV"\nid = "${kv.id}"\n[[env.preview.r2_buckets]]\nbinding = "YAITG_ASSETS_R2"\nbucket_name = "${cfg.previewBucket}"\n`+(worldmap?`\n[[env.preview.d1_databases]]\nbinding = "YAITG_WORLDMAP_DB"\ndatabase_name = "${worldmap.preview.name}"\ndatabase_id = "${worldmap.preview.id}"\n`:''));
  let output;try{output=wrangler(['pages','deploy','dist','--project-name',cfg.project,'--branch','costume-scalable-workflow','--commit-hash',process.env.GITHUB_SHA]);usage.deploys++;}finally{fs.writeFileSync(configFile,original);}
  const deployedProject=await cf(apiBase());const deployedProd=deployedProject.deployment_configs?.production||{},deployedPreview=deployedProject.deployment_configs?.preview||{};
  if(deployedProd.kv_namespaces?.YAITG_SESSION_KV?.namespace_id!==prodKv)throw Error('Production KV binding changed unexpectedly');
@@ -150,4 +150,4 @@ async function main(){
  if(process.env.GITHUB_OUTPUT)fs.appendFileSync(process.env.GITHUB_OUTPUT,`url=${url}\n`);if(process.env.GITHUB_STEP_SUMMARY)fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,`## Costume preview\n\n[Open protected preview](${url}) · [Cambio](${url}/cambio/)\n\nProduction remains unchanged. Isolated preview KV/R2. Baseline backup is in the private evidence artifact.\n`);
  console.log('Protected costume preview:',url);
 }
-try{await main();}catch(e){save('failure.json',{error:redact(e.message)});console.error(redact(e.message));process.exitCode=1;}finally{usage.finishedAt=new Date().toISOString();save('usage.json',usage);if(infToken){try{await inf('/api/v1/auth/token/revoke',{accessToken:infToken});}catch{console.error('Temporary token revocation could not be confirmed.');}}}
+try{await main();}catch(e){save('failure.json',{error:redact(e.message)});console.error(redact(e.message));process.exitCode=1;}finally{usage.finishedAt=new Date().toISOString();const stage=process.argv.includes('--browser-only')?'browser':process.argv.includes('--production-only')?'production':'deploy';save('usage-'+stage+'.json',usage);let aggregate={...usage};if(stage==='browser'&&fs.existsSync(path.join(evidence,'usage-deploy.json'))){const deploy=JSON.parse(fs.readFileSync(path.join(evidence,'usage-deploy.json')));aggregate.startedAt=deploy.startedAt;for(const field of ['builds','deploys','cfApiCalls','wranglerCalls'])aggregate[field]+=deploy[field];}save('usage.json',aggregate);if(infToken){try{await inf('/api/v1/auth/token/revoke',{accessToken:infToken});}catch{console.error('Temporary token revocation could not be confirmed.');}}}

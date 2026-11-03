@@ -12,7 +12,7 @@ export function areaFromCloudflare(cf){
 }
 export async function recordWorldmapVisit(request,env){
  if(!env.YAITG_WORLDMAP_DB||!env.YAITG_SESSION_SECRET||cookies(request)[EXCLUDE]==='1')return null;
- if(/bot|crawler|spider|headless|playwright|monitor|healthcheck/i.test(request.headers.get('user-agent')||'')||Number(request.cf?.botManagement?.score??100)<10)return null;
+ if(/bot|crawler|spider|headless|playwright|monitor|healthcheck|^node$|undici|curl|wget|python-requests|go-http-client/i.test(request.headers.get('user-agent')||'')||Number(request.cf?.botManagement?.score??100)<10)return null;
  if(await identity(request,env))return null;
  const area=areaFromCloudflare(request.cf);if(!area)return null;
  const id=crypto.randomUUID(),hash=await hmac(env.YAITG_SESSION_SECRET,'worldmap-visitor:'+id),day=new Date().toISOString().slice(0,10),db=env.YAITG_WORLDMAP_DB;
@@ -27,8 +27,16 @@ export async function recordWorldmapVisit(request,env){
 export async function worldmapData({request,env}){
  if(!env.YAITG_WORLDMAP_DB)return json({ok:false,error:'The visitor globe is not connected yet.'},503);
  const key=new Request(new URL('/api/worldmap?public=1',request.url));const cache=globalThis.caches?.default;const cached=await cache?.match(key);if(cached)return cached;
- const db=env.YAITG_WORLDMAP_DB;const [points,total]=await db.batch([db.prepare('SELECT area_key AS id,lat,lng,country,region,visitors AS count FROM worldmap_areas WHERE visitors>0 ORDER BY visitors DESC,area_key LIMIT 2000'),db.prepare('SELECT COALESCE(SUM(visitors),0) AS visitors,COUNT(*) AS areas,COUNT(DISTINCT country) AS countries FROM worldmap_areas WHERE visitors>0')]);
- const response=json({ok:true,points:points.results,totals:total.results[0],approximate:true,uniqueBy:'browser',updatedAt:new Date().toISOString(),displayLimit:2000},200,{'cache-control':'public, max-age=60'});await cache?.put(key,response.clone());return response;
+ const db=env.YAITG_WORLDMAP_DB,totalSql='SELECT COALESCE(SUM(visitors),0) AS visitors,COUNT(*) AS areas,COUNT(DISTINCT country) AS countries FROM worldmap_areas WHERE visitors>0';
+ let [points,total]=await db.batch([db.prepare('SELECT area_key AS id,lat,lng,country,region,visitors AS count FROM worldmap_areas WHERE visitors>0 ORDER BY visitors DESC,area_key LIMIT 2001'),db.prepare(totalSql)]),gridDegrees=1;
+ // Coarsen crowded views instead of silently dropping less-visited origins.
+ for(const step of [2,5,10,20,45,180]){
+  if(points.results.length<=2000)break;gridDegrees=step;
+  const y=`CAST((lat+90)/${step} AS INTEGER)`,x=`CAST((lng+180)/${step} AS INTEGER)`;
+  const sql=`SELECT country||':${step}:'||${y}||':'||${x} AS id,${y}*${step}-90+${step}/2.0 AS lat,${x}*${step}-180+${step}/2.0 AS lng,country,CASE WHEN MIN(region)=MAX(region) THEN MIN(region) ELSE '' END AS region,SUM(visitors) AS count FROM worldmap_areas WHERE visitors>0 GROUP BY country,${y},${x} ORDER BY count DESC LIMIT 2001`;
+  [points,total]=await db.batch([db.prepare(sql),db.prepare(totalSql)]);
+ }
+ const response=json({ok:true,points:points.results,totals:total.results[0],approximate:true,uniqueBy:'browser',preview:env.YAITG_WORLDMAP_PREVIEW==='1',updatedAt:new Date().toISOString(),displayLimit:2000,gridDegrees},200,{'cache-control':'public, max-age=60'});await cache?.put(key,response.clone());return response;
 }
 export async function excludeWorldmapBrowser({request,env}){
  const url=new URL(request.url);if(request.headers.get('origin')!==url.origin)return json({ok:false,error:'Same-origin request required'},403);
