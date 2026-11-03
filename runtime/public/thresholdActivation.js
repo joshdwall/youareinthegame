@@ -13,7 +13,6 @@ import {
   preloadActivationAssets
 } from '../../effects/activation/ActivationEngine.js';
 import { mountOverlayProps } from '../../effects/activation/mountOverlayProps.js';
-import { fadeStormResetToLight } from '../../effects/activation/fadeStormReset.js';
 import { GHOST_CONFIG } from '../../effects/spore/ghost/config.js';
 import { resolvePlacementsForAnimation } from '../../effects/activation/defaultPlacements.js';
 
@@ -467,6 +466,14 @@ export function installThresholdLootHook(effect) {
       await prepareUpcoming(creature);
     }
     const prep = prepared;
+    let nextRound;
+    const prepareNextRound=()=>{
+      if(nextRound)return nextRound;
+      recordPlayed(ghost?'ghost':pick?.id,Number.isFinite(pick?.index)?pick.index:(ghost?0:-1));
+      upcoming=null;prepared=null;
+      nextRound=pickUpcoming({forceRefresh:true,creature}).catch(err=>error('Next costume preparation failed',err));
+      return nextRound;
+    };
 
     if (!ghost) {
       const placementsById = prep.placementsById || {};
@@ -489,7 +496,8 @@ export function installThresholdLootHook(effect) {
             baseSrc: creature.getAttribute('src') || '/img/mushroom-platypus.png',
             elements: prep?.compositeElements || []
           },
-          assetsPreloaded: true
+          assetsPreloaded: true,
+          onResetStart:prepareNextRound
         });
       } else {
         const placementsById = prep.placementsById || {};
@@ -507,7 +515,8 @@ export function installThresholdLootHook(effect) {
             elements: prep.compositeElements || buildCompositeElements(pick.anim, placementsById)
           },
           spore: { count: 8, scale: 0.32, durationMs: 1800, distancePx: 140 },
-          assetsPreloaded: true
+          assetsPreloaded: true,
+          onResetStart:prepareNextRound
         });
       }
     } catch (err) {
@@ -531,14 +540,9 @@ export function installThresholdLootHook(effect) {
     this.lightningSequenceActive = false;
     this.finaleInProgress = false;
     this.stormLevel = 0;
-    const fadeMs = Number.isFinite(this.__liveStormResetMs)
-      ? this.__liveStormResetMs
-      : (CONFIG?.ANIMATIONS?.STORM_RESET_DURATION || 1500);
-    this.markStormResetFade?.(fadeMs);
-    fadeStormResetToLight(container, {
-      durationMs: fadeMs,
-      backgroundColor: CONFIG?.VISUALS?.BACKGROUND_COLOR || '#7ab5a0'
-    });
+    // ActivationEngine has already completed the one visible reset fade.
+    // Never start a second, invisible cooldown on an already-light background.
+    this.__stormResetFadeUntil = 0;
     if (this.creature) {
       this.creature.className = this.creature.className.replace(/storm-level-\d+/g, '');
     }
@@ -550,12 +554,7 @@ export function installThresholdLootHook(effect) {
       this.effectOverlay.style.opacity = '0';
     }
 
-    const playedId = ghost ? 'ghost' : (pick?.id || null);
-    const playedIndex = Number.isFinite(pick?.index) ? pick.index : (ghost ? 0 : -1);
-    upcoming = null;
-    prepared = null;
-    recordPlayed(playedId, playedIndex);
-    await pickUpcoming({ forceRefresh: true, creature });
+    await prepareNextRound();
   };
 
   // Legacy SporeBaseEffect climax path is unused when activate() owns every profile.

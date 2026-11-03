@@ -70,6 +70,7 @@ async function browser(url){
  let stage='public load';try{
  await context.route('**/*',route=>route.continue({headers:new URL(route.request().url()).origin===origin?{...route.request().headers(),...headers()}:route.request().headers()}));
  const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const {verifyResetBoundary}=await import('../tests/helpers/reset-boundary.mjs');save('reset-boundary.json',await verifyResetBoundary(page,url));
  await page.goto(url,{waitUntil:'networkidle'});await page.waitForSelector('#mainCreature');await page.waitForFunction(()=>window.__yaitgEffect&&window.__yaitgPrepared?.ready,{timeout:30000});
  stage='public clicks';for(let i=0;i<10;i++){await page.locator('#mainCreature').click({force:true});await page.waitForTimeout(180);}
  await page.waitForTimeout(8000);await page.screenshot({path:path.join(evidence,'desktop.png'),fullPage:true});
@@ -91,6 +92,12 @@ async function main(){
  const login=await inf('/api/v1/auth/universal-auth/login',{clientId:process.env.INFISICAL_CLIENT_ID,clientSecret:process.env.INFISICAL_CLIENT_SECRET});infToken=login.accessToken;sensitive.add(infToken);
  common=await secrets('/cloudflare');site=await secrets('/sites/youareinthegame');cfToken=common.CHATGPT_CLOUDFLARE_API_TOKEN||common['agents-write']||site['site.youareinthegame.cloudflare.api_token'];account=site['site.youareinthegame.cloudflare.account_id']||common.CLOUDFLARE_ACCOUNT_ID;
  if(!cfToken||!account||!common.CF_ACCESS_PAGES_PREVIEW_CLIENT_ID||!common.CF_ACCESS_PAGES_PREVIEW_CLIENT_SECRET)throw Error('Required deployment/Access credentials missing');
+ if(process.argv.includes('--production-only')){
+  if(process.env.GITHUB_REF_NAME!=='main')throw Error('Production verification must run on main');
+  let ready=false;for(let i=0;i<40;i++){const p=await cf(apiBase());const d=p.canonical_deployment;if(d?.deployment_trigger?.metadata?.commit_hash===process.env.GITHUB_SHA&&d.latest_stage?.status==='success'){ready=true;break;}await new Promise(r=>setTimeout(r,10000));}if(!ready)throw Error('Approved production commit has not finished deploying');
+  const url='https://youareinthegame.com';for(const path of ['/','/api/animations']){const r=await fetch(url+path);if(r.status!==200)throw Error('Production HTTP check failed: '+path);}
+  const {chromium}=await import('playwright'),b=await chromium.launch();try{const page=await b.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));const {verifyResetBoundary}=await import('../tests/helpers/reset-boundary.mjs');const results=await verifyResetBoundary(page,url);if(errors.length)throw Error(errors.join('; '));save('production.json',{url,commit:process.env.GITHUB_SHA,resetCycles:results,browserErrors:errors});await page.screenshot({path:path.join(evidence,'production.png')});console.log('Production reset verification passed:',url);}finally{await b.close();}return;
+ }
  if(process.argv.includes('--browser-only')){const url=process.env.COSTUME_PREVIEW_URL;await verifyReady(url);await browser(url);return;}
  const branch=process.env.GITHUB_REF_NAME||'';if(!branch.startsWith('costume/')||branch===cfg.productionBranch)throw Error('Preview workflow must run on a costume feature branch');
  const project=await cf(apiBase());if(project.production_branch!==cfg.productionBranch)throw Error('Unexpected production branch; audit required');

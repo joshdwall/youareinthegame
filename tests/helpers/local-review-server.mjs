@@ -2,7 +2,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-const root=fileURLToPath(new URL('../../',import.meta.url));
+const root=path.resolve(fileURLToPath(new URL('../../',import.meta.url)));
 export async function startReviewServer(){
  const rows=new Map(),objects=new Map();
  const env={YAITG_SESSION_KV:{async get(k){return rows.has(k)?JSON.parse(rows.get(k)):null;},async put(k,v){rows.set(k,v);}},YAITG_ASSETS_R2:{async get(k){const v=objects.get(k);return v?{...v,arrayBuffer:async()=>v.bytes.buffer.slice(v.bytes.byteOffset,v.bytes.byteOffset+v.bytes.byteLength)}:null;},async put(k,bytes,options){objects.set(k,{bytes:Buffer.from(bytes),...options});}}};
@@ -17,7 +17,7 @@ export async function startReviewServer(){
    const request=new Request(url,{method:req.method,headers:req.headers,...(!['GET','HEAD'].includes(req.method)?{body:Buffer.concat(chunks)}:{})});
    const response=await fn({request,env});res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));return;
   }
-  let file=path.resolve(root,'.'+decodeURIComponent(url.pathname));if(!file.startsWith(root)){res.writeHead(403);res.end();return;}
+  let file=path.resolve(root,'.'+decodeURIComponent(url.pathname));if(file!==root&&!file.startsWith(root+path.sep)){res.writeHead(403);res.end();return;}
   if(fs.existsSync(file)&&fs.statSync(file).isDirectory())file=path.join(file,'index.html');
   if(!fs.existsSync(file)){res.writeHead(404);res.end();return;}
   const types={'.html':'text/html','.js':'application/javascript','.mjs':'application/javascript','.json':'application/json','.css':'text/css','.png':'image/png','.webp':'image/webp','.svg':'image/svg+xml'};

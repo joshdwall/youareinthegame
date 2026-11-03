@@ -110,6 +110,14 @@ export async function runActivation(opts) {
     sporeHost.querySelectorAll('.firework-spore,.activation-spore').forEach(n=>{n.__actionStop?.();n.remove();});
     const box=measureCreatureBox(creature,flashParent);
     const overlayProfile=OVERLAY_PROFILES[profile]||OVERLAY_PROFILES.ghost;
+    let resetPromise;
+    const resetToLight=()=>{
+      if(resetPromise)return resetPromise;
+      const fadeMs=fadeStormResetToLight(container,{durationMs:window.__yaitgEffect?.__liveStormResetMs||overlayProfile.animations.STORM_RESET_DURATION,backgroundColor:overlayProfile.visuals.BACKGROUND_COLOR});
+      creature.className=creature.className.replace(/storm-level-\d+/g,'');
+      opts.onResetStart?.(fadeMs);
+      resetPromise=delay(fadeMs);return resetPromise;
+    };
     const flash=transition==='none'||reduced?{...overlayProfile.flash,SHOW_PROBABILITY:1,MIN_OPACITY:1,MAX_OPACITY:1,FLICKER_ENABLED:false,FADE_IN_MS:preset.phases.equipMs,FADE_OUT_MS:preset.phases.exitMs}:overlayProfile.flash;
     if(profile==='ghost'){
       const layer=createImageFlashLayer({parent:flashParent,src:overlayProfile.imageSrc,box,alt:'Ghost Overlay',matchCreatureFloat:true});
@@ -170,11 +178,19 @@ export async function runActivation(opts) {
       if(reduced){fw.MIN_INITIAL_SPEED=0;fw.MAX_INITIAL_SPEED=0;fw.MIN_LIFESPAN=.2;fw.MAX_LIFESPAN=.2;fw.GRAVITY=0;fw.MIN_SWIRL_AMPLITUDE=0;fw.MAX_SWIRL_AMPLITUDE=0;}
       fw.createSporeElement=(spore,dims)=>makeSpore(dims||{width:fw.BASE_WIDTH,height:fw.BASE_HEIGHT},spore?.id||0);
       const finished=new Promise(resolve=>{manager=new FireworkManager(fw);manager.launch(window.innerWidth/2+fw.LAUNCH_OFFSET_X,window.innerHeight/2+fw.LAUNCH_OFFSET_Y,sporeHost,resolve);});
-      if(transition==='lightning'&&!reduced){const id=setTimeout(()=>{timers.delete(id);const n=bodyFlash('final-reset');nodes.add(n);n.style.transition=`opacity ${overlayProfile.animations.FINAL_FLASH_FADE_DURATION}ms ease-out`;n.style.opacity='1';requestAnimationFrame(()=>{n.style.opacity='0';});const end=setTimeout(()=>{nodes.delete(n);n.remove();timers.delete(end);},overlayProfile.animations.FINAL_FLASH_FADE_DURATION+500);timers.add(end);},overlayProfile.animations.FIREWORKS_DELAY_BEFORE_FINAL);timers.add(id);}
-      await Promise.race([finished,delay((spec.durationMs||5000)+1000)]);
+      if(transition==='lightning'&&!reduced){
+        // The visible reset is the round boundary; lingering firework lifespans
+        // must not keep input locked after lighting has returned to normal.
+        await delay(overlayProfile.animations.FIREWORKS_DELAY_BEFORE_FINAL);
+        if(aborted())return {ok:false,aborted:true};
+        const n=bodyFlash('final-reset');nodes.add(n);n.style.opacity='1';
+        const fadeMs=window.__yaitgEffect?.__liveStormResetMs||overlayProfile.animations.STORM_RESET_DURATION;
+        n.style.transition=`opacity ${fadeMs}ms ease-out`;requestAnimationFrame(()=>{n.style.opacity='0';});
+        await resetToLight();
+      }else await Promise.race([finished,delay((spec.durationMs||5000)+1000)]);
     }
     if(aborted())return {ok:false,aborted:true};
-    fadeStormResetToLight(container,{durationMs:window.__yaitgEffect?.__liveStormResetMs||overlayProfile.animations.STORM_RESET_DURATION,backgroundColor:overlayProfile.visuals.BACKGROUND_COLOR});
+    await resetToLight();
     return {ok:true};
   }finally{
     signal?.removeEventListener('abort',onAbort);timers.forEach(id=>{clearTimeout(id);clearInterval(id);});timers.clear();
