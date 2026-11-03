@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+ <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+ <meta name="description" content="Spin the Earth and see where Mushroom Platypus visitors are joining the game.">
+ <title>Visitor globe · You Are In The Game</title>
+ <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/worldmap/worldmap.css">
+ <script src="/assets/worldmap/globe.gl.min.js" defer></script><script type="module" src="/worldmap/worldmap.js"></script>
+</head>
+<body>
+ <header class="site-header"><a class="brand" href="/"><img src="/img/mushroom-platypus.webp" width="58" height="39" alt=""><span>You are in the game</span></a><a class="back-link" href="/">Back to the game <span aria-hidden="true">↗</span></a></header>
+ <main>
+  <section class="intro" aria-labelledby="map-title"><p class="eyebrow">Mushroom Platypus / Visitor globe</p><h1 id="map-title">You are in<br><em>the world.</em></h1><p class="intro-copy">A little game, with visitors from all over. Spin the Earth and see where everyone joined in.</p>
+   <dl class="totals" aria-label="Visitor totals"><div><dt>Visitors</dt><dd id="visitorTotal">—</dd></div><div><dt>Countries</dt><dd id="countryTotal">—</dd></div><div><dt>Areas</dt><dd id="areaTotal">—</dd></div></dl>
+   <p class="live-note" id="mapStatus" role="status">Finding our place in the world…</p>
+   <button id="refreshMap" class="text-button" type="button">Refresh counts</button>
+  </section>
+  <section class="earth-stage" aria-label="Interactive world map"><div class="orbit" aria-hidden="true"></div><div id="globe" tabindex="0" role="img" aria-label="Visitor globe. Drag to rotate, scroll to zoom, or use arrow keys and the controls below."></div><p class="globe-hint">Drag to spin <span aria-hidden="true">·</span> Scroll or pinch to zoom</p><div class="globe-controls" aria-label="Globe controls"><button id="zoomIn" type="button" aria-label="Zoom in">+</button><button id="zoomOut" type="button" aria-label="Zoom out">−</button><button id="rotateGlobe" type="button" aria-pressed="true">Pause rotation</button><button id="resetGlobe" type="button">Reset view</button></div><p id="globeFallback" hidden>Interactive 3D is unavailable in this browser. You can still explore all visitor areas below.</p></section>
+  <aside class="field-notes"><div class="section-heading"><p class="eyebrow">People, places, platypus</p><h2>Where we’re joining from</h2></div><p id="areaSelection" class="selection-note">Choose an orange pin to explore its area.</p><ol id="areaList" class="area-list" aria-label="Visitor areas"></ol><p id="emptyMap" hidden>The first pin is waiting. Visits with an approximate location will appear here.</p></aside>
+ </main>
+ <footer><div class="counting"><strong id="countingLabel">One browser. One visitor.</strong><p>Refreshing adds nothing. Pins show approximate areas, and locations can be affected by VPNs. Another device or cleared cookies can count again.</p><button id="excludeBrowser" type="button" class="exclude-button">Don’t count this browser</button><p id="excludeStatus" role="status"></p></div><div class="credits"><p>A small world, a strange little creature.</p><a href="/">Go play a round</a><details><summary>Map credits</summary><p>Globe.GL (MIT), World Atlas and TopoJSON (ISC), with country boundaries derived from public-domain Natural Earth. <a href="/assets/worldmap/LICENSES.txt">Licenses</a></p></details></div></footer>
+</body></html>

@@ -85,6 +85,7 @@ async function browser(url){
  const draftHidden=await page.evaluate(async()=>!(await(await fetch('/api/animations')).json()).animations.some(a=>a.id==='verification-bandana'));if(!draftHidden)throw Error('Verification draft leaked into public pool');
  await page.reload({waitUntil:'networkidle'});await page.getByText('Bandana verification',{exact:true}).first().waitFor();
  save('draft-verification.json',{uploadedStock:true,savedAndReloaded:true,excludedFromPublicPool:true});
+ if(cfg.worldmap){stage='visitor globe';const map=await context.newPage();const {verifyWorldmap}=await import('../tests/helpers/worldmap-browser.mjs');save('worldmap-browser.json',await verifyWorldmap(map,url,{screenshotDir:evidence}));await map.close();}
  save('browser.json',{ok:errors.length===0,errors});if(errors.length)throw Error('Preview browser errors: '+errors.join('; '));
  }catch(e){throw Error(`Browser ${stage}: ${e.message}`);}finally{await browser.close();}
 }
@@ -125,12 +126,15 @@ async function main(){
   if(!exists)await cf(`/accounts/{account}/storage/kv/namespaces/${kv.id}/bulk`,'PUT',[{key,value:JSON.stringify(value)}]);
  }
  const previewVars=project.deployment_configs?.preview?.env_vars||{};
+ let worldmap;
+ if(cfg.worldmap){const {provisionWorldmap}=await import('./worldmap-cloud.mjs');worldmap=await provisionWorldmap({cf,config:cfg.worldmap,primaryToken:cfToken,fallbackToken:common['agents-write'],redactValue:value=>sensitive.add(value),withToken:async(token,fn)=>{const previous=cfToken;cfToken=token;try{return await fn();}finally{cfToken=previous;}}});save('worldmap-bindings.json',worldmap);}
  const sessionMarker='costume:preview-session:v1';let independentSession=false;
  try{independentSession=JSON.parse(await cf(`/accounts/{account}/storage/kv/namespaces/${kv.id}/values/${encodeURIComponent(sessionMarker)}`,'GET',undefined,true))?.independent===true;}catch{}
  if(!previewVars.YAITG_SESSION_SECRET||!independentSession){await cf(apiBase(),'PATCH',{deployment_configs:{preview:{env_vars:{...previewVars,YAITG_SESSION_SECRET:{type:'secret_text',value:crypto.randomBytes(32).toString('hex')}}}}});await cf(`/accounts/{account}/storage/kv/namespaces/${kv.id}/bulk`,'PUT',[{key:sessionMarker,value:JSON.stringify({independent:true,createdAt:new Date().toISOString()})}]);}
  run('npm',['run','build']);usage.builds++;
  const configFile=path.resolve('wrangler.toml');const original=fs.readFileSync('wrangler.toml','utf8');
- fs.writeFileSync(configFile,original+`\n[env.preview]\n[env.preview.vars]\nYAITG_RATE_MAX = "120"\nYAITG_RATE_WINDOW_SEC = "3600"\n[[env.preview.kv_namespaces]]\nbinding = "YAITG_SESSION_KV"\nid = "${kv.id}"\n[[env.preview.r2_buckets]]\nbinding = "YAITG_ASSETS_R2"\nbucket_name = "${cfg.previewBucket}"\n`);
+ const productionMap=worldmap&&!original.includes('YAITG_WORLDMAP_DB')?`\n[[d1_databases]]\nbinding = "YAITG_WORLDMAP_DB"\ndatabase_name = "${worldmap.production.name}"\ndatabase_id = "${worldmap.production.id}"\n`:'';
+ fs.writeFileSync(configFile,original+productionMap+`\n[env.preview]\n[env.preview.vars]\nYAITG_RATE_MAX = "120"\nYAITG_RATE_WINDOW_SEC = "3600"\n[[env.preview.kv_namespaces]]\nbinding = "YAITG_SESSION_KV"\nid = "${kv.id}"\n[[env.preview.r2_buckets]]\nbinding = "YAITG_ASSETS_R2"\nbucket_name = "${cfg.previewBucket}"\n`+(worldmap?`\n[[env.preview.d1_databases]]\nbinding = "YAITG_WORLDMAP_DB"\ndatabase_name = "${worldmap.preview.name}"\ndatabase_id = "${worldmap.preview.id}"\n`:''));
  let output;try{output=wrangler(['pages','deploy','dist','--project-name',cfg.project,'--branch','costume-scalable-workflow','--commit-hash',process.env.GITHUB_SHA]);usage.deploys++;}finally{fs.writeFileSync(configFile,original);}
  const deployedProject=await cf(apiBase());const deployedProd=deployedProject.deployment_configs?.production||{},deployedPreview=deployedProject.deployment_configs?.preview||{};
  if(deployedProd.kv_namespaces?.YAITG_SESSION_KV?.namespace_id!==prodKv)throw Error('Production KV binding changed unexpectedly');
@@ -138,6 +142,7 @@ async function main(){
  if(deployedPreview.kv_namespaces?.YAITG_SESSION_KV?.namespace_id!==kv.id)throw Error('Deployed preview KV binding does not match isolated namespace');
  const boundBucket=deployedPreview.r2_buckets?.YAITG_ASSETS_R2?.name||deployedPreview.r2_buckets?.YAITG_ASSETS_R2?.bucket_name;
  if(boundBucket!==cfg.previewBucket)throw Error('Deployed preview R2 binding does not match isolated bucket');
+ if(worldmap){const binding=deployedPreview.d1_databases?.YAITG_WORLDMAP_DB;if((binding?.id||binding?.database_id)!==worldmap.preview.id)throw Error('Preview worldmap D1 binding is not isolated');save('worldmap-isolation.json',{previewD1Separate:true,productionDatabaseUntouched:true});}
  save('isolation.json',{productionKvUnchanged:true,previewKvSeparate:true,previewBucketSeparate:true,previewSessionIndependent:true,checkedAt:new Date().toISOString()});
  const urls=[...output.matchAll(/https:\/\/[a-z0-9-]+\.youareinthegame-web\.pages\.dev/g)].map(m=>m[0]);const url=urls.find(x=>!x.includes('costume-scalable-workflow.'))||urls[0];if(!url)throw Error('Preview deployment URL missing');
  save('deployment.json',{url,branch,commit:process.env.GITHUB_SHA});
