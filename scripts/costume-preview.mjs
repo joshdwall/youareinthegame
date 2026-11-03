@@ -66,7 +66,7 @@ async function browser(url){
 }
 async function main(){
  const login=await inf('/api/v1/auth/universal-auth/login',{clientId:process.env.INFISICAL_CLIENT_ID,clientSecret:process.env.INFISICAL_CLIENT_SECRET});infToken=login.accessToken;sensitive.add(infToken);
- common=await secrets('/cloudflare');site=await secrets('/sites/youareinthegame');cfToken=common['agents-write']||site['site.youareinthegame.cloudflare.api_token'];account=common.CLOUDFLARE_ACCOUNT_ID||site['site.youareinthegame.cloudflare.account_id'];
+ common=await secrets('/cloudflare');site=await secrets('/sites/youareinthegame');cfToken=common.CHATGPT_CLOUDFLARE_API_TOKEN||common['agents-write']||site['site.youareinthegame.cloudflare.api_token'];account=common.CLOUDFLARE_ACCOUNT_ID||site['site.youareinthegame.cloudflare.account_id'];
  if(!cfToken||!account||!common.CF_ACCESS_PAGES_PREVIEW_CLIENT_ID||!common.CF_ACCESS_PAGES_PREVIEW_CLIENT_SECRET)throw Error('Required deployment/Access credentials missing');
  if(process.argv.includes('--browser-only')){const url=process.env.COSTUME_PREVIEW_URL;await verifyAccess(url);await browser(url);return;}
  const branch=process.env.GITHUB_REF_NAME||'';if(!branch.startsWith('costume/')||branch===cfg.productionBranch)throw Error('Preview workflow must run on a costume feature branch');
@@ -82,7 +82,7 @@ async function main(){
  save('baseline.json',backup);save('asset-manifest.json',{sources:assetSources,staticAssetsPinnedByCheckpoint:true});
  const recent=await cf(apiBase()+'/deployments?env=preview&per_page=25');if(recent.length===25)recent.push(...await cf(apiBase()+'/deployments?env=preview&per_page=25&page=2'));const month=new Date().toISOString().slice(0,7);
  if(recent.filter(d=>(d.created_on||'').startsWith(month)).length>=cfg.maxMonthlyPreviewRuns)throw Error('Monthly preview run budget reached');
- accessToken=site['site.youareinthegame.cloudflare.api_token']||cfToken;const accessApps=await cf('/accounts/{account}/access/apps');
+ accessToken=common.CHATGPT_CLOUDFLARE_API_TOKEN||site['site.youareinthegame.cloudflare.api_token']||cfToken;const accessApps=await cf('/accounts/{account}/access/apps');
  const previewHost='costume-scalable-workflow.'+cfg.project+'.pages.dev';
  const covers=domain=>domain&&new RegExp('^'+domain.replace(/[.+?^${}()|[\]\\]/g,'\\$&').replaceAll('*','.*')+'$').test(previewHost);
  if(!accessApps.some(a=>covers(a.domain)||(a.self_hosted_domains||[]).some(covers)))await ensurePreviewAccess(accessApps);
