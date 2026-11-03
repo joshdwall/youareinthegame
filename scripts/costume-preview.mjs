@@ -83,7 +83,10 @@ async function browser(url){
  await page.waitForFunction(()=>document.querySelectorAll('#costumeAccessoryEditors fieldset').length===2&&!document.querySelector('#costumeSaveDraft').disabled);
  await page.locator('#costumeSaveDraft').click();await page.waitForFunction(()=>document.querySelector('#costumeWorkshopStatus').textContent.startsWith('Saved as draft'));
  const draftHidden=await page.evaluate(async()=>!(await(await fetch('/api/animations')).json()).animations.some(a=>a.id==='verification-bandana'));if(!draftHidden)throw Error('Verification draft leaked into public pool');
- await page.reload({waitUntil:'networkidle'});await page.getByText('Bandana verification',{exact:true}).first().waitFor();
+ await page.reload({waitUntil:'networkidle'});await page.waitForSelector('#costumeWorkshop');
+ // The animation list is virtualized in the mobile sidebar. Verify persisted
+ // server state after reload rather than requiring an off-screen row to mount.
+ await page.waitForFunction(async()=>{const data=await(await fetch('/api/cambio/runtime-config',{cache:'no-store'})).json();const saved=data.config?.animations?.find(a=>a.id==='verification-bandana');return saved?.label==='Bandana verification'&&saved.live===false&&saved.elements?.length===2;},null,{timeout:65000,polling:1000});
  save('draft-verification.json',{uploadedStock:true,savedAndReloaded:true,excludedFromPublicPool:true});
  if(cfg.worldmap){stage='visitor globe';const map=await context.newPage();const {verifyWorldmap}=await import('../tests/helpers/worldmap-browser.mjs');save('worldmap-browser.json',await verifyWorldmap(map,url,{screenshotDir:evidence}));await map.close();}
  save('browser.json',{ok:errors.length===0,errors});if(errors.length)throw Error('Preview browser errors: '+errors.join('; '));
