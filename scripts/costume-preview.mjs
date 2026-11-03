@@ -64,6 +64,7 @@ async function verifyAccess(url){
  for(const p of ['/','/cambio/','/api/animations']){const r=await fetch(new URL(p,u),{headers:headers(),redirect:'manual'});checks.push({path:p,status:r.status});if(r.status!==200)throw Error(`Protected preview check ${p}: HTTP ${r.status}`);}
  return checks;
 }
+async function verifyReady(url){let last;for(let attempt=1;attempt<=8;attempt++){try{return await verifyAccess(url);}catch(e){last=e;if(attempt<8)await new Promise(resolve=>setTimeout(resolve,10000));}}throw last;}
 async function browser(url){
  const {chromium}=await import('playwright');const browser=await chromium.launch();const context=await browser.newContext({viewport:{width:1280,height:900}});const origin=new URL(url).origin;
  let stage='public load';try{
@@ -83,7 +84,7 @@ async function main(){
  const login=await inf('/api/v1/auth/universal-auth/login',{clientId:process.env.INFISICAL_CLIENT_ID,clientSecret:process.env.INFISICAL_CLIENT_SECRET});infToken=login.accessToken;sensitive.add(infToken);
  common=await secrets('/cloudflare');site=await secrets('/sites/youareinthegame');cfToken=common.CHATGPT_CLOUDFLARE_API_TOKEN||common['agents-write']||site['site.youareinthegame.cloudflare.api_token'];account=common.CLOUDFLARE_ACCOUNT_ID||site['site.youareinthegame.cloudflare.account_id'];
  if(!cfToken||!account||!common.CF_ACCESS_PAGES_PREVIEW_CLIENT_ID||!common.CF_ACCESS_PAGES_PREVIEW_CLIENT_SECRET)throw Error('Required deployment/Access credentials missing');
- if(process.argv.includes('--browser-only')){const url=process.env.COSTUME_PREVIEW_URL;await verifyAccess(url);await browser(url);return;}
+ if(process.argv.includes('--browser-only')){const url=process.env.COSTUME_PREVIEW_URL;await verifyReady(url);await browser(url);return;}
  const branch=process.env.GITHUB_REF_NAME||'';if(!branch.startsWith('costume/')||branch===cfg.productionBranch)throw Error('Preview workflow must run on a costume feature branch');
  const project=await cf(apiBase());if(project.production_branch!==cfg.productionBranch)throw Error('Unexpected production branch; audit required');
  const prod=project.deployment_configs?.production||{};const prodKv=prod.kv_namespaces?.YAITG_SESSION_KV?.namespace_id;const prodBucket=prod.r2_buckets?.YAITG_ASSETS_R2?.name||prod.r2_buckets?.YAITG_ASSETS_R2?.bucket_name||'youareinthegame-assets';
@@ -109,7 +110,9 @@ async function main(){
   if(!exists)await cf(`/accounts/{account}/storage/kv/namespaces/${kv.id}/bulk`,'PUT',[{key,value:JSON.stringify(value)}]);
  }
  const previewVars=project.deployment_configs?.preview?.env_vars||{};
- if(!previewVars.YAITG_SESSION_SECRET)await cf(apiBase(),'PATCH',{deployment_configs:{preview:{env_vars:{...previewVars,YAITG_SESSION_SECRET:{type:'secret_text',value:crypto.randomBytes(32).toString('hex')}}}}});
+ const sessionMarker='costume:preview-session:v1';let independentSession=false;
+ try{independentSession=JSON.parse(await cf(`/accounts/{account}/storage/kv/namespaces/${kv.id}/values/${encodeURIComponent(sessionMarker)}`,'GET',undefined,true))?.independent===true;}catch{}
+ if(!previewVars.YAITG_SESSION_SECRET||!independentSession){await cf(apiBase(),'PATCH',{deployment_configs:{preview:{env_vars:{...previewVars,YAITG_SESSION_SECRET:{type:'secret_text',value:crypto.randomBytes(32).toString('hex')}}}}});await cf(`/accounts/{account}/storage/kv/namespaces/${kv.id}/bulk`,'PUT',[{key:sessionMarker,value:JSON.stringify({independent:true,createdAt:new Date().toISOString()})}]);}
  run('npm',['run','build']);usage.builds++;
  const configFile=path.resolve('wrangler.toml');const original=fs.readFileSync('wrangler.toml','utf8');
  fs.writeFileSync(configFile,original+`\n[env.preview]\n[env.preview.vars]\nYAITG_RATE_MAX = "120"\nYAITG_RATE_WINDOW_SEC = "3600"\n[[env.preview.kv_namespaces]]\nbinding = "YAITG_SESSION_KV"\nid = "${kv.id}"\n[[env.preview.r2_buckets]]\nbinding = "YAITG_ASSETS_R2"\nbucket_name = "${cfg.previewBucket}"\n`);
@@ -120,9 +123,10 @@ async function main(){
  if(deployedPreview.kv_namespaces?.YAITG_SESSION_KV?.namespace_id!==kv.id)throw Error('Deployed preview KV binding does not match isolated namespace');
  const boundBucket=deployedPreview.r2_buckets?.YAITG_ASSETS_R2?.name||deployedPreview.r2_buckets?.YAITG_ASSETS_R2?.bucket_name;
  if(boundBucket!==cfg.previewBucket)throw Error('Deployed preview R2 binding does not match isolated bucket');
- save('isolation.json',{productionKvUnchanged:true,previewKvSeparate:true,previewBucketSeparate:true,checkedAt:new Date().toISOString()});
+ save('isolation.json',{productionKvUnchanged:true,previewKvSeparate:true,previewBucketSeparate:true,previewSessionIndependent:true,checkedAt:new Date().toISOString()});
  const urls=[...output.matchAll(/https:\/\/[a-z0-9-]+\.youareinthegame-web\.pages\.dev/g)].map(m=>m[0]);const url=urls.find(x=>!x.includes('costume-scalable-workflow.'))||urls[0];if(!url)throw Error('Preview deployment URL missing');
- const checks=await verifyAccess(url);save('preview.json',{url,branch,commit:process.env.GITHUB_SHA,isolated:true,checks});
+ save('deployment.json',{url,branch,commit:process.env.GITHUB_SHA});
+ const checks=await verifyReady(url);save('preview.json',{url,branch,commit:process.env.GITHUB_SHA,isolated:true,checks});
  if(process.env.GITHUB_OUTPUT)fs.appendFileSync(process.env.GITHUB_OUTPUT,`url=${url}\n`);if(process.env.GITHUB_STEP_SUMMARY)fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,`## Costume preview\n\n[Open protected preview](${url}) · [Cambio](${url}/cambio/)\n\nProduction remains unchanged. Isolated preview KV/R2. Baseline backup is in the private evidence artifact.\n`);
  console.log('Protected costume preview:',url);
 }
