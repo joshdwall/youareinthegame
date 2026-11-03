@@ -19,12 +19,17 @@ async function ensurePreviewAccess(apps){
  const domain=`*.${cfg.project}.pages.dev`;
  if(apps.some(a=>a.domain===domain||(a.self_hosted_domains||[]).includes(domain)))return;
  const policies=await cf('/accounts/{account}/access/policies');
- const admin=policies.find(p=>p.name?.toLowerCase()==='admin'&&p.decision==='allow');
- if(!admin)throw Error('Existing reusable Admin allow policy is required for preview');
+ let admin=policies.find(p=>p.name?.toLowerCase()==='admin'&&p.decision==='allow');
+ if(!admin){
+  const groups=await cf('/accounts/{account}/access/groups');
+  const group=groups.find(g=>g.name?.toLowerCase()==='admin');
+  if(group)admin=await cf('/accounts/{account}/access/policies','POST',{name:'YAITG preview Admin',decision:'allow',include:[{group:{id:group.id}}],exclude:[],require:[]});
+  else throw Error('Admin policy/group missing. Available policy names: '+policies.map(p=>p.name+' ('+p.decision+')').join(', ')+'; group names: '+groups.map(g=>g.name).join(', '));
+ }
  let template;
  for(const app of apps.filter(a=>a.type==='self_hosted')){
   const linked=await cf(`/accounts/{account}/access/apps/${app.id}/policies`);
-  if(linked.some(p=>p.id===admin.id)&&app.allowed_idps?.length){template=app;break;}
+  if(linked.some(p=>p.id===admin.id||p.name?.toLowerCase().includes('admin')||p.include?.some(r=>r.group))&&app.allowed_idps?.length){template=app;break;}
  }
  if(!template)throw Error('Cannot identify the existing Admin application identity providers');
  const tokens=await cf('/accounts/{account}/access/service_tokens');
