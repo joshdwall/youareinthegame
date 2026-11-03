@@ -26,9 +26,9 @@ export async function onRequestPut(context) {
     return json({ ok: false, error: 'invalid_shape' }, 400);
   }
   try {
-    const config = await writeRuntimeConfig(env, normalizeConfig(incoming));
+    const config = await writeRuntimeConfig(env, {...normalizeConfig(incoming),costumeLibraryRevision:incoming.costumeLibraryRevision});
     return json({ ok: true, config });
   } catch (e) {
-    return json({ ok: false, error: String(e.message || e) }, 500);
+    return json({ ok: false, error: String(e.message || e) }, 422);
   }
 }

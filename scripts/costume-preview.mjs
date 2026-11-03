@@ -52,7 +52,7 @@ async function main(){
  const assetSources=[...new Set((backup.keys['cambio:runtime-config'].animations||[]).flatMap(a=>(a.elements||[]).map(e=>e.src)).filter(Boolean))];
  if(assetSources.length>cfg.maxAssets)throw Error('Asset inventory exceeds configured free-tier preview bound');
  save('baseline.json',backup);save('asset-manifest.json',{sources:assetSources,staticAssetsPinnedByCheckpoint:true});
- const recent=await cf(apiBase()+'/deployments?env=preview&per_page=100');const month=new Date().toISOString().slice(0,7);
+ const recent=await cf(apiBase()+'/deployments?env=preview&per_page=25');if(recent.length===25)recent.push(...await cf(apiBase()+'/deployments?env=preview&per_page=25&page=2'));const month=new Date().toISOString().slice(0,7);
  if(recent.filter(d=>(d.created_on||'').startsWith(month)).length>=cfg.maxMonthlyPreviewRuns)throw Error('Monthly preview run budget reached');
  const accessApps=await cf('/accounts/{account}/access/apps');
  const previewHost='costume-scalable-workflow.'+cfg.project+'.pages.dev';

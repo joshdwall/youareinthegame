@@ -283,6 +283,7 @@ export async function prepareUpcoming(creature) {
   await preloadActivationAssets([...new Set(urls)], ghost ? 'ghost' : (animId || 'composite'));
 
   prepared = {
+    transitionId:config?.placementsByAnimation?.[animId]?.transitionId||anim.animationPreset?.transition||'lightning',
     kind: ghost ? 'ghost' : 'composite',
     ready: true,
     id: animId,
@@ -477,6 +478,8 @@ export function installThresholdLootHook(effect) {
     try {
       if (ghost) {
         await activate({
+          animation:pick?.anim||{},
+          transitionId:prep?.transitionId,
           container,
           creature,
           creatureRig: rig,
@@ -491,6 +494,8 @@ export function installThresholdLootHook(effect) {
       } else {
         const placementsById = prep.placementsById || {};
         await activate({
+          animation:pick?.anim||{},
+          transitionId:prep?.transitionId,
           container,
           creature,
           creatureRig: rig,

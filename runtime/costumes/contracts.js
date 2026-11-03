@@ -14,6 +14,7 @@ const validId=x=>typeof x==='string'&&/^[a-z][a-z0-9-]{0,63}$/.test(x);
 const finite=(x,min,max)=>typeof x==='number'&&Number.isFinite(x)&&x>=min&&x<=max;
 const point=(x,min=0,max=1)=>x&&finite(x.x,min,max)&&finite(x.y,min,max);
 const object=x=>x&&typeof x==='object'&&!Array.isArray(x);
+const stable=x=>JSON.stringify(x,(_key,value)=>object(value)?Object.fromEntries(Object.keys(value).sort().map(key=>[key,value[key]])):value);
 function requireOk(test,message){if(!test)throw Error(message);}
 export function safeAssetSource(src){return typeof src==='string'&&!/[\\\u0000-\u001f]/.test(src)&&!src.includes('..')&&/^\/?(?:assets\/|img\/|effects\/|api\/assets\/)[a-zA-Z0-9_./@-]+(?:\?[a-zA-Z0-9_=&.-]+)?$/.test(src);}
 export function validateActions(actions=[]){
@@ -64,10 +65,10 @@ export function validateBundle(bundle,library={assets:[],rigs:[MUSHROOM_RIG],pre
  const c=bundle.costume;requireOk(object(c)&&validId(c.id)&&Number.isInteger(c.version)&&c.version>0&&typeof c.label==='string'&&c.label.trim().length>0&&c.label.length<=80,'Invalid costume identity');
  requireOk(Array.isArray(bundle.assets)&&bundle.assets.length<=LIMITS.elements,'Invalid asset collection');
  const assets=new Map((library.assets||[]).map(a=>[ref(a),a]));
- for(const a of bundle.assets){validateAsset(a);const old=assets.get(ref(a));requireOk(!old||JSON.stringify(old)===JSON.stringify(a),'Asset version is immutable; create a new version');assets.set(ref(a),clone(a));}
+ for(const a of bundle.assets){validateAsset(a);const old=assets.get(ref(a));requireOk(!old||stable(old)===stable(a),'Asset version is immutable; create a new version');assets.set(ref(a),clone(a));}
  const rigs=[MUSHROOM_RIG,...(library.rigs||[])];const rig=rigs.find(r=>ref(r)===c.rig);requireOk(rig,'Unknown costume rig');
  const presets={...PRESETS,...Object.fromEntries((library.presets||[]).map(p=>[ref(p),p]))};
- if(bundle.preset){const key=ref(bundle.preset);const v=resolvePreset(bundle.preset);requireOk(!presets[key]||JSON.stringify(presets[key])===JSON.stringify(v),'Preset version is immutable');presets[key]=v;}
+ if(bundle.preset){const key=ref(bundle.preset);const v=resolvePreset(bundle.preset);requireOk(!presets[key]||stable(presets[key])===stable(v),'Preset version is immutable');presets[key]=v;}
  const preset=resolvePreset(presets[c.preset]);requireOk(presets[c.preset],'Unknown preset reference');
  requireOk(Array.isArray(c.elements)&&c.elements.length>0&&c.elements.length<=LIMITS.elements,'Costume requires 1-24 accessories');
  const ids=new Set();const elements=c.elements.map(e=>{requireOk(validId(e.id)&&!ids.has(e.id),'Accessory instance IDs must be unique');ids.add(e.id);const a=assets.get(e.asset);requireOk(a,'Missing asset reference: '+e.asset);const p=validatePlacement({...e.placement,objectAnchor:e.placement?.objectAnchor||a.pivot},rig);return {id:e.id,asset:e.asset,src:a.src,anchor:e.placement?.attachment?.point||'manual',defaultWidthFrac:p.scale,placement:p};});

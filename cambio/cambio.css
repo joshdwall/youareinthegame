@@ -938,3 +938,12 @@ body.cambio-body #siteStage.container {
 .oa-type-fields.oa-fields-na .ie-value {
   color: var(--cambio-muted, #6c757d);
 }
+.costume-workshop { margin-block: 12px; }
+.costume-workshop > summary { cursor: pointer; padding: 10px; font-weight: 600; }
+.costume-workshop .card-body { display: grid; gap: 10px; }
+.costume-workshop input, .costume-workshop select, .costume-workshop textarea { width: 100%; min-width: 0; }
+.costume-workshop textarea { font: inherit; min-height: 160px; resize: vertical; }
+.costume-workshop .cambio-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.costume-workshop .btn { min-height: 40px; }
+.costume-accessory { border: 1px solid var(--cui-border-color, #bcc6ce); padding: 8px; margin-block: 8px; }
+.costume-workshop :focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }

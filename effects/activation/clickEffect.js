@@ -21,8 +21,8 @@ export function resolveClickEffect(animation) {
     return {
       type: raw.type,
       sporeImage: raw.sporeImage || null,
-      count: raw.count ?? 16,
-      scale: raw.scale ?? 0.15
+      count: Math.floor(Math.min(24,Math.max(1,Number(raw.count)||16))),
+      scale: Math.min(.5,Math.max(.03,Number(raw.scale)||.15))
     };
   }
   const hasElements = Array.isArray(animation.elements) && animation.elements.length > 0;
