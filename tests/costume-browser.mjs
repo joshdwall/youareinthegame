@@ -13,7 +13,7 @@ try{
  await page.locator('#costumeSaveDraft').click();await page.waitForFunction(()=>document.querySelector('#costumeWorkshopStatus').textContent.startsWith('Saved as draft'));
  const hidden=await page.evaluate(async()=>{const publicData=await(await fetch('/api/animations')).json();return !publicData.animations.some(a=>a.id==='bandit-reusable');});assert(hidden,'Saved draft must stay out of public pool');
  await page.screenshot({path:'test-results/costumes/editor-desktop.png',fullPage:true});
- await page.reload({waitUntil:'networkidle'});assert(await page.getByText('Bandit reusable',{exact:false}).count()||await page.locator('[data-anim-id="bandit-reusable"]').count(),'Saved draft should survive reload');
+ await page.reload({waitUntil:'networkidle'});assert(await page.getByText('Bandana draft',{exact:false}).count()||await page.locator('[data-anim-id="bandit-reusable"]').count(),'Saved draft should survive reload');
  await page.setViewportSize({width:390,height:844});await page.locator('#costumeWorkshop summary').first().click();await page.screenshot({path:'test-results/costumes/editor-mobile.png',fullPage:true});
  const lifecycle=await page.evaluate(async()=>{
   const {buildCharacterComposite}=await import('/effects/activation/CharacterComposite.js');const {runBehaviors}=await import('/runtime/costumes/behaviors.js');const {runActivation}=await import('/effects/activation/ActivationEngine.js');const {compileBundle,PRESETS}=await import('/runtime/costumes/contracts.js');
