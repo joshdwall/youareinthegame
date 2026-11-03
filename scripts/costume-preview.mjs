@@ -11,19 +11,25 @@ let infToken,cfToken,accessToken,account,site,common;const usage={builds:0,deplo
 const workspace='41982513-3430-4531-a227-9aa124fe024d';
 async function inf(p,body){const r=await fetch('https://app.infisical.com'+p,{method:body?'POST':'GET',headers:{'content-type':'application/json',...(infToken?{authorization:'Bearer '+infToken}:{})},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(30000)});if(!r.ok)throw Error('Infisical HTTP '+r.status);return r.json();}
 async function secrets(folder){const q=new URLSearchParams({projectId:workspace,environment:'prod',secretPath:folder,viewSecretValue:'true',expandSecretReferences:'true',includeImports:'true'});const data=await inf('/api/v4/secrets?'+q);const rows=[...(data.secrets||[]),...(data.imports||[]).flatMap(i=>i.secrets||[])];const out=Object.fromEntries(rows.map(s=>[s.secretKey,s.secretValue]));for(const v of Object.values(out))if(v)sensitive.add(v);return out;}
-async function cf(p,method='GET',body,raw=false){usage.cfApiCalls++;const r=await fetch('https://api.cloudflare.com/client/v4'+p.replaceAll('{account}',account),{method,headers:{authorization:'Bearer '+(p.includes('/access/')&&accessToken?accessToken:cfToken),'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(45000)});if(raw){if(!r.ok)throw Error(`Cloudflare ${method} ${redact(p)}: HTTP ${r.status}`);return r.text();}const j=await r.json();if(!r.ok||j.success===false)throw Error(`Cloudflare ${method} ${redact(p)}: HTTP ${r.status} (${(j.errors||[]).map(e=>e.code).join(',')})`);return j.result;}
+async function cf(p,method='GET',body,raw=false,meta=false){usage.cfApiCalls++;const r=await fetch('https://api.cloudflare.com/client/v4'+p.replaceAll('{account}',account),{method,headers:{authorization:'Bearer '+(p.includes('/access/')&&accessToken?accessToken:cfToken),'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(45000)});if(raw){if(!r.ok)throw Error(`Cloudflare ${method} ${redact(p)}: HTTP ${r.status}`);return r.text();}const j=await r.json();if(!r.ok||j.success===false)throw Error(`Cloudflare ${method} ${redact(p)}: HTTP ${r.status} (${(j.errors||[]).map(e=>e.code).join(',')})`);return meta?j:j.result;}
 function run(exe,args,env={}){const r=spawnSync(exe,args,{encoding:'utf8',env:{...process.env,...env},maxBuffer:20e6});if(r.status!==0)throw Error(`${exe} failed: ${redact(r.stdout||'')} ${redact(r.stderr||'')}`);return r.stdout||'';}
 function wrangler(args){usage.wranglerCalls++;return run('npx',['--yes',`wrangler@${cfg.wranglerVersion}`,...args],{CLOUDFLARE_API_TOKEN:cfToken,CLOUDFLARE_ACCOUNT_ID:account});}
+async function cfList(p){const rows=[];for(let page=1;page<=20;page++){const j=await cf(p+(p.includes('?')?'&':'?')+`per_page=50&page=${page}`,'GET',undefined,false,true);if(!Array.isArray(j.result))throw Error('Unexpected Cloudflare list response');rows.push(...j.result);if(j.result_info?.total_pages?page>=j.result_info.total_pages:j.result.length<50)return rows;}throw Error('Cloudflare list exceeds safe pagination bound');}
 const apiBase=()=>`/accounts/{account}/pages/projects/${cfg.project}`;
 async function ensurePreviewAccess(apps){
  const domain=`*.${cfg.project}.pages.dev`;
  const existing=apps.find(a=>a.domain===domain||(a.self_hosted_domains||[]).includes(domain));
- const policies=await cf('/accounts/{account}/access/policies');
- let admin=policies.find(p=>p.name?.toLowerCase()==='admin'&&p.decision==='allow'),template;
+ if(existing){
+  const linked=await cfList(`/accounts/{account}/access/apps/${existing.id}/policies`);
+  const tokens=await cfList('/accounts/{account}/access/service_tokens');const token=tokens.find(t=>t.client_id===common.CF_ACCESS_PAGES_PREVIEW_CLIENT_ID);
+  if(token&&linked.some(p=>p.decision==='non_identity'&&p.include?.some(r=>r.service_token?.token_id===token.id))&&linked.some(p=>p.decision==='allow')&&!linked.some(p=>p.decision==='bypass'))return;
+ }
+ const policies=await cfList('/accounts/{account}/access/policies');
+ let admin=policies.find(p=>['admin','yaitg preview admin'].includes(p.name?.toLowerCase())&&p.decision==='allow'),template;
  let gameApps=apps,adminBase='/accounts/{account}/access';
  if(!gameApps.some(a=>a.domain?.startsWith('app.youareinthegame.com'))){
  const zones=await cf('/zones?name=youareinthegame.com');
-  if(zones.length===1){sensitive.add(zones[0].id);adminBase=`/zones/${zones[0].id}/access`;gameApps=await cf(adminBase+'/apps');}
+  if(zones.length===1){sensitive.add(zones[0].id);adminBase=`/zones/${zones[0].id}/access`;gameApps=await cfList(adminBase+'/apps');}
  }
  const gameAdmin=gameApps.find(a=>a.domain?.startsWith('app.youareinthegame.com'));
  if(gameAdmin){
@@ -33,7 +39,7 @@ async function ensurePreviewAccess(apps){
   if(!admin&&allow.length===1){const p=allow[0];if(p.include?.some(r=>r.everyone))throw Error('Refusing broad admin allow policy');admin=await cf('/accounts/{account}/access/policies','POST',{name:'YAITG preview Admin',decision:'allow',include:p.include,exclude:p.exclude||[],require:p.require||[]});}
  }
  if(!admin||!template?.allowed_idps?.length)throw Error('Existing game Admin policy and Cloudflare identity providers could not be resolved; Access read permissions/account scope require review. No preview deployed.');
- const tokens=await cf('/accounts/{account}/access/service_tokens');
+ const tokens=await cfList('/accounts/{account}/access/service_tokens');
  const token=tokens.find(t=>t.client_id===common.CF_ACCESS_PAGES_PREVIEW_CLIENT_ID);
  if(!token)throw Error('Existing preview service token not found');
  if(token.expires_at&&new Date(token.expires_at)<new Date())throw Error('Existing preview service token has expired');
@@ -91,7 +97,7 @@ async function main(){
  save('baseline.json',backup);save('asset-manifest.json',{sources:assetSources,staticAssetsPinnedByCheckpoint:true});
  const recent=await cf(apiBase()+'/deployments?env=preview&per_page=25');if(recent.length===25)recent.push(...await cf(apiBase()+'/deployments?env=preview&per_page=25&page=2'));const month=new Date().toISOString().slice(0,7);
  if(recent.filter(d=>(d.created_on||'').startsWith(month)).length>=cfg.maxMonthlyPreviewRuns)throw Error('Monthly preview run budget reached');
- accessToken=common.CHATGPT_CLOUDFLARE_API_TOKEN||site['site.youareinthegame.cloudflare.api_token']||cfToken;const accessApps=await cf('/accounts/{account}/access/apps');
+ accessToken=common.CHATGPT_CLOUDFLARE_API_TOKEN||site['site.youareinthegame.cloudflare.api_token']||cfToken;const accessApps=await cfList('/accounts/{account}/access/apps');
  const previewHost='costume-scalable-workflow.'+cfg.project+'.pages.dev';
  const covers=domain=>domain&&new RegExp('^'+domain.replace(/[.+?^${}()|[\]\\]/g,'\\$&').replaceAll('*','.*')+'$').test(previewHost);
  await ensurePreviewAccess(accessApps);
