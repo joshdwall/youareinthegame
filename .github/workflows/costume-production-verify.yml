@@ -1,0 +1,31 @@
+name: Verify promoted costume runtime
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Verify approved production commit and immediate round reset
+        env:
+          INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_CLIENT_ID }}
+          INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_CLIENT_SECRET }}
+        run: node scripts/costume-preview.mjs --production-only
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: costume-production-evidence
+          path: .preview-evidence/
+          include-hidden-files: true
+          retention-days: 30

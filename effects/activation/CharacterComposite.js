@@ -1,4 +1,6 @@
 import { elementWidthPx } from './placementMath.js';
+import {applyElementPlacement} from './placementMath.js';
+import {resolvePlacement} from '../../runtime/costumes/contracts.js';
 
 /**
  * Build a composited character (base + overlay elements at placements).
@@ -30,11 +32,11 @@ export function buildCharacterComposite({ baseSrc, elements = [], box, scale = 1
   base.src = baseSrc;
   base.alt = '';
   base.draggable = false;
-  base.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;';
+  base.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;z-index:2;';
   root.appendChild(base);
 
-  for (const el of elements) {
-    const st = el.placement || {};
+  for (const el of [...elements].sort((a,b)=>resolvePlacement(a.placement).order-resolvePlacement(b.placement).order)) {
+    const st = resolvePlacement({...el.placement,...(Object.prototype.hasOwnProperty.call(el,'flipX')?{flipX:el.flipX}:{})});
     const ca = st.characterAnchor || { x: 0.5, y: 0.5 };
     const oa = st.objectAnchor || { x: 0.5, y: 0.5 };
     const rot = st.rotation || 0;
@@ -56,6 +58,8 @@ export function buildCharacterComposite({ baseSrc, elements = [], box, scale = 1
       `transform:translate(${-oa.x * 100}%, ${-oa.y * 100}%) rotate(${rot}deg)${flips}`
     ].join(';');
     root.appendChild(img);
+    applyElementPlacement(img,st,{left:0,top:0,width:box.width*scale,height:box.height*scale});
+    img.style.zIndex=String(st.layer==='behind-character'?1:5);
   }
 
   return root;

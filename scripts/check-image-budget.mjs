@@ -22,6 +22,8 @@ function shouldIgnore(rel) {
   const n = rel.replace(/\\/g, '/');
   if (n.includes('node_modules/') || n.includes('.git/') || n.includes('capture/') || n.includes('test-results/') || n.startsWith('dist/') || n.includes('/dist/')) return true;
   if (n.includes('cambio/vendor/')) return true;
+  // Offline generation references are never copied to the deployed site.
+  if (n.startsWith('tools/')) return true;
   // Legacy oversized source kept for provenance; optimized siblings are what ship in HTML.
   if (n.endsWith('Now With Spores Large Image Circular Blue Orange.png')) return true;
   return false;

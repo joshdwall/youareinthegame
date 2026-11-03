@@ -8,6 +8,7 @@
 
 export const DEFAULT_STORM_RESET_MS = 1500;
 export const DEFAULT_BACKGROUND = '#7ab5a0';
+const pendingClears = new WeakMap();
 
 /**
  * @param {HTMLElement | null} container
@@ -22,10 +23,17 @@ export function fadeStormResetToLight(container, opts = {}) {
   );
   const backgroundColor = opts.backgroundColor || DEFAULT_BACKGROUND;
   const clearAfter = opts.clearAfter !== false;
+  clearTimeout(pendingClears.get(container));
 
   // Ensure we transition FROM the current computed dark color TO light
   const current = getComputedStyle(container).backgroundColor;
   container.style.transition = 'none';
+  container.style.backgroundColor = backgroundColor;
+  if (getComputedStyle(container).backgroundColor === current) {
+    container.style.transition = '';
+    pendingClears.delete(container);
+    return 0;
+  }
   container.style.backgroundColor = current;
   // Force style flush so the next transition animates
   void container.offsetHeight;
@@ -37,7 +45,9 @@ export function fadeStormResetToLight(container, opts = {}) {
       if (container.style.transition.includes('background-color')) {
         container.style.transition = '';
       }
-    }, durationMs + 50);
+      pendingClears.delete(container);
+    }, durationMs);
+    pendingClears.set(container, t);
     return durationMs;
   }
   return durationMs;

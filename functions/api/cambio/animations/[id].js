@@ -5,6 +5,7 @@
  */
 import { requireAccess, json } from '../../../_shared/cambio-auth.js';
 import { readRuntimeConfig, writeRuntimeConfig } from '../../../_shared/runtime-config.js';
+import {validateAnimationDraft} from '../../../../runtime/costumes/contracts.js';
 
 export async function onRequestGet(context) {
   const { request, env, params } = context;
@@ -61,7 +62,8 @@ export async function onRequestPatch(context) {
   if (typeof patch.tiers === 'object' && patch.tiers) {
     config.tiers = { ...config.tiers, ...patch.tiers };
   }
-  const saved = await writeRuntimeConfig(env, config);
+  let saved;
+  try{validateAnimationDraft(next);saved=await writeRuntimeConfig(env,config);}catch(e){return json({ok:false,error:e.message},422);}
   return json({ ok: true, animation: next, config: saved });
 }
 

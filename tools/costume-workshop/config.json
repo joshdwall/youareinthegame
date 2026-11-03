@@ -1,0 +1,16 @@
+{
+  "ollamaUrl": "http://127.0.0.1:11434",
+  "ollamaModel": "llama3.2:latest",
+  "generatorExe": "runtime/sd-cli.exe",
+  "generatorModel": "runtime/sd15-q4.gguf",
+  "backend": "Vulkan0",
+  "width": 512,
+  "height": 512,
+  "steps": 20,
+  "cfgScale": 7,
+  "cooldownSeconds": 5,
+  "maxAttempts": 2,
+  "retrySeconds": 60,
+  "modelExpectedBytes": 1566768416,
+  "modelSha256": "b8944e9fe0b69b36ae1b5bb0185b3a7b8ef14347fe0fa9af6c64c4829022261f"
+}

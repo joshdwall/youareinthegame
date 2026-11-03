@@ -10,6 +10,8 @@
     "build": "node scripts/sync-envivo-ui.mjs && node scripts/build.mjs",
     "verify": "node tests/verify-yaitg-session-roll.mjs && node tests/verify-yaitg-animation-preview.mjs && node tests/loot-table-weights.test.mjs && node tests/placement-math.test.mjs && node tests/selection-cursor-last-played.test.mjs && node tests/loot-table-alternate.test.mjs && node tests/spore-burst-math.test.mjs && node tests/log-gate.test.mjs && node scripts/check-image-budget.mjs && node scripts/check-no-raw-console-log.mjs",
     "test": "npm run verify",
+    "test:costumes": "node --test tests/costume-contracts.test.mjs && node --test tools/costume-workshop/tests.mjs",
+    "test:costume-browser": "node tests/costume-browser.mjs",
     "dev": "npm run build && npx wrangler pages dev dist",
     "compare:staging": "node scripts/compare-staging.mjs",
     "test:click": "node tests/click-test.mjs",

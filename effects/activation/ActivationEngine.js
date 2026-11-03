@@ -7,6 +7,8 @@
  * Never draws a second full-size base character during the flash.
  * Owned flash layers are always created fresh per run and removed on cleanup.
  */
+import {resolvePreset,LIMITS} from '../../runtime/costumes/contracts.js';
+import {runBehaviors} from '../../runtime/costumes/behaviors.js';
 import { FireworkManager } from '../spore/finale.js';
 import { GHOST_CONFIG } from '../spore/ghost/config.js';
 import { fadeStormResetToLight } from './fadeStormReset.js';
@@ -78,222 +80,125 @@ function bodyFlash(classExtra = '') {
  * @returns {Promise<{ok:boolean}>}
  */
 export async function runActivation(opts) {
-  const {
-    container,
-    creature,
-    creatureRig = null,
-    sporeHost = container,
-    profile = 'ghost',
-    composite = null,
-    flashHost = null,
-    spore = {},
-    signal = null,
-    assetsPreloaded = false
-  } = opts;
-
-  if (!container || !creature) throw new Error('activation: container and creature required');
-  const flashParent = creatureRig || container;
-
-  // Stylesheets + images must be ready BEFORE first flash frame.
-  // Cycle-start prepareUpcoming calls preloadActivationAssets; skip awaits at threshold.
-  if (!assetsPreloaded) {
-    const urls = profile === 'composite' && composite
-      ? [composite.baseSrc, ...(composite.elements || []).map((e) => e.src)]
-      : [GHOST_CONFIG.ASSETS.OVERLAY_IMAGE];
-    await preloadActivationAssets(urls);
-  }
-
-  const timers = new Set();
-  const track = (id) => { timers.add(id); return id; };
-  const clearTimers = () => {
-    timers.forEach((id) => { clearTimeout(id); clearInterval(id); });
-    timers.clear();
+  const {container,creature,creatureRig=null,sporeHost=container,profile='ghost',composite=null,flashHost=null,signal=null,assetsPreloaded=false,animation={}}=opts;
+  if(!container||!creature)throw new Error('activation: container and creature required');
+  const preset=resolvePreset(opts.preset||animation.animationPreset);
+  const transition=opts.transitionId||preset.transition;
+  if(!['lightning','none'].includes(transition))throw new Error('Unsupported transition');
+  const reduced=typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const flashParent=creatureRig||container;
+  const elements=(composite?.elements||[]).slice(0,LIMITS.elements);
+  const timers=new Set(),nodes=new Set(),controls=new Set();
+  let player=null,manager=null,abortResolve;
+  const abortPromise=new Promise(resolve=>{abortResolve=resolve;});
+  const onAbort=()=>abortResolve();signal?.addEventListener('abort',onAbort,{once:true});
+  const aborted=()=>signal?.aborted;
+  const track=fn=>{controls.add(fn);return fn;};
+  const delay=ms=>Promise.race([new Promise(resolve=>{const id=setTimeout(()=>{timers.delete(id);resolve();},ms);timers.add(id);}),abortPromise]);
+  const stopControl=control=>{try{control.stop();}catch{}controls.delete(control);};
+  const actionsForPhase=phase=>elements.map(e=>({...e,placement:{...e.placement,objectActions:(e.placement?.objectActions||e.objectActions||[]).filter(a=>(a.phase||'activation')===phase)}}));
+  const actions=(root,target,phase)=>{
+    const selected=actionsForPhase(phase);const legacy=track(runObjectActions({root,elements:selected,target,sporeIndex:0}));
+    const motion=track(runBehaviors({root,elements:selected,target,phase,signal}));
+    return {stop(){stopControl(motion);stopControl(legacy);}};
   };
-  const aborted = () => signal?.aborted;
-
-  // Clean prior OWNED flash leftovers only (never delete a foreign host by id).
-  clearOwnedFlashLayers(flashParent, container);
-  sporeHost.querySelectorAll('.firework-spore, .activation-spore').forEach((n) => n.remove());
-
-  const boxInContainer = measureCreatureBox(creature, flashParent);
-  const overlayProfile = OVERLAY_PROFILES[profile] || OVERLAY_PROFILES.ghost;
-  let overlayPlayer = null;
-  let fireworkManager = null;
-
-  // Build flash overlay via OverlayPlayer — identical lifecycle for every profile.
-  if (profile === 'ghost') {
-    const layer = createImageFlashLayer({
-      parent: flashParent,
-      src: overlayProfile.imageSrc || GHOST_CONFIG.ASSETS.OVERLAY_IMAGE,
-      box: boxInContainer,
-      alt: 'Ghost Overlay',
-      matchCreatureFloat: true
-    });
-    overlayPlayer = createOverlayPlayer({ layer, owned: true, flash: overlayProfile.flash });
-  } else if (profile === 'composite') {
-    // Flash accessories ON the live character — never a second full-size base.
-    if (!flashHost) {
-      throw new Error('activation: composite profile requires flashHost (live overlay with accessories)');
-    }
-    if (!composite) {
-      throw new Error('activation: composite profile requires composite (for mini spores)');
-    }
-    const layer = bindFlashHost(flashHost);
-    overlayPlayer = createOverlayPlayer({ layer, owned: false, flash: overlayProfile.flash });
-  } else {
-    throw new Error(`activation: unknown profile ${profile}`);
-  }
-
-  const showFlash = () => overlayPlayer?.show();
-  const hideFlash = () => overlayPlayer?.hide();
-  const cleanupFlashLayer = () => {
-    overlayPlayer?.cleanup();
-    overlayPlayer = null;
-  };
-
-  // Lightning sequence (same timing envelope as SporeBaseEffect)
-  const L = GHOST_CONFIG.LIGHTNING;
-  const sequenceDuration = L.SEQUENCE_MIN_MS + Math.random() * (L.SEQUENCE_MAX_MS - L.SEQUENCE_MIN_MS);
-  const endTime = Date.now() + sequenceDuration;
-
-  await new Promise((resolve) => {
-    const tick = () => {
-      if (aborted() || Date.now() >= endTime) {
-        hideFlash();
-        resolve();
-        return;
-      }
-      const flash = bodyFlash();
-      showFlash();
-      const flashDuration = L.FLASH_MIN_MS + Math.random() * (L.FLASH_MAX_MS - L.FLASH_MIN_MS);
-      track(setTimeout(() => {
-        flash.remove();
-        hideFlash();
-      }, flashDuration));
-      const nextDelay = L.FLASH_GAP_MIN_MS + Math.random() * (L.FLASH_GAP_MAX_MS - L.FLASH_GAP_MIN_MS);
-      track(setTimeout(tick, nextDelay));
+  try {
+    if(aborted())return {ok:false,aborted:true};
+    if(!assetsPreloaded)await preloadActivationAssets(profile==='composite'?[composite?.baseSrc,...elements.map(e=>e.src)].filter(Boolean):[GHOST_CONFIG.ASSETS.OVERLAY_IMAGE],profile);
+    if(aborted())return {ok:false,aborted:true};
+    clearOwnedFlashLayers(flashParent,container);
+    sporeHost.querySelectorAll('.firework-spore,.activation-spore').forEach(n=>{n.__actionStop?.();n.remove();});
+    const box=measureCreatureBox(creature,flashParent);
+    const overlayProfile=OVERLAY_PROFILES[profile]||OVERLAY_PROFILES.ghost;
+    let resetPromise;
+    const resetToLight=()=>{
+      if(resetPromise)return resetPromise;
+      const fadeMs=fadeStormResetToLight(container,{durationMs:window.__yaitgEffect?.__liveStormResetMs||overlayProfile.animations.STORM_RESET_DURATION,backgroundColor:overlayProfile.visuals.BACKGROUND_COLOR});
+      creature.className=creature.className.replace(/storm-level-\d+/g,'');
+      opts.onResetStart?.(fadeMs);
+      resetPromise=delay(fadeMs);return resetPromise;
     };
-    tick();
-  });
-
-  if (aborted()) {
-    clearTimers();
-    cleanupFlashLayer();
-    return { ok: false, aborted: true };
-  }
-
-  // Spores — assets already preloaded before flash (cycle start or activate entry)
-  const fw = GHOST_CONFIG.FIREWORKS;
-  const launchX = window.innerWidth / 2 + fw.LAUNCH_OFFSET_X;
-  const launchY = window.innerHeight / 2 + fw.LAUNCH_OFFSET_Y;
-
-  // Object-action elements: same data shape for every character (placements → composite.elements).
-  // Ghost image spores and cowboy composites both run runObjectActions from this list.
-  const actionElements = Array.isArray(composite?.elements) ? composite.elements : [];
-  const sporeBodyEl = actionElements.find((e) => e?.role === 'sporeBody' || e?.id === 'ghostBody')
-    || actionElements.find((e) => e?.placement?.objectActions?.length)
-    || null;
-  const imageSporeSrc = sporeBodyEl?.src
-    || (profile === 'ghost' ? (fw.SPORE_IMAGE || GHOST_CONFIG.ASSETS.SPORE_IMAGE) : null);
-
-  const sporeDone = new Promise((resolve) => {
-    const charBox = { width: boxInContainer.width, height: boxInContainer.height };
-    const fwLaunch = {
-      ...fw,
-      SPORE_COUNT: spore.count ?? fw.SPORE_COUNT,
-      createSporeElement(sporeInst, dims) {
-        const sporeIndex = sporeInst?.id ?? Math.floor(Math.random() * 1000);
-        let node;
-
-        if (profile === 'composite') {
-          // Mini character replicas (cowboy etc.)
-          const targetW = dims?.width ?? (fw.BASE_WIDTH * sporeInst.size);
-          const scale = targetW / Math.max(1, charBox.width);
-          node = buildCharacterComposite({
-            baseSrc: composite.baseSrc,
-            elements: actionElements,
-            box: charBox,
-            scale
-          });
-          node.classList.add('activation-spore');
-          node.style.position = 'absolute';
-          node.style.width = `${charBox.width * scale}px`;
-          node.style.height = `${charBox.height * scale}px`;
-          node.style.zIndex = '25';
-          node.style.opacity = '1';
-          node.style.overflow = 'visible';
-        } else {
-          // Image spore (ghost): single sprite + OA anchors from placements data
-          const w = dims?.width ?? (fw.BASE_WIDTH * sporeInst.size);
-          const h = dims?.height ?? (fw.BASE_HEIGHT * sporeInst.size);
-          node = document.createElement('div');
-          node.classList.add('activation-spore');
-          node.style.position = 'absolute';
-          node.style.width = `${w}px`;
-          node.style.height = `${h}px`;
-          node.style.zIndex = '25';
-          node.style.opacity = '1';
-          node.style.overflow = 'visible';
-          const img = document.createElement('img');
-          img.src = imageSporeSrc || fw.SPORE_IMAGE;
-          img.draggable = false;
-          img.dataset.elementId = sporeBodyEl?.id || 'ghostBody';
-          img.alt = '';
-          img.style.width = '100%';
-          img.style.height = '100%';
-          img.style.display = 'block';
-          img.style.pointerEvents = 'none';
-          node.appendChild(img);
-        }
-
-        const ctrl = runObjectActions({
-          root: node,
-          elements: actionElements,
-          target: 'spore',
-          sporeIndex
-        });
-        node.__actionStop = ctrl.stop;
-        return node;
+    const flash=transition==='none'||reduced?{...overlayProfile.flash,SHOW_PROBABILITY:1,MIN_OPACITY:1,MAX_OPACITY:1,FLICKER_ENABLED:false,FADE_IN_MS:preset.phases.equipMs,FADE_OUT_MS:preset.phases.exitMs}:overlayProfile.flash;
+    if(profile==='ghost'){
+      const layer=createImageFlashLayer({parent:flashParent,src:overlayProfile.imageSrc,box,alt:'Ghost Overlay',matchCreatureFloat:true});
+      player=createOverlayPlayer({layer,owned:true,flash});
+    }else if(profile==='composite'){
+      if(!flashHost||!composite)throw new Error('Composite activation requires mounted accessories');
+      player=createOverlayPlayer({layer:bindFlashHost(flashHost),owned:false,flash,secondaryLayers:flashHost.__costumeBackLayer?[flashHost.__costumeBackLayer]:[]});
+    }else throw new Error('Unknown overlay profile');
+    const roots=profile==='composite'?[flashHost,flashHost.__costumeBackLayer].filter(Boolean):[];
+    player.show();
+    const equip=roots.map(root=>actions(root,'activation','equip'));
+    if(preset.phases.equipMs)await delay(reduced?100:preset.phases.equipMs);
+    equip.forEach(c=>c.stop());
+    if(aborted())return {ok:false,aborted:true};
+    const active=roots.flatMap(root=>[actions(root,'activation','idle'),actions(root,'activation','activation')]);
+    const duration=reduced?150:preset.phases.activationMinMs+Math.random()*(preset.phases.activationMaxMs-preset.phases.activationMinMs);
+    if(transition==='lightning'&&!reduced){
+      const L=overlayProfile.lightning;const end=Date.now()+duration;
+      while(Date.now()<end&&!aborted()){
+        const n=bodyFlash();nodes.add(n);player.show();
+        await delay(L.FLASH_MIN_MS+Math.random()*(L.FLASH_MAX_MS-L.FLASH_MIN_MS));n.remove();nodes.delete(n);player.hide();
+        if(!aborted())await delay(L.FLASH_GAP_MIN_MS+Math.random()*(L.FLASH_GAP_MAX_MS-L.FLASH_GAP_MIN_MS));
       }
+    }else await delay(duration);
+    active.forEach(c=>c.stop());
+    if(aborted())return {ok:false,aborted:true};
+    const hasExit=elements.some(e=>(e.placement?.objectActions||[]).some(a=>a.phase==='exit'));
+    if(hasExit){player.show();const exits=roots.map(root=>actions(root,'activation','exit'));await delay(reduced?100:preset.phases.exitMs);exits.forEach(c=>c.stop());}
+    player.hide();
+    const charBox={width:box.width,height:box.height};
+    const spec=preset.spores;
+    const count=reduced?Math.min(spec.count,4):Math.min(spec.count,LIMITS.clones);
+    const makeSpore=(dims,index)=>{
+      let node;
+      if(profile==='composite'){
+        const scale=dims.width/Math.max(1,charBox.width);node=buildCharacterComposite({baseSrc:composite.baseSrc,elements,box:charBox,scale});
+      }else{
+        node=document.createElement('div');const image=document.createElement('img');image.src=elements.find(e=>e.role==='sporeBody')?.src||GHOST_CONFIG.ASSETS.SPORE_IMAGE;image.dataset.elementId=elements.find(e=>e.role==='sporeBody')?.id||'ghostBody';image.alt='';image.draggable=false;image.style.cssText='width:100%;height:100%;display:block;pointer-events:none';node.appendChild(image);
+      }
+      node.classList.add('activation-spore');node.style.position='absolute';node.style.width=dims.width+'px';node.style.height=dims.height+'px';node.style.zIndex='25';node.style.overflow='visible';
+      const selected=actionsForPhase('activation');const action=track(runObjectActions({root:node,elements:selected,target:'spore',sporeIndex:index}));const motion=track(runBehaviors({root:node,elements:selected,target:'spore',phase:'activation',signal}));
+      node.__actionStop=()=>{stopControl(motion);stopControl(action);};return node;
     };
-    fireworkManager = new FireworkManager(fwLaunch);
-    fireworkManager.launch(launchX, launchY, sporeHost, () => resolve());
-    track(setTimeout(resolve, 6000));
-  });
-
-  // Final flash (apex parity)
-  track(setTimeout(() => {
-    const finalFlash = bodyFlash('final-reset');
-    finalFlash.style.transition = `opacity ${GHOST_CONFIG.ANIMATIONS.FINAL_FLASH_FADE_DURATION}ms ease-out`;
-    finalFlash.style.opacity = '1';
-    finalFlash.offsetHeight;
-    requestAnimationFrame(() => { finalFlash.style.opacity = '0'; });
-    track(setTimeout(() => finalFlash.remove(), GHOST_CONFIG.ANIMATIONS.FINAL_FLASH_FADE_DURATION + 500));
-  }, GHOST_CONFIG.ANIMATIONS.FIREWORKS_DELAY_BEFORE_FINAL));
-
-  await sporeDone;
-
-  // Reset — remove owned flash layers; leave live character + flashHost structure untouched
-  clearTimers();
-  try { fireworkManager?.destroy?.(); } catch (_) { /* ignore */ }
-  fireworkManager = null;
-  cleanupFlashLayer();
-  sporeHost.querySelectorAll('.activation-spore, .firework-spore, .activation-click-spore').forEach((n) => {
-    try { n.__actionStop?.(); } catch (_) {}
-    n.remove();
-  });
-  // Only owned layers — never strip a live flashHost or SporeBaseEffect by bare id.
-  clearOwnedFlashLayers(flashParent, container);
-
-  // Gradual dark→light fade (activation flash stayed instant above)
-  const liveFade = (typeof window !== 'undefined' && window.__yaitgEffect?.__liveStormResetMs)
-    || GHOST_CONFIG.ANIMATIONS.STORM_RESET_DURATION;
-  fadeStormResetToLight(container, {
-    durationMs: liveFade,
-    backgroundColor: GHOST_CONFIG.VISUALS.BACKGROUND_COLOR
-  });
-
-  return { ok: true };
+    if(spec.trajectory==='burst'){
+      const host=sporeHost.getBoundingClientRect();const x=window.innerWidth/2-host.left,y=window.innerHeight/2-host.top;
+      for(let i=0;i<count;i++){
+        const scale=spec.scale??.15;const dims={width:charBox.width*scale,height:charBox.height*scale};const node=makeSpore(dims,i);const angle=i/Math.max(1,count)*Math.PI*2;
+        const d=computeClampedBurstDelta(x,y,angle,reduced?0:spec.spreadPx??140,{...dims,host:sporeHost});
+        node.style.left=x-dims.width/2+'px';node.style.top=y-dims.height/2+'px';node.style.setProperty('--tx',d.tx+'px');node.style.setProperty('--ty',d.ty+'px');node.style.setProperty('--rotation',reduced?'0deg':'360deg');
+        node.style.animation=`explode ${reduced?200:spec.durationMs??1600}ms ease-out forwards`;sporeHost.appendChild(node);nodes.add(node);
+      }
+      await delay(reduced?200:spec.durationMs??1600);
+    }else{
+      const fw={...overlayProfile.fireworks,SPORE_COUNT:count};
+      if(spec.scale!==null){fw.BASE_WIDTH=charBox.width*spec.scale;fw.BASE_HEIGHT=charBox.height*spec.scale;}
+      if(spec.durationMs!==null){fw.MIN_LIFESPAN=spec.durationMs/1000;fw.MAX_LIFESPAN=spec.durationMs/1000;}
+      if(spec.spreadPx!==null){const seconds=(spec.durationMs||4000)/1000;fw.MIN_INITIAL_SPEED=spec.spreadPx*.7/seconds;fw.MAX_INITIAL_SPEED=spec.spreadPx/seconds;}
+      if(reduced){fw.MIN_INITIAL_SPEED=0;fw.MAX_INITIAL_SPEED=0;fw.MIN_LIFESPAN=.2;fw.MAX_LIFESPAN=.2;fw.GRAVITY=0;fw.MIN_SWIRL_AMPLITUDE=0;fw.MAX_SWIRL_AMPLITUDE=0;}
+      fw.createSporeElement=(spore,dims)=>makeSpore(dims||{width:fw.BASE_WIDTH,height:fw.BASE_HEIGHT},spore?.id||0);
+      const finished=new Promise(resolve=>{manager=new FireworkManager(fw);manager.launch(window.innerWidth/2+fw.LAUNCH_OFFSET_X,window.innerHeight/2+fw.LAUNCH_OFFSET_Y,sporeHost,resolve);});
+      if(transition==='lightning'&&!reduced){
+        // The visible reset is the round boundary; lingering firework lifespans
+        // must not keep input locked after lighting has returned to normal.
+        await delay(overlayProfile.animations.FIREWORKS_DELAY_BEFORE_FINAL);
+        if(aborted())return {ok:false,aborted:true};
+        const n=bodyFlash('final-reset');nodes.add(n);n.style.opacity='1';
+        const fadeMs=window.__yaitgEffect?.__liveStormResetMs||overlayProfile.animations.STORM_RESET_DURATION;
+        n.style.transition=`opacity ${fadeMs}ms ease-out`;requestAnimationFrame(()=>{n.style.opacity='0';});
+        await resetToLight();
+      }else await Promise.race([finished,delay((spec.durationMs||5000)+1000)]);
+    }
+    if(aborted())return {ok:false,aborted:true};
+    await resetToLight();
+    return {ok:true};
+  }finally{
+    signal?.removeEventListener('abort',onAbort);timers.forEach(id=>{clearTimeout(id);clearInterval(id);});timers.clear();
+    [...controls].reverse().forEach(stopControl);manager?.cleanup?.();manager?.destroy?.();player?.cleanup();
+    nodes.forEach(n=>{n.__actionStop?.();n.remove();});
+    sporeHost?.querySelectorAll('.activation-spore,.firework-spore,.activation-click-spore').forEach(n=>{n.__actionStop?.();n.remove();});
+    clearOwnedFlashLayers(flashParent,container);
+  }
 }
 
 
@@ -409,7 +314,8 @@ export function previewClick(opts) {
           target: 'spore',
           sporeIndex: layer * perLayer + i
         });
-        node.__actionStop = ctrl.stop;
+        const motion=runBehaviors({root:node,elements:compositeElements,target:'spore',phase:'interact'});
+        node.__actionStop = ()=>{motion.stop();ctrl.stop();};
       }
       sporeHost.appendChild(node);
       setTimeout(() => {

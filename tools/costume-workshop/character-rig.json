@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 2,
+  "image": "character.png",
+  "width": 709,
+  "height": 470,
+  "coordinateSystem": "normalized base image rectangle; x right, y down",
+  "scaleMeaning": "accessory image width / character image width",
+  "anchors": {
+    "head": {"x":0.48798449304854485,"y":-0.07305050626728364},
+    "bill-top": {"x":0.5,"y":0.5},
+    "mouth": {"x":0.4949264790076918,"y":0.7959222378465736},
+    "bill-bottom": {"x":0.5,"y":0.99},
+    "eye-left": {"x":0.42,"y":0.477},
+    "eye-right": {"x":0.565,"y":0.477},
+    "eyes": {"x":0.4925,"y":0.477},
+    "handL": {"x":0.05,"y":0.5},
+    "handR": {"x":0.95,"y":0.5}
+  },
+  "regions": {"bandana":{"top":"bill-top","covers":"mouth","below":"bill-bottom","polygon":[{"x":0.27,"y":0.5},{"x":0.73,"y":0.5},{"x":0.5,"y":1.08}]}},
+  "presetPlacements": {"head":{"objectAnchor":{"x":0.5,"y":0.5},"characterAnchor":{"x":0.48798449304854485,"y":-0.07305050626728364},"scale":1.05,"rotation":0,"flipX":false}},
+  "reference": {"source":"https://youareinthegame.com/api/animations","checked":"2026-11-03","head":"Live cowboy hat placement; width 105% of character","mouth":"Live cowboy mustache placement","hatImage":"guides/cowboy-hat-reference.png"},
+  "notes": "Bill-top is the upper bill; bill-bottom is its lower tip. Mouth follows the live mustache location. Eye landmarks are approximate, with left/right in viewer coordinates. Hat placement follows the live cowboy. Foreground layers only."
+}

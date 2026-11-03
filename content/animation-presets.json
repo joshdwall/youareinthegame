@@ -1,0 +1,38 @@
+{
+  "classic-lightning@1": {
+    "id": "classic-lightning",
+    "version": 1,
+    "transition": "lightning",
+    "phases": {
+      "equipMs": 0,
+      "activationMinMs": 2000,
+      "activationMaxMs": 3000,
+      "exitMs": 150
+    },
+    "spores": {
+      "trajectory": "fireworks",
+      "count": 8,
+      "scale": null,
+      "durationMs": null,
+      "spreadPx": null
+    }
+  },
+  "gentle-burst@1": {
+    "id": "gentle-burst",
+    "version": 1,
+    "transition": "none",
+    "phases": {
+      "equipMs": 180,
+      "activationMinMs": 600,
+      "activationMaxMs": 600,
+      "exitMs": 180
+    },
+    "spores": {
+      "trajectory": "burst",
+      "count": 8,
+      "scale": 0.15,
+      "durationMs": 1600,
+      "spreadPx": 140
+    }
+  }
+}

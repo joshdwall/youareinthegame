@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "project": "youareinthegame-web",
+  "productionBranch": "main",
+  "previewNamespace": "youareinthegame-costume-preview",
+  "previewBucket": "youareinthegame-costume-preview-assets",
+  "wranglerVersion": "4.45.0",
+  "maxMonthlyPreviewRuns": 40,
+  "maxAssets": 200,
+  "maxImportedAssetBytes": 8000000,
+  "checkpoint": "checkpoint-2026-11-03-before-immediate-round-reset-production"
+}

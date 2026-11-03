@@ -5,6 +5,8 @@ import { escapeHtml } from '/cambio/vendor/envivo-ui/desk-list.mjs';
 import { mountEvScrollList } from '/cambio/vendor/envivo-ui/ev-scroll-list/mount.mjs';
 import { SAFE_FONT_OPTIONS, schemaForActionType } from '/cambio/objectActionFieldSchema.js';
 import { log, info, debug, warn, error } from '../js/log.js';
+import {editorPlacement,normalizeEditedPlacement} from '/runtime/costumes/contracts.js';
+import {mountCostumeWorkshop} from '/cambio/costume-workshop.js';
 
 /**
  * Content-fit columns for Cambio rails (enVivo SL-27 measure, without grow-to-fill).
@@ -384,11 +386,13 @@ async function loadJson(url) {
 
 function migrateElement(raw) {
   if (!raw || typeof raw !== 'object') return null;
+  if(raw.attachment)return editorPlacement(raw);
   const actions = Array.isArray(raw.objectActions)
     ? raw.objectActions.map((a) => ({ ...a, point: a.point ? { x: +a.point.x, y: +a.point.y } : { x: 0.5, y: 0.5 } }))
     : undefined;
   if (raw.characterAnchor && raw.objectAnchor) {
     const out = {
+      ...raw,
       objectAnchor: { x: +raw.objectAnchor.x, y: +raw.objectAnchor.y },
       characterAnchor: { x: +raw.characterAnchor.x, y: +raw.characterAnchor.y },
       rotation: Number.isFinite(+raw.rotation) ? +raw.rotation : (+raw.rotationDeg || 0),
@@ -415,6 +419,7 @@ function migratePlacements(data) {
   if (!data?.byAnimation) return { schemaVersion: 2, updatedAt: null, byAnimation: {} };
   const out = {
     schemaVersion: 2,
+    libraryRevision:data.libraryRevision,
     updatedAt: data.updatedAt || null,
     byAnimation: {}
   };
@@ -1799,6 +1804,7 @@ function creatureBoxInRig() {
 }
 
 function defaultElementState(anim, el) {
+  if(el.placement)return editorPlacement(el.placement);
   const fromCode = DEFAULT_PLACEMENTS_BY_ANIMATION[anim?.id]?.elements?.[el.id];
   if (fromCode) {
     const cloned = deepClone(fromCode);
@@ -1829,6 +1835,7 @@ function positionProp(img, st) {
 
 function mountProps(animId, { interactive = false, visible = true } = {}) {
   overlay.innerHTML = '';
+  overlay.__costumeBackLayer?.remove();overlay.__costumeBackLayer=null;
   markerLayer.innerHTML = '';
   overlay.classList.toggle('editing', interactive);
   syncModeUi();
@@ -1836,7 +1843,7 @@ function mountProps(animId, { interactive = false, visible = true } = {}) {
   const anim = state.manifest.animations.find((a) => a.id === animId);
   if (!anim?.elements?.length) return;
   const place = ensureAnimPlacement(animId);
-  for (const el of anim.elements) {
+  for (const el of [...anim.elements].sort((a,b)=>(place.elements[a.id]?.order||0)-(place.elements[b.id]?.order||0))) {
     let st = place.elements[el.id];
     if (!st) {
       st = place.elements[el.id] = defaultElementState(anim, el);
@@ -1875,8 +1882,12 @@ function mountProps(animId, { interactive = false, visible = true } = {}) {
     img.style.pointerEvents = allowPropPe ? 'auto' : 'none';
 
     positionProp(img, st);
+    img.style.zIndex=st.layer==='behind-character'?'1':'5';
     if (interactive) bindPropPointer(img, animId, el.id);
-    overlay.appendChild(img);
+    if(st.layer==='behind-character'){
+      if(!overlay.__costumeBackLayer){const back=document.createElement('div');back.className='costume-back-layer';back.style.cssText=`position:absolute;inset:0;z-index:1;overflow:visible;pointer-events:${interactive?'auto':'none'};opacity:${visible?1:0}`;creatureRig.insertBefore(back,creature);overlay.__costumeBackLayer=back;}
+      overlay.__costumeBackLayer.appendChild(img);
+    }else overlay.appendChild(img);
   }
   if (interactive && state.selectedElementId) {
     if (state.activeMode === 'connector' || !state.activeMode) {
@@ -2482,6 +2493,7 @@ function compositeElementsFor(animId) {
     else st = migrateElement(st);
     return {
       id: el.id,
+      role:el.role||null,
       src: el.src.startsWith('/') ? el.src : '/' + el.src.replace(/^\//, ''),
       placement: st
     };
@@ -2529,7 +2541,7 @@ function previewClickAnimation(animId) {
   $('stageHint').textContent = `Click preview: ${anim.label} (${result?.type || 'ok'})`;
 }
 
-async function playAnimation(animId) {
+async function playAnimation(animId,{signal}={}) {
   const anim = state.manifest.animations.find((a) => a.id === animId);
   if (!anim) return;
   if (state._activationBusy) {
@@ -2548,6 +2560,10 @@ async function playAnimation(animId) {
     if (anim.playMode === 'legacy-ghost' || anim.id === 'ghost') {
       overlay.innerHTML = '';
       await activate({
+        signal,
+        animation:anim,
+        transitionId:ensureAnimPlacement(animId).transitionId,
+        composite:{baseSrc:creature.getAttribute('src'),elements:compositeElementsFor(animId)},
         container,
         creature,
         creatureRig,
@@ -2562,6 +2578,9 @@ async function playAnimation(animId) {
     mountProps(animId, { interactive: false, visible: true });
     const elements = compositeElementsFor(animId);
     await activate({
+      signal,
+      animation:anim,
+      transitionId:ensureAnimPlacement(animId).transitionId,
       container,
       creature,
       creatureRig,
@@ -2601,6 +2620,7 @@ async function savePlacements() {
   saveStatus.textContent = 'Saving…';
   try {
     const migrated = migratePlacements(state.placements);
+    for(const layout of Object.values(migrated.byAnimation||{}))for(const [id,p]of Object.entries(layout.elements||{}))if(p.attachment)layout.elements[id]=normalizeEditedPlacement(p);
     const body = {
       ...migrated,
       schemaVersion: 2,
@@ -2706,7 +2726,14 @@ window.__cambioTest = {
   }
 };
 
-boot().catch((err) => {
+boot().then(()=>mountCostumeWorkshop({
+  async onPreview(result,signal){
+    state.runtimeConfig.animations=[...state.runtimeConfig.animations.filter(a=>a.id!==result.animation.id),result.animation];syncManifestFromRuntime();state.placements.byAnimation[result.animation.id]=deepClone(result.placements);state.selectedAnim=result.animation;renderAnimList();await playAnimation(result.animation.id,{signal});
+  },
+  async onSaved(result){
+    const rc=await apiJson('/api/cambio/runtime-config');state.runtimeConfig=rc.config;syncManifestFromRuntime();state.placements.byAnimation[result.animation.id]=deepClone(result.placements);renderAnimList();
+  }
+})).catch((err) => {
   saveStatus.textContent = `Boot failed: ${err.message}`;
   error(err);
 });

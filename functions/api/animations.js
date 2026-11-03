@@ -4,6 +4,7 @@
  */
 import { readRuntimeConfig, publicView, PLACEMENTS_KV_KEY } from '../_shared/runtime-config.js';
 import { livePercents } from '../_shared/loot-table.js';
+import {readCostumeLibrary} from '../_shared/costume-library.js';
 
 export async function onRequestGet(context) {
   const { env } = context;
@@ -15,6 +16,8 @@ export async function onRequestGet(context) {
     const raw = await env.YAITG_SESSION_KV?.get(PLACEMENTS_KV_KEY, 'json');
     if (raw?.byAnimation) placementsByAnimation = raw.byAnimation;
   } catch (_) {}
+  const library=await readCostumeLibrary(env);
+  placementsByAnimation={...(placementsByAnimation||{}),...library.placements};
   return new Response(
     JSON.stringify({ ok: true, source, ...view, livePercents: percents, placementsByAnimation }),
     {

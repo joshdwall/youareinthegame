@@ -7,3 +7,12 @@ dist/
 capture/yaitg-activation/
 # Playwright / local artifacts
 test-results/
+.preview-evidence/
+.preview-wrangler.toml
+tools/costume-workshop/config.local.json
+tools/costume-workshop/runtime/
+tools/costume-workshop/jobs/
+tools/costume-workshop/exports/
+tools/costume-workshop/inbox/
+tools/costume-workshop/costumes/
+tools/costume-workshop/queue.lock
