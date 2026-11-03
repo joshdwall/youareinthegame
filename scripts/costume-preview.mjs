@@ -77,18 +77,26 @@ async function browser(url){
  stage='editor';
  await page.goto(new URL('/cambio/',url).href,{waitUntil:'networkidle'});await page.waitForSelector('#costumeWorkshop');await page.locator('#costumeWorkshop summary').first().click();await page.locator('#costumeLoadBandana').click();await page.waitForFunction(()=>document.querySelector('#costumeId').value==='bandit-reusable');
  await page.locator('#costumePreview').click();await page.waitForTimeout(250);await page.locator('#costumeStop').click();await page.waitForFunction(()=>!document.querySelector('#costumeSaveDraft').disabled);await page.screenshot({path:path.join(evidence,'cambio.png'),fullPage:true});
+ stage='stock upload and draft save';await page.locator('#costumeId').fill('verification-bandana');await page.locator('#costumeName').fill('Bandana verification');
+ const {default:sharp}=await import('sharp');const stock=await sharp('assets/animations/cowboy/hat.webp').png().toBuffer();await page.locator('#costumeImages').setInputFiles({name:'stock-cowboy-hat.png',mimeType:'image/png',buffer:stock});
+ await page.waitForFunction(()=>document.querySelectorAll('#costumeAccessoryEditors fieldset').length===2&&!document.querySelector('#costumeSaveDraft').disabled);
+ await page.locator('#costumeSaveDraft').click();await page.waitForFunction(()=>document.querySelector('#costumeWorkshopStatus').textContent.startsWith('Saved as draft'));
+ const draftHidden=await page.evaluate(async()=>!(await(await fetch('/api/animations')).json()).animations.some(a=>a.id==='verification-bandana'));if(!draftHidden)throw Error('Verification draft leaked into public pool');
+ await page.reload({waitUntil:'networkidle'});await page.getByText('Bandana verification',{exact:true}).first().waitFor();
+ save('draft-verification.json',{uploadedStock:true,savedAndReloaded:true,excludedFromPublicPool:true});
  save('browser.json',{ok:errors.length===0,errors});if(errors.length)throw Error('Preview browser errors: '+errors.join('; '));
  }catch(e){throw Error(`Browser ${stage}: ${e.message}`);}finally{await browser.close();}
 }
 async function main(){
  const login=await inf('/api/v1/auth/universal-auth/login',{clientId:process.env.INFISICAL_CLIENT_ID,clientSecret:process.env.INFISICAL_CLIENT_SECRET});infToken=login.accessToken;sensitive.add(infToken);
- common=await secrets('/cloudflare');site=await secrets('/sites/youareinthegame');cfToken=common.CHATGPT_CLOUDFLARE_API_TOKEN||common['agents-write']||site['site.youareinthegame.cloudflare.api_token'];account=common.CLOUDFLARE_ACCOUNT_ID||site['site.youareinthegame.cloudflare.account_id'];
+ common=await secrets('/cloudflare');site=await secrets('/sites/youareinthegame');cfToken=common.CHATGPT_CLOUDFLARE_API_TOKEN||common['agents-write']||site['site.youareinthegame.cloudflare.api_token'];account=site['site.youareinthegame.cloudflare.account_id']||common.CLOUDFLARE_ACCOUNT_ID;
  if(!cfToken||!account||!common.CF_ACCESS_PAGES_PREVIEW_CLIENT_ID||!common.CF_ACCESS_PAGES_PREVIEW_CLIENT_SECRET)throw Error('Required deployment/Access credentials missing');
  if(process.argv.includes('--browser-only')){const url=process.env.COSTUME_PREVIEW_URL;await verifyReady(url);await browser(url);return;}
  const branch=process.env.GITHUB_REF_NAME||'';if(!branch.startsWith('costume/')||branch===cfg.productionBranch)throw Error('Preview workflow must run on a costume feature branch');
  const project=await cf(apiBase());if(project.production_branch!==cfg.productionBranch)throw Error('Unexpected production branch; audit required');
  const prod=project.deployment_configs?.production||{};const prodKv=prod.kv_namespaces?.YAITG_SESSION_KV?.namespace_id;const prodBucket=prod.r2_buckets?.YAITG_ASSETS_R2?.name||prod.r2_buckets?.YAITG_ASSETS_R2?.bucket_name||'youareinthegame-assets';
  if(!prodKv)throw Error('Cannot identify production costume KV for checkpoint');
+ const expectedKv=fs.readFileSync('wrangler.toml','utf8').match(/\[\[kv_namespaces\]\][\s\S]*?\bid\s*=\s*"([^"]+)"/)?.[1];if(!expectedKv||prodKv!==expectedKv)throw Error('Configured account/project does not match the checkpoint production KV binding');
  const backup={checkpoint:cfg.checkpoint,commit:process.env.GITHUB_SHA,capturedAt:new Date().toISOString(),productionDeployment:project.canonical_deployment?.id||project.latest_deployment?.id,keys:{}};
  for(const key of ['cambio:runtime-config','cambio:placements']){
   try{backup.keys[key]=JSON.parse(await cf(`/accounts/{account}/storage/kv/namespaces/${prodKv}/values/${encodeURIComponent(key)}`,'GET',undefined,true));}catch(e){throw Error('Unable to capture required production baseline key '+key);}
