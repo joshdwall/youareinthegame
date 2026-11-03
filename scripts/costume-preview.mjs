@@ -60,15 +60,18 @@ async function verifyAccess(url){
 }
 async function browser(url){
  const {chromium}=await import('playwright');const browser=await chromium.launch();const context=await browser.newContext({viewport:{width:1280,height:900}});const origin=new URL(url).origin;
+ let stage='public load';try{
  await context.route('**/*',route=>route.continue({headers:new URL(route.request().url()).origin===origin?{...route.request().headers(),...headers()}:route.request().headers()}));
  const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(url,{waitUntil:'networkidle'});await page.waitForSelector('#mainCreature');await page.waitForFunction(()=>window.__yaitgEffect&&window.__yaitgPrepared?.ready,{timeout:30000});
- for(let i=0;i<10;i++){await page.locator('#mainCreature').click();await page.waitForTimeout(180);}
+ stage='public clicks';for(let i=0;i<10;i++){await page.locator('#mainCreature').click({force:true});await page.waitForTimeout(180);}
  await page.waitForTimeout(8000);await page.screenshot({path:path.join(evidence,'desktop.png'),fullPage:true});
- await page.setViewportSize({width:390,height:844});await page.reload({waitUntil:'networkidle'});await page.locator('#mainCreature').click();await page.screenshot({path:path.join(evidence,'mobile.png'),fullPage:true});
+ stage='mobile';await page.setViewportSize({width:390,height:844});await page.reload({waitUntil:'networkidle'});await page.locator('#mainCreature').click({force:true});await page.screenshot({path:path.join(evidence,'mobile.png'),fullPage:true});
+ stage='editor';
  await page.goto(new URL('/cambio/',url).href,{waitUntil:'networkidle'});await page.waitForSelector('#costumeWorkshop');await page.locator('#costumeWorkshop summary').first().click();await page.locator('#costumeLoadBandana').click();await page.waitForFunction(()=>document.querySelector('#costumeId').value==='bandit-reusable');
  await page.locator('#costumePreview').click();await page.waitForTimeout(250);await page.locator('#costumeStop').click();await page.waitForFunction(()=>!document.querySelector('#costumeSaveDraft').disabled);await page.screenshot({path:path.join(evidence,'cambio.png'),fullPage:true});
- await browser.close();save('browser.json',{ok:errors.length===0,errors});if(errors.length)throw Error('Preview browser errors: '+errors.join('; '));
+ save('browser.json',{ok:errors.length===0,errors});if(errors.length)throw Error('Preview browser errors: '+errors.join('; '));
+ }catch(e){throw Error(`Browser ${stage}: ${e.message}`);}finally{await browser.close();}
 }
 async function main(){
  const login=await inf('/api/v1/auth/universal-auth/login',{clientId:process.env.INFISICAL_CLIENT_ID,clientSecret:process.env.INFISICAL_CLIENT_SECRET});infToken=login.accessToken;sensitive.add(infToken);
