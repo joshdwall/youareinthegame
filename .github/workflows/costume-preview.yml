@@ -21,6 +21,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run verify
+      - run: npm run test:costumes
       - name: Build, back up baseline, isolate and deploy preview
         id: preview
         env:

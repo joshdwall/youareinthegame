@@ -3,6 +3,8 @@ import {compileBundle,validateBundle,resolvePlacement,normalizeEditedPlacement,r
 import {importCostumeBundle,readCostumeLibrary} from '../functions/_shared/costume-library.js';
 import {readRuntimeConfig,writeRuntimeConfig,publicView} from '../functions/_shared/runtime-config.js';
 import {onRequestPost as createAnimation} from '../functions/api/cambio/animations.js';
+import {onRequestGet as getCostumes} from '../functions/api/cambio/costumes.js';
+test('authoring endpoint returns rig, schemas and presets',async()=>{const response=await getCostumes({env:env(),request:new Request('http://localhost/api/cambio/costumes')});assert.equal(response.status,200);const body=await response.json();assert(body.schemas.bundle);assert(body.rig.anchors['bill-bottom']);});
 const example=()=>JSON.parse(fs.readFileSync(new URL('../content/costume-examples/cowboy.json',import.meta.url)));
 function env(){const rows=new Map();return {YAITG_SESSION_KV:{async get(key){return rows.has(key)?JSON.parse(rows.get(key)):null;},async put(key,value){rows.set(key,value);}},YAITG_ASSETS_R2:{async get(){return null;}},rows};}
 test('named rig placements resolve; numerical legacy positions stay unchanged',()=>{assert.deepEqual(resolvePlacement({attachment:{rig:'mushroom-platypus@1',point:'head'},offset:{x:.01,y:.02}}).characterAnchor,{x:MUSHROOM_RIG.anchors.head.x+.01,y:MUSHROOM_RIG.anchors.head.y+.02});const raw={characterAnchor:{x:0,y:-.15},objectAnchor:{x:.5,y:.9},scale:.55};assert.deepEqual(resolvePlacement(raw).characterAnchor,raw.characterAnchor);});

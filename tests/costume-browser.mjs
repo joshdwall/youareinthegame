@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import {chromium} from 'playwright';
 import {startReviewServer} from './helpers/local-review-server.mjs';
 const server=await startReviewServer(),browser=await chromium.launch(),page=await browser.newPage({viewport:{width:1280,height:900}});
-const errors=[];page.on('pageerror',e=>errors.push(e.message));fs.mkdirSync('test-results/costumes',{recursive:true});
+const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('response',r=>{if(r.status()>=400)console.error(r.status(),r.url());});page.on('console',m=>{if(m.type()==='error')console.error(m.text());});fs.mkdirSync('test-results/costumes',{recursive:true});
 try{
  await page.goto(server.url+'/cambio/',{waitUntil:'networkidle'});
  await page.locator('#costumeWorkshop').waitFor();await page.locator('#costumeWorkshop summary').first().click();

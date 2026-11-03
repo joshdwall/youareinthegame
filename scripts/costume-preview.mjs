@@ -19,19 +19,15 @@ async function ensurePreviewAccess(apps){
  const domain=`*.${cfg.project}.pages.dev`;
  if(apps.some(a=>a.domain===domain||(a.self_hosted_domains||[]).includes(domain)))return;
  const policies=await cf('/accounts/{account}/access/policies');
- let admin=policies.find(p=>p.name?.toLowerCase()==='admin'&&p.decision==='allow');
- if(!admin){
-  const groups=await cf('/accounts/{account}/access/groups');
-  const group=groups.find(g=>g.name?.toLowerCase()==='admin');
-  if(group)admin=await cf('/accounts/{account}/access/policies','POST',{name:'YAITG preview Admin',decision:'allow',include:[{group:{id:group.id}}],exclude:[],require:[]});
-  else throw Error('Admin policy/group missing. Available policy names: '+policies.map(p=>p.name+' ('+p.decision+')').join(', ')+'; group names: '+groups.map(g=>g.name).join(', '));
+ let admin=policies.find(p=>p.name?.toLowerCase()==='admin'&&p.decision==='allow'),template;
+ const gameAdmin=apps.find(a=>a.domain?.startsWith('app.youareinthegame.com'));
+ if(gameAdmin){
+  template=await cf(`/accounts/{account}/access/apps/${gameAdmin.id}`);
+  const linked=await cf(`/accounts/{account}/access/apps/${gameAdmin.id}/policies`);
+  const allow=linked.filter(p=>p.decision==='allow');
+  if(!admin&&allow.length===1){const p=allow[0];if(p.include?.some(r=>r.everyone))throw Error('Refusing broad admin allow policy');admin=await cf('/accounts/{account}/access/policies','POST',{name:'YAITG preview Admin',decision:'allow',include:p.include,exclude:p.exclude||[],require:p.require||[]});}
  }
- let template;
- for(const app of apps.filter(a=>a.type==='self_hosted')){
-  const linked=await cf(`/accounts/{account}/access/apps/${app.id}/policies`);
-  if(linked.some(p=>p.id===admin.id||p.name?.toLowerCase().includes('admin')||p.include?.some(r=>r.group))&&app.allowed_idps?.length){template=app;break;}
- }
- if(!template)throw Error('Cannot identify the existing Admin application identity providers');
+ if(!admin||!template?.allowed_idps?.length)throw Error('Cannot identify existing game Admin/identity settings. App domains: '+apps.map(a=>a.domain).filter(Boolean).join(', ')+'; policies: '+policies.map(p=>p.name+' ('+p.decision+')').join(', '));
  const tokens=await cf('/accounts/{account}/access/service_tokens');
  const token=tokens.find(t=>t.client_id===common.CF_ACCESS_PAGES_PREVIEW_CLIENT_ID);
  if(!token)throw Error('Existing preview service token not found');
