@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "bandit",
+  "label": "Bandit",
+  "accessories": [
+    {
+      "id": "bandana",
+      "description": "a flat triangular red fabric handkerchief laid out by itself, isolated inventory item, ink illustration, muted red fabric and dark hand-drawn fold lines, white background",
+      "guide": "guides/bandana.png",
+      "guideStrength": 0.45,
+      "anchor": "bill-top",
+      "seed": 4217,
+      "removeWhiteBackground": true,
+      "placement": {
+        "objectAnchor": { "x": 0.5, "y": 0.14 },
+        "characterAnchor": { "x": 0.5, "y": 0.5 },
+        "scale": 0.46,
+        "rotation": 0,
+        "flipX": false
+      }
+    }
+  ]
+}

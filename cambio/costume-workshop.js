@@ -10,9 +10,11 @@ export async function mountCostumeWorkshop({onPreview,onSaved}){
  const status=element('p','Loading reusable assets…',{class:'cambio-status','aria-live':'polite',id:'costumeWorkshopStatus'});
  const field=(label,input)=>{const row=element('label',null,{class:'cambio-field'});row.appendChild(element('span',label));row.appendChild(input);form.appendChild(row);return input;};
  const name=field('Costume name',element('input',null,{value:'New costume',maxlength:'48',id:'costumeName'}));
+ const id=field('Costume ID',element('input',null,{value:'new-costume',maxlength:'48',id:'costumeId'}));
  const version=field('Version',element('input',null,{type:'number',value:'1',min:'1',max:'9999',id:'costumeVersion'}));
  const preset=element('select',null,{id:'costumePreset'});for(const[k,p]of Object.entries(PRESETS))preset.appendChild(element('option',p.transition==='none'?'Gentle burst (no lightning)':'Classic lightning',{value:k}));preset.value='gentle-burst@1';field('Animation',preset);
  const example=element('button','Load reusable cowboy',{type:'button',class:'btn',id:'costumeLoadExample'});form.appendChild(example);
+ const bandanaExample=element('button','Load bandana',{type:'button',class:'btn',id:'costumeLoadBandana'});form.appendChild(bandanaExample);
  const file=field('Import costume bundle',element('input',null,{type:'file',accept:'.json,application/json',id:'costumeBundleFile'}));
  const images=field('Upload accessory images',element('input',null,{type:'file',accept:'image/png,image/webp',multiple:'',id:'costumeImages'}));
  const editors=element('div',null,{id:'costumeAccessoryEditors'});form.appendChild(editors);
@@ -21,9 +23,9 @@ export async function mountCostumeWorkshop({onPreview,onSaved}){
  let library=(await api('/api/cambio/costumes')).library;
  let bundle={schemaVersion:1,assets:[],costume:{id:'new-costume',version:1,label:'New costume',rig:'mushroom-platypus@1',preset:'gentle-burst@1',elements:[]}},controller=null,busy=false,editorInvalid=false;
  const setBusy=v=>{busy=v;preview.disabled=v;save.disabled=v;images.disabled=v;};
- const serialize=()=>{bundle.costume.id=slug(name.value);bundle.costume.label=name.value.trim();bundle.costume.version=Number(version.value);bundle.costume.preset=preset.value;text.value=JSON.stringify(bundle,null,2);};
+ const serialize=()=>{bundle.costume.id=slug(id.value);bundle.costume.label=name.value.trim();bundle.costume.version=Number(version.value);bundle.costume.preset=preset.value;text.value=JSON.stringify(bundle,null,2);};
  const refresh=()=>{
-  editorInvalid=false;name.value=bundle.costume.label;version.value=bundle.costume.version;if(![...preset.options].some(o=>o.value===bundle.costume.preset))preset.appendChild(element('option',bundle.costume.preset,{value:bundle.costume.preset}));preset.value=bundle.costume.preset;editors.replaceChildren();
+  editorInvalid=false;name.value=bundle.costume.label;id.value=bundle.costume.id;version.value=bundle.costume.version;if(![...preset.options].some(o=>o.value===bundle.costume.preset))preset.appendChild(element('option',bundle.costume.preset,{value:bundle.costume.preset}));preset.value=bundle.costume.preset;editors.replaceChildren();
   for(const item of bundle.costume.elements){
    const group=element('fieldset',null,{class:'costume-accessory'});group.appendChild(element('legend',item.id));
    const select=(title,choices,value,fn)=>{const label=element('label',null,{class:'cambio-field'});label.appendChild(element('span',title));const select=element('select');for(const[k,v]of choices)select.appendChild(element('option',v,{value:k}));select.value=value;select.addEventListener('change',()=>{fn(select.value);serialize();});label.appendChild(select);group.appendChild(label);return select;};
@@ -37,9 +39,11 @@ export async function mountCostumeWorkshop({onPreview,onSaved}){
  };
  const perform=fn=>async()=>{if(busy)return;setBusy(true);try{await fn();}catch(e){status.textContent=e.message;}finally{setBusy(false);}};
  example.addEventListener('click',perform(async()=>{bundle=await (await fetch('/content/costume-examples/cowboy.json')).json();refresh();status.textContent='Reusable cowboy loaded as a draft. Existing cowboy is unchanged.';}));
+ bandanaExample.addEventListener('click',perform(async()=>{bundle=await (await fetch('/content/costume-examples/bandana.json')).json();refresh();status.textContent='Locally generated bandana loaded as a draft.';}));
  file.addEventListener('change',perform(async()=>{if(!file.files[0])return;bundle=JSON.parse(await file.files[0].text());compileBundle(bundle,library);refresh();status.textContent='Bundle loaded. Upload any referenced local images, then preview.';}));
  text.addEventListener('change',()=>{try{const next=JSON.parse(text.value);compileBundle(next,library);bundle=next;refresh();status.textContent='Bundle validated locally.';}catch(e){editorInvalid=true;status.textContent=e.message;}});
- for(const input of [name,version,preset])input.addEventListener('change',serialize);
+ name.addEventListener('change',()=>{if(id.value==='new-costume')id.value=slug(name.value);serialize();});
+ for(const input of [id,version,preset])input.addEventListener('change',serialize);
  images.addEventListener('change',perform(async()=>{
   const files=[...images.files];if(files.length>LIMITS.elements)throw Error('Upload at most 24 accessories');
   const imported=[];for(const f of files){

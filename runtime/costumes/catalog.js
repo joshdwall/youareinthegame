@@ -55,5 +55,19 @@ export const BUILTIN_ASSETS=[
     },
     "sha256": "f68a2428285c572941dced9be394aea786074f2f317753ef68a8cfb192a990bd",
     "provenance": "Existing operator-owned cowboy accessory; attribution retained in assets/animations/cowboy/ATTRIBUTION.md"
+  },
+  {
+    "id": "bandana-red",
+    "version": 1,
+    "src": "assets/costumes/bandana-red/1/9ee7d0a91e3e2aa5.webp",
+    "width": 512,
+    "height": 512,
+    "bytes": 11088,
+    "pivot": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "sha256": "9ee7d0a91e3e2aa5edb111662cfbd3a4b00b999a7eb1fcc10078f08658e210ee",
+    "provenance": "Operator-directed local SD1.5 Q4 artwork, guided shape, seed 4217; model and runtime references in tools/costume-workshop"
   }
 ];

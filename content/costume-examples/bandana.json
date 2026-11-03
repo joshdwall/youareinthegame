@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "assets": [
+    {
+      "id": "bandana-red",
+      "version": 1,
+      "src": "assets/costumes/bandana-red/1/9ee7d0a91e3e2aa5.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 11088,
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "sha256": "9ee7d0a91e3e2aa5edb111662cfbd3a4b00b999a7eb1fcc10078f08658e210ee",
+      "provenance": "Operator-directed local SD1.5 Q4 artwork, guided shape, seed 4217; model and runtime references in tools/costume-workshop"
+    }
+  ],
+  "costume": {
+    "id": "bandit-reusable",
+    "version": 1,
+    "label": "Bandana draft",
+    "rig": "mushroom-platypus@1",
+    "preset": "gentle-burst@1",
+    "elements": [
+      {
+        "id": "bandana",
+        "asset": "bandana-red@1",
+        "placement": {
+          "attachment": {
+            "rig": "mushroom-platypus@1",
+            "point": "bill-top"
+          },
+          "offset": {
+            "x": 0,
+            "y": 0
+          },
+          "objectAnchor": {
+            "x": 0.5,
+            "y": 0.14
+          },
+          "scale": 0.46,
+          "rotation": 0,
+          "flipX": false,
+          "layer": "foreground",
+          "order": 0,
+          "objectActions": [
+            {
+              "type": "sway",
+              "phase": "activation",
+              "durationMs": 1000,
+              "amplitude": 4,
+              "appliesTo": [
+                "activation",
+                "spore"
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

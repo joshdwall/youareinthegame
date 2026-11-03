@@ -15,6 +15,27 @@ async function cf(p,method='GET',body,raw=false){usage.cfApiCalls++;const r=awai
 function run(exe,args,env={}){const r=spawnSync(exe,args,{encoding:'utf8',env:{...process.env,...env},maxBuffer:20e6});if(r.status!==0)throw Error(`${exe} failed: ${redact(r.stdout||'')} ${redact(r.stderr||'')}`);return r.stdout||'';}
 function wrangler(args){usage.wranglerCalls++;return run('npx',['--yes',`wrangler@${cfg.wranglerVersion}`,...args],{CLOUDFLARE_API_TOKEN:cfToken,CLOUDFLARE_ACCOUNT_ID:account});}
 const apiBase=()=>`/accounts/{account}/pages/projects/${cfg.project}`;
+async function ensurePreviewAccess(apps){
+ const domain=`*.${cfg.project}.pages.dev`;
+ if(apps.some(a=>a.domain===domain||(a.self_hosted_domains||[]).includes(domain)))return;
+ const policies=await cf('/accounts/{account}/access/policies');
+ const admin=policies.find(p=>p.name?.toLowerCase()==='admin'&&p.decision==='allow');
+ if(!admin)throw Error('Existing reusable Admin allow policy is required for preview');
+ let template;
+ for(const app of apps.filter(a=>a.type==='self_hosted')){
+  const linked=await cf(`/accounts/{account}/access/apps/${app.id}/policies`);
+  if(linked.some(p=>p.id===admin.id)&&app.allowed_idps?.length){template=app;break;}
+ }
+ if(!template)throw Error('Cannot identify the existing Admin application identity providers');
+ const tokens=await cf('/accounts/{account}/access/service_tokens');
+ const token=tokens.find(t=>t.client_id===common.CF_ACCESS_PAGES_PREVIEW_CLIENT_ID);
+ if(!token)throw Error('Existing preview service token not found');
+ const name='YAITG costume preview automation';
+ let service=policies.find(p=>p.name===name&&p.decision==='non_identity'&&p.include?.length===1&&p.include[0].service_token?.token_id===token.id);
+ if(!service)service=await cf('/accounts/{account}/access/policies','POST',{name,decision:'non_identity',include:[{service_token:{token_id:token.id}}],exclude:[],require:[]});
+ await cf('/accounts/{account}/access/apps','POST',{name:'YAITG costume previews',type:'self_hosted',domain,session_duration:'8h',allowed_idps:template.allowed_idps,auto_redirect_to_identity:template.auto_redirect_to_identity===true,app_launcher_visible:false,policies:[{id:service.id,precedence:1},{id:admin.id,precedence:2}]});
+ save('access.json',{domain,adminPolicyReused:true,identityProvidersReused:true,scopedServiceToken:true});
+}
 function headers(){return {'CF-Access-Client-Id':common.CF_ACCESS_PAGES_PREVIEW_CLIENT_ID,'CF-Access-Client-Secret':common.CF_ACCESS_PAGES_PREVIEW_CLIENT_SECRET};}
 async function verifyAccess(url){
  const u=new URL(url);if(!u.hostname.endsWith('.'+cfg.project+'.pages.dev'))throw Error('Unexpected preview host');
@@ -57,7 +78,7 @@ async function main(){
  const accessApps=await cf('/accounts/{account}/access/apps');
  const previewHost='costume-scalable-workflow.'+cfg.project+'.pages.dev';
  const covers=domain=>domain&&new RegExp('^'+domain.replace(/[.+?^${}()|[\]\\]/g,'\\$&').replaceAll('*','.*')+'$').test(previewHost);
- if(!accessApps.some(a=>covers(a.domain)||(a.self_hosted_domains||[]).some(covers)))throw Error('No Access application covers the intended preview hostname');
+ if(!accessApps.some(a=>covers(a.domain)||(a.self_hosted_domains||[]).some(covers)))await ensurePreviewAccess(accessApps);
  const spaces=await cf('/accounts/{account}/storage/kv/namespaces?per_page=1000');let kv=spaces.find(x=>x.title===cfg.previewNamespace);
  if(!kv)kv=await cf('/accounts/{account}/storage/kv/namespaces','POST',{title:cfg.previewNamespace});if(kv.id===prodKv)throw Error('Preview KV must differ from production');sensitive.add(kv.id);sensitive.add(prodKv);
  const buckets=await cf('/accounts/{account}/r2/buckets');if(!(buckets.buckets||buckets).some(x=>x.name===cfg.previewBucket))await cf('/accounts/{account}/r2/buckets','POST',{name:cfg.previewBucket});if(cfg.previewBucket===prodBucket)throw Error('Preview bucket must differ from production');
@@ -67,8 +88,7 @@ async function main(){
  }
  const previewVars=project.deployment_configs?.preview?.env_vars||{};
  if(!previewVars.YAITG_SESSION_SECRET)await cf(apiBase(),'PATCH',{deployment_configs:{preview:{env_vars:{...previewVars,YAITG_SESSION_SECRET:{type:'secret_text',value:crypto.randomBytes(32).toString('hex')}}}}});
- const github=await secrets('/github');const gh=github.ENVIVO_READ_TOKEN||github.ENVIVO_GITHUB_WRITE_TOKEN;
- run('npm',['run','build'],gh?{GH_TOKEN:gh,GITHUB_TOKEN:gh}:{});usage.builds++;
+ run('npm',['run','build']);usage.builds++;
  const configFile=path.resolve('.preview-wrangler.toml');const original=fs.readFileSync('wrangler.toml','utf8');
  fs.writeFileSync(configFile,original+`\n[env.preview]\n[env.preview.vars]\nYAITG_RATE_MAX = "120"\nYAITG_RATE_WINDOW_SEC = "3600"\n[[env.preview.kv_namespaces]]\nbinding = "YAITG_SESSION_KV"\nid = "${kv.id}"\n[[env.preview.r2_buckets]]\nbinding = "YAITG_ASSETS_R2"\nbucket_name = "${cfg.previewBucket}"\n`);
  const output=wrangler(['pages','deploy','dist','--project-name',cfg.project,'--branch','costume-scalable-workflow','--commit-hash',process.env.GITHUB_SHA,'--config',configFile]);usage.deploys++;
