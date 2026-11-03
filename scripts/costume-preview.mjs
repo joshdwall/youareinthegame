@@ -17,7 +17,7 @@ function wrangler(args){usage.wranglerCalls++;return run('npx',['--yes',`wrangle
 const apiBase=()=>`/accounts/{account}/pages/projects/${cfg.project}`;
 async function ensurePreviewAccess(apps){
  const domain=`*.${cfg.project}.pages.dev`;
- if(apps.some(a=>a.domain===domain||(a.self_hosted_domains||[]).includes(domain)))return;
+ const existing=apps.find(a=>a.domain===domain||(a.self_hosted_domains||[]).includes(domain));
  const policies=await cf('/accounts/{account}/access/policies');
  let admin=policies.find(p=>p.name?.toLowerCase()==='admin'&&p.decision==='allow'),template;
  let gameApps=apps,adminBase='/accounts/{account}/access';
@@ -36,10 +36,16 @@ async function ensurePreviewAccess(apps){
  const tokens=await cf('/accounts/{account}/access/service_tokens');
  const token=tokens.find(t=>t.client_id===common.CF_ACCESS_PAGES_PREVIEW_CLIENT_ID);
  if(!token)throw Error('Existing preview service token not found');
+ if(token.expires_at&&new Date(token.expires_at)<new Date())throw Error('Existing preview service token has expired');
  const name='YAITG costume preview automation';
  let service=policies.find(p=>p.name===name&&p.decision==='non_identity'&&p.include?.length===1&&p.include[0].service_token?.token_id===token.id);
  if(!service)service=await cf('/accounts/{account}/access/policies','POST',{name,decision:'non_identity',include:[{service_token:{token_id:token.id}}],exclude:[],require:[]});
- await cf('/accounts/{account}/access/apps','POST',{name:'YAITG costume previews',type:'self_hosted',domain,session_duration:'8h',allowed_idps:template.allowed_idps,auto_redirect_to_identity:template.auto_redirect_to_identity===true,app_launcher_visible:false,policies:[{id:service.id,precedence:1},{id:admin.id,precedence:2}]});
+ const body={name:'YAITG costume previews',type:'self_hosted',domain,session_duration:'8h',allowed_idps:template.allowed_idps,auto_redirect_to_identity:template.auto_redirect_to_identity===true,app_launcher_visible:false,policies:[{id:service.id,precedence:1},{id:admin.id,precedence:2}]};
+ if(existing){
+  const linked=await cf(`/accounts/{account}/access/apps/${existing.id}/policies`);
+  if(!linked.some(p=>p.id===service.id)&&linked.some(p=>p.decision==='bypass'))throw Error('Existing preview bypass policy requires review');
+  if(!linked.some(p=>p.id===service.id))await cf(`/accounts/{account}/access/apps/${existing.id}`,'PUT',{...body,policies:[{id:service.id,precedence:1},...linked.map((p,i)=>({id:p.id,precedence:i+2}))]});
+ }else await cf('/accounts/{account}/access/apps','POST',body);
  save('access.json',{domain,adminPolicyReused:true,identityProvidersReused:true,scopedServiceToken:true});
 }
 function headers(){return {'CF-Access-Client-Id':common.CF_ACCESS_PAGES_PREVIEW_CLIENT_ID,'CF-Access-Client-Secret':common.CF_ACCESS_PAGES_PREVIEW_CLIENT_SECRET};}
@@ -85,7 +91,7 @@ async function main(){
  accessToken=common.CHATGPT_CLOUDFLARE_API_TOKEN||site['site.youareinthegame.cloudflare.api_token']||cfToken;const accessApps=await cf('/accounts/{account}/access/apps');
  const previewHost='costume-scalable-workflow.'+cfg.project+'.pages.dev';
  const covers=domain=>domain&&new RegExp('^'+domain.replace(/[.+?^${}()|[\]\\]/g,'\\$&').replaceAll('*','.*')+'$').test(previewHost);
- if(!accessApps.some(a=>covers(a.domain)||(a.self_hosted_domains||[]).some(covers)))await ensurePreviewAccess(accessApps);
+ await ensurePreviewAccess(accessApps);
  const spaces=await cf('/accounts/{account}/storage/kv/namespaces?per_page=1000');let kv=spaces.find(x=>x.title===cfg.previewNamespace);
  if(!kv)kv=await cf('/accounts/{account}/storage/kv/namespaces','POST',{title:cfg.previewNamespace});if(kv.id===prodKv)throw Error('Preview KV must differ from production');sensitive.add(kv.id);sensitive.add(prodKv);
  const buckets=await cf('/accounts/{account}/r2/buckets');if(!(buckets.buckets||buckets).some(x=>x.name===cfg.previewBucket))await cf('/accounts/{account}/r2/buckets','POST',{name:cfg.previewBucket});if(cfg.previewBucket===prodBucket)throw Error('Preview bucket must differ from production');
@@ -99,6 +105,13 @@ async function main(){
  const configFile=path.resolve('wrangler.toml');const original=fs.readFileSync('wrangler.toml','utf8');
  fs.writeFileSync(configFile,original+`\n[env.preview]\n[env.preview.vars]\nYAITG_RATE_MAX = "120"\nYAITG_RATE_WINDOW_SEC = "3600"\n[[env.preview.kv_namespaces]]\nbinding = "YAITG_SESSION_KV"\nid = "${kv.id}"\n[[env.preview.r2_buckets]]\nbinding = "YAITG_ASSETS_R2"\nbucket_name = "${cfg.previewBucket}"\n`);
  let output;try{output=wrangler(['pages','deploy','dist','--project-name',cfg.project,'--branch','costume-scalable-workflow','--commit-hash',process.env.GITHUB_SHA]);usage.deploys++;}finally{fs.writeFileSync(configFile,original);}
+ const deployedProject=await cf(apiBase());const deployedProd=deployedProject.deployment_configs?.production||{},deployedPreview=deployedProject.deployment_configs?.preview||{};
+ if(deployedProd.kv_namespaces?.YAITG_SESSION_KV?.namespace_id!==prodKv)throw Error('Production KV binding changed unexpectedly');
+ const deployedProdBucket=deployedProd.r2_buckets?.YAITG_ASSETS_R2?.name||deployedProd.r2_buckets?.YAITG_ASSETS_R2?.bucket_name||'youareinthegame-assets';if(deployedProdBucket!==prodBucket)throw Error('Production R2 binding changed unexpectedly');
+ if(deployedPreview.kv_namespaces?.YAITG_SESSION_KV?.namespace_id!==kv.id)throw Error('Deployed preview KV binding does not match isolated namespace');
+ const boundBucket=deployedPreview.r2_buckets?.YAITG_ASSETS_R2?.name||deployedPreview.r2_buckets?.YAITG_ASSETS_R2?.bucket_name;
+ if(boundBucket!==cfg.previewBucket)throw Error('Deployed preview R2 binding does not match isolated bucket');
+ save('isolation.json',{productionKvUnchanged:true,previewKvSeparate:true,previewBucketSeparate:true,checkedAt:new Date().toISOString()});
  const urls=[...output.matchAll(/https:\/\/[a-z0-9-]+\.youareinthegame-web\.pages\.dev/g)].map(m=>m[0]);const url=urls.find(x=>!x.includes('costume-scalable-workflow.'))||urls[0];if(!url)throw Error('Preview deployment URL missing');
  const checks=await verifyAccess(url);save('preview.json',{url,branch,commit:process.env.GITHUB_SHA,isolated:true,checks});
  if(process.env.GITHUB_OUTPUT)fs.appendFileSync(process.env.GITHUB_OUTPUT,`url=${url}\n`);if(process.env.GITHUB_STEP_SUMMARY)fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,`## Costume preview\n\n[Open protected preview](${url}) · [Cambio](${url}/cambio/)\n\nProduction remains unchanged. Isolated preview KV/R2. Baseline backup is in the private evidence artifact.\n`);
