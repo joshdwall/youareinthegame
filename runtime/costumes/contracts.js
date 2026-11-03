@@ -14,7 +14,7 @@ const validId=x=>typeof x==='string'&&/^[a-z][a-z0-9-]{0,63}$/.test(x);
 const finite=(x,min,max)=>typeof x==='number'&&Number.isFinite(x)&&x>=min&&x<=max;
 const point=(x,min=0,max=1)=>x&&finite(x.x,min,max)&&finite(x.y,min,max);
 const object=x=>x&&typeof x==='object'&&!Array.isArray(x);
-const stable=x=>JSON.stringify(x,(_key,value)=>object(value)?Object.fromEntries(Object.keys(value).sort().map(key=>[key,value[key]])):value);
+export const stable=x=>JSON.stringify(x,(_key,value)=>object(value)?Object.fromEntries(Object.keys(value).sort().map(key=>[key,value[key]])):value);
 function requireOk(test,message){if(!test)throw Error(message);}
 export function safeAssetSource(src){return typeof src==='string'&&!/[\\\u0000-\u001f]/.test(src)&&!src.includes('..')&&/^\/?(?:assets\/|img\/|effects\/|api\/assets\/)[a-zA-Z0-9_./@-]+(?:\?[a-zA-Z0-9_=&.-]+)?$/.test(src);}
 export function validateActions(actions=[]){

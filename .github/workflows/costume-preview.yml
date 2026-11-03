@@ -43,4 +43,5 @@ jobs:
         with:
           name: costume-preview-evidence
           path: .preview-evidence/
+          include-hidden-files: true
           retention-days: 30

@@ -22,8 +22,8 @@ export async function mountCostumeWorkshop({onPreview,onSaved}){
  const buttons=element('div',null,{class:'cambio-actions'});const preview=element('button','Preview',{type:'button',class:'btn',id:'costumePreview'}),cancel=element('button','Stop preview',{type:'button',class:'btn',id:'costumeStop'}),save=element('button','Save draft',{type:'button',class:'btn primary',id:'costumeSaveDraft'});buttons.append(preview,cancel,save);form.append(buttons,status);
  let library=(await api('/api/cambio/costumes')).library;
  let bundle={schemaVersion:1,assets:[],costume:{id:'new-costume',version:1,label:'New costume',rig:'mushroom-platypus@1',preset:'gentle-burst@1',elements:[]}},controller=null,busy=false,editorInvalid=false;
- const setBusy=v=>{busy=v;preview.disabled=v;save.disabled=v;images.disabled=v;};
- const serialize=()=>{bundle.costume.id=slug(id.value);bundle.costume.label=name.value.trim();bundle.costume.version=Number(version.value);bundle.costume.preset=preset.value;text.value=JSON.stringify(bundle,null,2);};
+ const setBusy=v=>{busy=v;for(const control of form.querySelectorAll('input,select,textarea,button'))if(control!==cancel)control.disabled=v;};
+ const serialize=()=>{bundle.costume.id=slug(id.value);bundle.costume.label=name.value.trim();bundle.costume.version=Number(version.value);bundle.costume.preset=preset.value;if(!editorInvalid)text.value=JSON.stringify(bundle,null,2);};
  const refresh=()=>{
   editorInvalid=false;name.value=bundle.costume.label;id.value=bundle.costume.id;version.value=bundle.costume.version;if(![...preset.options].some(o=>o.value===bundle.costume.preset))preset.appendChild(element('option',bundle.costume.preset,{value:bundle.costume.preset}));preset.value=bundle.costume.preset;editors.replaceChildren();
   for(const item of bundle.costume.elements){
@@ -55,8 +55,13 @@ export async function mountCostumeWorkshop({onPreview,onSaved}){
    if(!asset){const ext=f.type==='image/webp'?'webp':'png';const data=new FormData();data.set('file',f);data.set('key',`animations/costumes/${hash}.${ext}`);const r=await fetch('/api/cambio/assets',{method:'POST',credentials:'include',body:data});const uploaded=await r.json();if(!r.ok||!uploaded.ok)throw Error(uploaded.error||'Upload failed');asset={id:slug(f.name.replace(/\.[^.]+$/,''))+'-'+hash.slice(0,8),version:1,src:uploaded.url,sha256:hash,width,height,bytes:f.size,pivot:{x:.5,y:.5},provenance:'Operator-supplied accessory cutout'};}
    imported.push(asset);
   }
-  if(bundle.costume.elements.length){for(const a of bundle.assets){const same=imported.find(x=>x.sha256===a.sha256);if(same)a.src=same.src;}status.textContent='Images uploaded. Existing bundle references retained; preview validates their hashes.';}
-  else{bundle.assets=imported;bundle.costume.elements=imported.map((a,i)=>{const hat=/hat|helmet|crown/.test(a.id),eyes=/glasses|goggles/.test(a.id),bandana=/bandana|scarf/.test(a.id);const point=hat?'head':eyes?'eyes':bandana?'bill-top':'mouth';return {id:'accessory-'+(i+1),asset:ref(a),placement:{attachment:{rig:'mushroom-platypus@1',point},offset:{x:0,y:0},objectAnchor:{x:.5,y:bandana?.14:.5},scale:hat?1.05:eyes?.22:bandana?.46:.38,rotation:0,flipX:false,layer:'foreground',order:i}};});status.textContent='Accessories ready. Review their attachments and scale.';}
+  for(const a of imported){
+   const existing=bundle.assets.find(x=>x.sha256===a.sha256);if(existing){existing.src=a.src;continue;}
+   if(bundle.costume.elements.length>=LIMITS.elements)throw Error('Costume can contain at most 24 accessories');
+   bundle.assets.push(a);const hat=/hat|helmet|crown/.test(a.id),eyes=/glasses|goggles/.test(a.id),bandana=/bandana|scarf/.test(a.id);const point=hat?'head':eyes?'eyes':bandana?'bill-top':'mouth';let i=bundle.costume.elements.length+1;while(bundle.costume.elements.some(e=>e.id==='accessory-'+i))i++;
+   bundle.costume.elements.push({id:'accessory-'+i,asset:ref(a),placement:{attachment:{rig:'mushroom-platypus@1',point},offset:{x:0,y:0},objectAnchor:{x:.5,y:bandana?.14:.5},scale:hat?1.05:eyes?.22:bandana?.46:.38,rotation:0,flipX:false,layer:'foreground',order:i}});
+  }
+  status.textContent='Accessories ready. Existing references retained; review new attachments and scale.';
   refresh();
  }));
  preview.addEventListener('click',perform(async()=>{if(editorInvalid)throw Error('Fix bundle JSON before previewing');serialize();compileBundle(bundle,library);const result=await api('/api/cambio/costumes',{bundle,commit:false,expectedRevision:library.revision});controller?.abort();controller=new AbortController();status.textContent='Playing unsaved draft…';await onPreview(result,controller.signal);status.textContent='Preview finished. Review placement before saving.';}));

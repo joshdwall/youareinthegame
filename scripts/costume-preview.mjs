@@ -32,7 +32,7 @@ async function ensurePreviewAccess(apps){
   const allow=linked.filter(p=>p.decision==='allow');
   if(!admin&&allow.length===1){const p=allow[0];if(p.include?.some(r=>r.everyone))throw Error('Refusing broad admin allow policy');admin=await cf('/accounts/{account}/access/policies','POST',{name:'YAITG preview Admin',decision:'allow',include:p.include,exclude:p.exclude||[],require:p.require||[]});}
  }
- if(!admin||!template?.allowed_idps?.length)throw Error('Cannot identify existing game Admin/identity settings. App domains: '+gameApps.map(a=>a.domain).filter(Boolean).join(', ')+'; policies: '+policies.map(p=>p.name+' ('+p.decision+')').join(', '));
+ if(!admin||!template?.allowed_idps?.length)throw Error('Existing game Admin policy and Cloudflare identity providers could not be resolved; Access read permissions/account scope require review. No preview deployed.');
  const tokens=await cf('/accounts/{account}/access/service_tokens');
  const token=tokens.find(t=>t.client_id===common.CF_ACCESS_PAGES_PREVIEW_CLIENT_ID);
  if(!token)throw Error('Existing preview service token not found');
@@ -60,7 +60,8 @@ async function browser(url){
  for(let i=0;i<10;i++){await page.locator('#mainCreature').click();await page.waitForTimeout(180);}
  await page.waitForTimeout(8000);await page.screenshot({path:path.join(evidence,'desktop.png'),fullPage:true});
  await page.setViewportSize({width:390,height:844});await page.reload({waitUntil:'networkidle'});await page.locator('#mainCreature').click();await page.screenshot({path:path.join(evidence,'mobile.png'),fullPage:true});
- await page.goto(new URL('/cambio/',url).href,{waitUntil:'networkidle'});await page.waitForSelector('#cambioRoot');await page.screenshot({path:path.join(evidence,'cambio.png'),fullPage:true});
+ await page.goto(new URL('/cambio/',url).href,{waitUntil:'networkidle'});await page.waitForSelector('#costumeWorkshop');await page.locator('#costumeWorkshop summary').first().click();await page.locator('#costumeLoadBandana').click();await page.waitForFunction(()=>document.querySelector('#costumeId').value==='bandit-reusable');
+ await page.locator('#costumePreview').click();await page.waitForTimeout(250);await page.locator('#costumeStop').click();await page.waitForFunction(()=>!document.querySelector('#costumeSaveDraft').disabled);await page.screenshot({path:path.join(evidence,'cambio.png'),fullPage:true});
  await browser.close();save('browser.json',{ok:errors.length===0,errors});if(errors.length)throw Error('Preview browser errors: '+errors.join('; '));
 }
 async function main(){
