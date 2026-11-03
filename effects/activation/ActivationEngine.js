@@ -177,17 +177,17 @@ export async function runActivation(opts) {
       if(spec.spreadPx!==null){const seconds=(spec.durationMs||4000)/1000;fw.MIN_INITIAL_SPEED=spec.spreadPx*.7/seconds;fw.MAX_INITIAL_SPEED=spec.spreadPx/seconds;}
       if(reduced){fw.MIN_INITIAL_SPEED=0;fw.MAX_INITIAL_SPEED=0;fw.MIN_LIFESPAN=.2;fw.MAX_LIFESPAN=.2;fw.GRAVITY=0;fw.MIN_SWIRL_AMPLITUDE=0;fw.MAX_SWIRL_AMPLITUDE=0;}
       fw.createSporeElement=(spore,dims)=>makeSpore(dims||{width:fw.BASE_WIDTH,height:fw.BASE_HEIGHT},spore?.id||0);
-      const finished=new Promise(resolve=>{manager=new FireworkManager(fw);manager.launch(window.innerWidth/2+fw.LAUNCH_OFFSET_X,window.innerHeight/2+fw.LAUNCH_OFFSET_Y,sporeHost,resolve);});
+      const finished=new Promise(resolve=>{if(count===0){resolve();return;}manager=new FireworkManager(fw);manager.launch(window.innerWidth/2+fw.LAUNCH_OFFSET_X,window.innerHeight/2+fw.LAUNCH_OFFSET_Y,sporeHost,resolve);});
+      // Preserve every spore's natural lifecycle. Only explicit cancellation may
+      // interrupt the finale; the lighting reset begins after the manager finishes.
+      await Promise.race([finished,abortPromise]);
+      if(aborted())return {ok:false,aborted:true};
       if(transition==='lightning'&&!reduced){
-        // The visible reset is the round boundary; lingering firework lifespans
-        // must not keep input locked after lighting has returned to normal.
-        await delay(overlayProfile.animations.FIREWORKS_DELAY_BEFORE_FINAL);
-        if(aborted())return {ok:false,aborted:true};
         const n=bodyFlash('final-reset');nodes.add(n);n.style.opacity='1';
         const fadeMs=window.__yaitgEffect?.__liveStormResetMs||overlayProfile.animations.STORM_RESET_DURATION;
         n.style.transition=`opacity ${fadeMs}ms ease-out`;requestAnimationFrame(()=>{n.style.opacity='0';});
         await resetToLight();
-      }else await Promise.race([finished,delay((spec.durationMs||5000)+1000)]);
+      }
     }
     if(aborted())return {ok:false,aborted:true};
     await resetToLight();
