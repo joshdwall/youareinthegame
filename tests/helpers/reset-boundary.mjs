@@ -3,6 +3,9 @@ export async function verifyResetBoundary(page,url){
  await page.goto(url,{waitUntil:'networkidle'});await page.waitForFunction(()=>window.__yaitgEffect&&window.__yaitgPrepared?.ready);
  return page.evaluate(async()=>{
   const effect=window.__yaitgEffect,container=effect.container;const results=[];
+  const {FireworkManager}=await import('/effects/spore/finale.js');const originalCleanup=FireworkManager.prototype.cleanup;let interrupted=0;
+  FireworkManager.prototype.cleanup=function(...args){interrupted+=this.fireworkSpores.filter(s=>s.isAlive).length;return originalCleanup.apply(this,args);};
+  try{
   for(let cycle=0;cycle<2;cycle++){
    const previous=window.__yaitgUpcoming.id;effect.__liveStormResetMs=400;
    const threshold=effect.resetThreshold-effect.clickCount;for(let i=0;i<threshold;i++)effect.onSporeClick(160,160);
@@ -18,7 +21,9 @@ export async function verifyResetBoundary(page,url){
    effect.onSporeClick(160,160);if(effect.clickCount!==1)throw Error('First click after lighting reset did not count');
    if(window.__yaitgUpcoming.id===previous)throw Error('Next costume was not prepared during fade');
    const gap=Math.max(0,unlocked-(fadeEnd??normalAt??unlocked),finalDeadline===null?0:unlocked-finalDeadline);if(gap>100)throw Error('Extra post-fade lock: '+gap+'ms');
-   results.push({played:previous,next:window.__yaitgUpcoming.id,postFadeLockMs:Math.round(gap),firstClickCount:effect.clickCount});
+   if(interrupted)throw Error('Reset interrupted '+interrupted+' living firework spores');
+   results.push({played:previous,next:window.__yaitgUpcoming.id,postFadeLockMs:Math.round(gap),firstClickCount:effect.clickCount,interruptedSpores:interrupted});
   }return results;
+  }finally{FireworkManager.prototype.cleanup=originalCleanup;}
  });
 }
