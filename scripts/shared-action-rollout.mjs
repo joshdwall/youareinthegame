@@ -25,9 +25,10 @@ export async function rolloutSharedActions({githubToken,cloudflareToken,account,
   const before=await status();const ready=data=>data?.sourceRevision===revision&&data.capabilities?.revisionedSnapshots&&data.capabilities?.trackingOnly;
   let deployed=false;if(!ready(before)){
    const config=environment==='preview'?'workers/envivo-data/wrangler.preview.toml':'workers/envivo-data/wrangler.toml',text=fs.readFileSync(path.join(source,config),'utf8');
+   const workerAccount=text.match(/^\s*account_id\s*=\s*"([a-f0-9]{32})"/mi)?.[1]||account;
    if(environment==='preview'&&(/\[\[routes\]\]|^\s*routes?\s*=/m.test(text)||!text.includes('name = "envivo-data-preview"')))throw Error('Unsafe shared preview config');
    record('unrouted-actions','worldmap.shared.'+environment+'.deploy',1,'month');
-   run('npx',['--yes','wrangler@4.28.0','deploy','--config',config,'--keep-vars','--var','DATA_SQL:1','--var','ACTION_HANDLER_REVISION:'+revision],environment+' Worker deploy',{CLOUDFLARE_API_TOKEN:cloudflareToken,CLOUDFLARE_ACCOUNT_ID:account});deployed=true;
+   run('npx',['--yes','wrangler@4.28.0','deploy','--config',config,'--keep-vars','--var','DATA_SQL:1','--var','ACTION_HANDLER_REVISION:'+revision],environment+' Worker deploy',{CLOUDFLARE_API_TOKEN:cloudflareToken,CLOUDFLARE_ACCOUNT_ID:workerAccount});deployed=true;
   }
   let current;for(let attempt=0;attempt<15;attempt++){current=await status();if(ready(current))break;await new Promise(resolve=>setTimeout(resolve,2000));}if(!ready(current))throw Error('Shared '+environment+' revision/auth verification failed');
   const event={id:'worldmap-shared-verification-'+revision+'-'+environment,providerId:'unrouted-actions',actual:1,op:'worldmap.shared.endpoint.verify',repo:'joshdwall/youareinthegame',visibility:'public',actor:'worldmap-rollout',period:'month',reason:'One real endpoint verification, replayed to prove idempotency'};
