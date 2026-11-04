@@ -2,6 +2,7 @@ import {stableId} from './worldmap-actions.mjs';
 const HOUR=3600000;
 /** Provider observations are a separate view from logical operation counts, never summed together. */
 export async function collectWorldmapUsage({gql,account,namespace,database,tracker,now=Date.now()}){
+ if(![account,namespace,database].every(value=>typeof value==='string'&&value.trim()))throw Error('Scoped provider usage bindings are required');
  const end=Math.floor(now/HOUR)*HOUR-HOUR,start=end-24*HOUR;
  const datasets=[
   {name:'workersInvocationsAdaptive',filterType:'AccountWorkersInvocationsAdaptiveFilter_InputObject',filter:{},dimensions:'datetimeHour',sums:'requests',scope:stableId('account:'+account),scopeLabel:'account-wide',metrics:{requests:'workers-observed'}},
