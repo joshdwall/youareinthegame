@@ -4,7 +4,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 /** Approved shared rollout: private source remains in the runner temp directory, never public artifacts. */
-export async function rolloutSharedActions({githubToken,cloudflareToken,account,dataToken,record,save}){
+export async function rolloutSharedActions({githubToken,cloudflareToken,cloudflareTokens=[],account,dataToken,record,save}){
  const lock=JSON.parse(fs.readFileSync('config/action-runtime-lock.json'));
  if(!/^[a-f0-9]{40}$/.test(lock.revision))throw Error('Shared runtime must pin an approved commit');
  const revision=lock.revision,folder=fs.mkdtempSync(path.join(os.tmpdir(),'shared-action-rollout-'));
@@ -28,7 +28,9 @@ export async function rolloutSharedActions({githubToken,cloudflareToken,account,
    const workerAccount=text.match(/^\s*account_id\s*=\s*"([a-f0-9]{32})"/mi)?.[1]||account;
    if(environment==='preview'&&(/\[\[routes\]\]|^\s*routes?\s*=/m.test(text)||!text.includes('name = "envivo-data-preview"')))throw Error('Unsafe shared preview config');
    record('unrouted-actions','worldmap.shared.'+environment+'.deploy',1,'month');
-   run('npx',['--yes','wrangler@4.28.0','deploy','--config',config,'--keep-vars','--var','DATA_SQL:1','--var','ACTION_HANDLER_REVISION:'+revision],environment+' Worker deploy',{CLOUDFLARE_API_TOKEN:cloudflareToken,CLOUDFLARE_ACCOUNT_ID:workerAccount});deployed=true;
+   const candidates=[{name:'shared',value:cloudflareToken},...cloudflareTokens].filter((entry,index,list)=>entry.value&&list.findIndex(other=>other.value===entry.value)===index);let lastError;
+   for(const credential of candidates){try{run('npx',['--yes','wrangler@4.28.0','deploy','--config',config,'--keep-vars','--var','DATA_SQL:1','--var','ACTION_HANDLER_REVISION:'+revision],environment+' Worker deploy',{CLOUDFLARE_API_TOKEN:credential.value,CLOUDFLARE_ACCOUNT_ID:workerAccount});deployed=true;console.log('Shared '+environment+' Worker deployed using '+credential.name+' credential.');break;}catch(error){lastError=error;if(!/No access|Authentication|permission|code:.*10000|code:.*10090/i.test(error.message))throw error;console.log('Shared '+environment+' service denied '+credential.name+' credential; trying existing fallback.');}}
+   if(!deployed)throw lastError||Error('No shared Worker deployment credential available');
   }
   let current;for(let attempt=0;attempt<15;attempt++){current=await status();if(ready(current))break;await new Promise(resolve=>setTimeout(resolve,2000));}if(!ready(current))throw Error('Shared '+environment+' revision/auth verification failed');
   const event={id:'worldmap-shared-verification-'+revision+'-'+environment,providerId:'unrouted-actions',actual:1,op:'worldmap.shared.endpoint.verify',repo:'joshdwall/youareinthegame',visibility:'public',actor:'worldmap-rollout',period:'month',reason:'One real endpoint verification, replayed to prove idempotency'};
