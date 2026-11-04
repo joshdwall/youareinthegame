@@ -4,7 +4,8 @@ import {recordActionCore,getActionSnapshotCore} from '../runtime/shared/global-a
 const DAY=86400000;
 export const stableId=text=>crypto.createHash('sha256').update(text).digest('hex');
 export function createWorldmapActions({baseUrl,token,repo,runId,attempt='1',stage='sync',visibility='private',fetchImpl=fetch,now=()=>Date.now()}){
- const counters=new Map(),observations=[],client=createActionClient({baseUrl,token,fetchImpl});
+ const ledgerFetch=async(url,options)=>{const response=await fetchImpl(url,options);if(!response.ok){const body=await response.clone().json().catch(()=>null);throw Error('Action ledger HTTP '+response.status+(body?.error?': '+String(body.error).replace(/[a-f0-9]{32,64}/gi,'[identifier]').slice(0,300):''));}return response;};
+ const counters=new Map(),observations=[],client=createActionClient({baseUrl,token,fetchImpl:ledgerFetch});
  const context={repo,runId:String(runId),attempt:String(attempt),stage,visibility};
  function record(providerId,op,actual=1,period='day'){
   if(!Number.isFinite(actual)||actual<0)throw Error('Invalid usage count');
