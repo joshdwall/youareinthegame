@@ -34,3 +34,30 @@ export async function auditCloudflareHistory({tokens,account,save}){
  }
  save('cloudflare-history-audit.json',report);console.log('Cloudflare analytics discovery complete:',report.credentials.map(r=>({credential:r.credential,zoneFound:r.zoneFound,rumSiteFound:r.rumSiteFound,error:r.error,errors:r.errors})));return report;
 }
+
+import {HISTORY_HOSTS,HISTORY_KEY,DAY,validateHistory} from '../runtime/worldmap/history-contract.js';
+export async function collectHistory({gql,account,now=new Date()}){
+ const settings=await gql('query($a:string!){viewer{accounts(filter:{accountTag:$a}){settings{rumPageloadEventsAdaptiveGroups{enabled maxDuration notOlderThan maxPageSize}}}}}',{a:account});
+ const limits=settings.viewer.accounts[0]?.settings.rumPageloadEventsAdaptiveGroups;if(!limits?.enabled)throw Error('Web Analytics history unavailable');
+ const end=now.toISOString(),start=new Date(Math.ceil((+now-limits.notOlderThan*1000)/DAY)*DAY).toISOString(),rows=[],dailyTotals=[];let property;let sampled=false,maxInterval=1;
+ const query=async(from,to,selection,order,siteTag)=>{
+  const filter={datetime_geq:from,datetime_lt:to,requestHost_in:HISTORY_HOSTS,...(siteTag?{siteTag}:{})};
+  const data=await gql(`query($a:string!,$f:AccountRumPageloadEventsAdaptiveGroupsFilter_InputObject!,$l:uint64!){viewer{accounts(filter:{accountTag:$a}){rumPageloadEventsAdaptiveGroups(limit:$l,filter:$f,orderBy:[${order}]){${selection}}}}}`,{a:account,f:filter,l:limits.maxPageSize});
+  const groups=data.viewer.accounts[0]?.rumPageloadEventsAdaptiveGroups;if(!Array.isArray(groups)||groups.length>=limits.maxPageSize)throw Error('Incomplete or truncated analytics response');return groups;
+ };
+ const chunks=[];for(let t=Date.parse(start);t<+now;t+=28*DAY)chunks.push([new Date(t).toISOString(),new Date(Math.min(t+28*DAY,+now)).toISOString()]);
+ const properties=new Set();for(const [from,to]of chunks){for(const group of await query(from,to,'dimensions{siteTag requestHost} sum{visits}','sum_visits_DESC')){if(!HISTORY_HOSTS.includes(group.dimensions.requestHost))throw Error('Unexpected analytics host');if(group.sum.visits>0)properties.add(group.dimensions.siteTag);}}
+ if(properties.size!==1)throw Error('Expected one active Web Analytics property; found '+properties.size);property=[...properties][0];
+ for(const [from,to]of chunks){
+  for(const g of await query(from,to,'dimensions{date countryName} sum{visits} avg{sampleInterval}','date_ASC,countryName_ASC',property)){const interval=g.avg?.sampleInterval||1;maxInterval=Math.max(maxInterval,interval);sampled ||= interval>1;rows.push({date:g.dimensions.date,country:/^[A-Z]{2}$/.test(g.dimensions.countryName)?g.dimensions.countryName:'ZZ',count:g.sum.visits});}
+  for(const g of await query(from,to,'dimensions{date} sum{visits}','date_ASC',property))dailyTotals.push({date:g.dimensions.date,count:g.sum.visits});
+ }
+ // Normalize unknown country groups without losing their counts.
+ const merged=new Map();for(const row of rows){const key=row.date+row.country;const old=merged.get(key);if(old)old.count+=row.count;else merged.set(key,{...row});}
+ return validateHistory({schemaVersion:1,source:'cloudflare-web-analytics',dataset:'rumPageloadEventsAdaptiveGroups',metric:'visits',granularity:'country',hosts:[...HISTORY_HOSTS],fetchedAt:end,coverage:{start,end,complete:true,timezone:'UTC'},sampling:{sampled,maxInterval,note:'Adaptive analytics; country and overall totals are queried independently.'},rows:[...merged.values()],dailyTotals});
+}
+export async function syncHistory({token,account,cf,namespace,save}){
+ const gql=async(query,variables)=>{const r=await fetch('https://api.cloudflare.com/client/v4/graphql',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({query,variables}),signal:AbortSignal.timeout(45000)});const j=await r.json();if(!r.ok||j.errors?.length)throw Error('Analytics query failed: '+(j.errors||[]).map(e=>clean(e.message)).join('; '));return j.data;};
+ const snapshot=await collectHistory({gql,account});
+ await cf(`/accounts/{account}/storage/kv/namespaces/${namespace}/bulk`,'PUT',[{key:HISTORY_KEY,value:JSON.stringify(snapshot)}]);save('cloudflare-history.json',snapshot);console.log('Historical visits synchronized:',snapshot.rows.length,'country/day buckets');return snapshot;
+}

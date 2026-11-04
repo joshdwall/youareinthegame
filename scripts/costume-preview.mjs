@@ -129,6 +129,7 @@ async function main(){
   let exists=true;try{await cf(`/accounts/{account}/storage/kv/namespaces/${kv.id}/values/${encodeURIComponent(key)}`,'GET',undefined,true);}catch{exists=false;}
   if(!exists)await cf(`/accounts/{account}/storage/kv/namespaces/${kv.id}/bulk`,'PUT',[{key,value:JSON.stringify(value)}]);
  }
+ if(cfg.worldmap){const {syncHistory}=await import('./cloudflare-history.mjs');await syncHistory({token:common.CHATGPT_CLOUDFLARE_API_TOKEN,account,cf,namespace:kv.id,save});}
  const previewVars=project.deployment_configs?.preview?.env_vars||{};
  let worldmap;
  if(cfg.worldmap){const {provisionWorldmap}=await import('./worldmap-cloud.mjs');worldmap=await provisionWorldmap({cf,config:cfg.worldmap,primaryToken:cfToken,fallbackToken:common['agents-write'],redactValue:value=>sensitive.add(value),withToken:async(token,fn)=>{const previous=cfToken;cfToken=token;try{return await fn();}finally{cfToken=previous;}}});save('worldmap-bindings.json',worldmap);}
@@ -155,3 +156,4 @@ async function main(){
  console.log('Protected costume preview:',url);
 }
 try{await main();}catch(e){save('failure.json',{error:redact(e.message)});console.error(redact(e.message));process.exitCode=1;}finally{usage.finishedAt=new Date().toISOString();const stage=process.argv.includes('--browser-only')?'browser':process.argv.includes('--production-only')?'production':'deploy';save('usage-'+stage+'.json',usage);let aggregate={...usage};if(stage==='browser'&&fs.existsSync(path.join(evidence,'usage-deploy.json'))){const deploy=JSON.parse(fs.readFileSync(path.join(evidence,'usage-deploy.json')));aggregate.startedAt=deploy.startedAt;for(const field of ['builds','deploys','cfApiCalls','wranglerCalls'])aggregate[field]+=deploy[field];}save('usage.json',aggregate);if(infToken){try{await inf('/api/v1/auth/token/revoke',{accessToken:infToken});}catch{console.error('Temporary token revocation could not be confirmed.');}}}
+

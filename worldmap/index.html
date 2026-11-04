@@ -11,7 +11,7 @@
  <header class="site-header"><a class="brand" href="/"><img src="/img/mushroom-platypus.webp" width="58" height="39" alt=""><span>You are in the game</span></a><a class="back-link" href="/">Back to the game <span aria-hidden="true">↗</span></a></header>
  <main>
   <section class="intro" aria-labelledby="map-title"><p class="eyebrow">Mushroom Platypus / Visitor globe</p><h1 id="map-title">You are in<br><em>the world.</em></h1><p class="intro-copy">A little game, with visitors from all over. Spin the Earth and see where everyone joined in.</p>
-   <dl class="totals" aria-label="Visitor totals"><div><dt>Visitors</dt><dd id="visitorTotal">—</dd></div><div><dt>Countries</dt><dd id="countryTotal">—</dd></div><div><dt>Areas</dt><dd id="areaTotal">—</dd></div></dl>
+   <div class="data-controls"><label>Count source <select id="countSource"><option value="cloudflare">Cloudflare history</option><option value="map">Map visitors</option></select></label> <label id="rangeLabel">Period <select id="historyRange"><option value="7">7 days</option><option value="30">30 days</option><option value="all" selected>All available</option></select></label></div><p id="historyDetails" class="selection-note"></p><dl class="totals" aria-label="Visitor totals"><div><dt id="metricLabel">Visits</dt><dd id="visitorTotal">—</dd></div><div><dt>Countries</dt><dd id="countryTotal">—</dd></div><div><dt id="areaMetric">Days</dt><dd id="areaTotal">—</dd></div></dl>
    <p class="live-note" id="mapStatus" role="status">Finding our place in the world…</p>
    <button id="refreshMap" class="text-button" type="button">Refresh counts</button>
   </section>

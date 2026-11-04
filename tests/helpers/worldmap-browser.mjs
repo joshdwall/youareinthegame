@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 export async function verifyWorldmap(page,base,{screenshotDir}={}){
- await page.setExtraHTTPHeaders({'user-agent':'Worldmap verification browser'});await page.goto(base+'/worldmap/',{waitUntil:'networkidle'});await page.waitForSelector('#globe[data-ready="true"]');await page.waitForFunction(()=>document.querySelector('#visitorTotal').textContent!=='—');
+ await page.setExtraHTTPHeaders({'user-agent':'Worldmap verification browser'});await page.goto(base+'/worldmap/',{waitUntil:'networkidle'});await page.waitForSelector('#globe[data-ready="true"]');await page.locator('#countSource').selectOption('map');await page.waitForFunction(()=>document.querySelector('#metricLabel').textContent==='Visitors'&&document.querySelector('#visitorTotal').textContent!=='—');
  const count=await page.locator('#visitorTotal').innerText(),initial=Number(count.replaceAll(',',''));assert(initial>=1,'This browser should have an approximate origin');
  for(let i=0;i<3;i++)await page.reload({waitUntil:'networkidle'});assert.equal(await page.locator('#visitorTotal').innerText(),count,'Refreshes must not add visitors');
  await page.locator('#rotateGlobe').click();assert.equal(await page.locator('#rotateGlobe').getAttribute('aria-pressed'),'false');await page.locator('#zoomIn').click();await page.locator('#resetGlobe').click();await page.locator('#areaList button').first().click();assert.match(await page.locator('#areaSelection').innerText(),/visitor/);
