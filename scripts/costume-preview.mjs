@@ -116,7 +116,7 @@ async function main(){
  const assetSources=[...new Set((backup.keys['cambio:runtime-config'].animations||[]).flatMap(a=>(a.elements||[]).map(e=>e.src)).filter(Boolean))];
  if(assetSources.length>cfg.maxAssets)throw Error('Asset inventory exceeds configured free-tier preview bound');
  save('baseline.json',backup);save('asset-manifest.json',{sources:assetSources,staticAssetsPinnedByCheckpoint:true});
- const recent=await cfList(apiBase()+'/deployments?env=preview');const month=new Date().toISOString().slice(0,7);
+ const recent=[];for(let page=1;page<=40;page++){const batch=await cf(apiBase()+`/deployments?env=preview&per_page=25&page=${page}`);recent.push(...batch);if(batch.length<25)break;if(page===40)throw Error('Deployment budget pagination exceeded');}const month=new Date().toISOString().slice(0,7);
  const previewRuns=recent.filter(d=>(d.created_on||'').startsWith(month)&&d.deployment_trigger?.metadata?.branch==='costume-scalable-workflow').length;
  save('preview-budget.json',{month,previewRuns,limit:cfg.maxMonthlyPreviewRuns});
  if(previewRuns>=cfg.maxMonthlyPreviewRuns)throw Error('Monthly preview run budget reached');
