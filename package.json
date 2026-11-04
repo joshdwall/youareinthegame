@@ -7,8 +7,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "node scripts/build-worldmap.mjs && node scripts/sync-envivo-ui.mjs && node scripts/build.mjs",
-    "test:worldmap": "node --test tests/worldmap.test.mjs tests/worldmap-history.test.mjs",
+    "build": "node scripts/check-action-runtime.mjs && node scripts/worldmap-settings.mjs && node scripts/build-worldmap.mjs && node scripts/sync-envivo-ui.mjs && node scripts/build.mjs",
+    "test:worldmap": "node --test tests/worldmap.test.mjs tests/worldmap-history.test.mjs tests/worldmap-actions.test.mjs tests/worldmap-config.test.mjs",
     "test:worldmap-browser": "node tests/worldmap-browser.mjs",
     "verify": "node tests/verify-yaitg-session-roll.mjs && node tests/verify-yaitg-animation-preview.mjs && node tests/loot-table-weights.test.mjs && node tests/placement-math.test.mjs && node tests/selection-cursor-last-played.test.mjs && node tests/loot-table-alternate.test.mjs && node tests/spore-burst-math.test.mjs && node tests/log-gate.test.mjs && node scripts/check-image-budget.mjs && node scripts/check-no-raw-console-log.mjs",
     "test": "npm run verify",
@@ -24,7 +24,8 @@
     "sync:envivo-ui": "node scripts/sync-envivo-ui.mjs",
     "optimize:images": "node scripts/optimize-images.mjs",
     "check:images": "node scripts/check-image-budget.mjs",
-    "check:console": "node scripts/check-no-raw-console-log.mjs"
+    "check:console": "node scripts/check-no-raw-console-log.mjs",
+    "config:worldmap": "node scripts/worldmap-settings.mjs"
   },
   "devDependencies": {
     "d3-geo": "3.1.2",

@@ -1,16 +1,19 @@
 name: Sync visitor globe history
 on:
   schedule:
-    - cron: '23 * * * *'
+    - cron: "23 * * * *"
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: worldmap-history-${{ github.ref_name }}
   cancel-in-progress: false
 jobs:
   sync:
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4

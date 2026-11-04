@@ -1,3 +1,4 @@
+import {WORLDMAP_SETTINGS} from '../../runtime/worldmap/settings.js';
 const COOKIE='yaitg_worldmap',EXCLUDE='yaitg_worldmap_exclude',YEAR=31536000;
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
 const cookies=request=>Object.fromEntries((request.headers.get('cookie')||'').split(';').map(p=>p.trim().split(/=(.*)/s).slice(0,2)).filter(p=>p.length===2));
@@ -36,7 +37,7 @@ export async function worldmapData({request,env}){
   const sql=`SELECT country||':${step}:'||${y}||':'||${x} AS id,${y}*${step}-90+${step}/2.0 AS lat,${x}*${step}-180+${step}/2.0 AS lng,country,CASE WHEN MIN(region)=MAX(region) THEN MIN(region) ELSE '' END AS region,SUM(visitors) AS count FROM worldmap_areas WHERE visitors>0 GROUP BY country,${y},${x} ORDER BY count DESC LIMIT 2001`;
   [points,total]=await db.batch([db.prepare(sql),db.prepare(totalSql)]);
  }
- const response=json({ok:true,points:points.results,totals:total.results[0],approximate:true,uniqueBy:'browser',preview:env.YAITG_WORLDMAP_PREVIEW==='1',updatedAt:new Date().toISOString(),displayLimit:2000,gridDegrees},200,{'cache-control':'public, max-age=60'});await cache?.put(key,response.clone());return response;
+ const response=json({ok:true,points:points.results,totals:total.results[0],approximate:true,uniqueBy:'browser',preview:env.YAITG_WORLDMAP_PREVIEW==='1',updatedAt:new Date().toISOString(),displayLimit:2000,gridDegrees},200,{'cache-control':'public, max-age='+WORLDMAP_SETTINGS.visitorCacheSeconds});await cache?.put(key,response.clone());return response;
 }
 export async function excludeWorldmapBrowser({request,env}){
  const url=new URL(request.url);if(request.headers.get('origin')!==url.origin)return json({ok:false,error:'Same-origin request required'},403);
