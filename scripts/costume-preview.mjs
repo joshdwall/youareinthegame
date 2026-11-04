@@ -96,6 +96,7 @@ async function main(){
  const login=await inf('/api/v1/auth/universal-auth/login',{clientId:process.env.INFISICAL_CLIENT_ID,clientSecret:process.env.INFISICAL_CLIENT_SECRET});infToken=login.accessToken;sensitive.add(infToken);
  common=await secrets('/cloudflare');site=await secrets('/sites/youareinthegame');cfToken=common.CHATGPT_CLOUDFLARE_API_TOKEN||common['agents-write']||site['site.youareinthegame.cloudflare.api_token'];account=site['site.youareinthegame.cloudflare.account_id']||common.CLOUDFLARE_ACCOUNT_ID;
  if(!cfToken||!account||!common.CF_ACCESS_PAGES_PREVIEW_CLIENT_ID||!common.CF_ACCESS_PAGES_PREVIEW_CLIENT_SECRET)throw Error('Required deployment/Access credentials missing');
+ if(process.argv.includes('--usage-audit')){const {auditWorldmapUsage}=await import('./worldmap-usage-audit.mjs');await auditWorldmapUsage({account,token:cfToken,save});return;}
  if(process.argv.includes('--history-audit')){const {auditCloudflareHistory}=await import('./cloudflare-history.mjs');await auditCloudflareHistory({account,save,tokens:[{name:'shared',value:common.CHATGPT_CLOUDFLARE_API_TOKEN},{name:'agents',value:common['agents-write']},{name:'site',value:site['site.youareinthegame.cloudflare.api_token']}]});return;}
  if(process.argv.includes('--history-sync')){
   const branch=process.env.GITHUB_REF_NAME;if(branch!=='main'&&!branch?.startsWith('costume/'))throw Error('Unexpected history sync branch');

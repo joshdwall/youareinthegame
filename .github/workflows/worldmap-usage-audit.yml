@@ -1,0 +1,28 @@
+name: Discover worldmap usage datasets
+on:
+  push:
+    branches: ['costume/worldmap-usage-cache']
+    paths: ['scripts/worldmap-usage-audit.mjs', '.github/workflows/worldmap-usage-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect usage datasets without visiting the site
+        env:
+          INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_CLIENT_ID }}
+          INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_CLIENT_SECRET }}
+        run: node scripts/costume-preview.mjs --usage-audit
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: worldmap-usage-audit
+          path: .preview-evidence/worldmap-usage-audit.json
+          include-hidden-files: true
+          retention-days: 3
