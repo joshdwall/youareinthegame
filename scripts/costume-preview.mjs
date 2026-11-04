@@ -88,7 +88,7 @@ async function browser(url){
  // server state after reload rather than requiring an off-screen row to mount.
  await page.waitForFunction(async()=>{const data=await(await fetch('/api/cambio/runtime-config',{cache:'no-store'})).json();const saved=data.config?.animations?.find(a=>a.id==='verification-bandana');return saved?.label==='Bandana verification'&&saved.live===false&&saved.elements?.length===2;},null,{timeout:65000,polling:1000});
  save('draft-verification.json',{uploadedStock:true,savedAndReloaded:true,excludedFromPublicPool:true});
- if(cfg.worldmap){stage='visitor globe';const map=await context.newPage();const {verifyWorldmap}=await import('../tests/helpers/worldmap-browser.mjs');save('worldmap-browser.json',await verifyWorldmap(map,url,{screenshotDir:evidence}));await map.close();}
+ if(cfg.worldmap){stage='visitor globe';const map=await context.newPage();const {verifyWorldmap}=await import('../tests/helpers/worldmap-browser.mjs');save('worldmap-browser.json',await verifyWorldmap(map,url,{screenshotDir:evidence,requireHistory:true}));await map.close();}
  save('browser.json',{ok:errors.length===0,errors});if(errors.length)throw Error('Preview browser errors: '+errors.join('; '));
  }catch(e){throw Error(`Browser ${stage}: ${e.message}`);}finally{await browser.close();}
 }
