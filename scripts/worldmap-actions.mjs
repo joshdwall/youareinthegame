@@ -8,7 +8,7 @@ export function createWorldmapActions({baseUrl,token,repo,runId,attempt='1',stag
  const context={repo,runId:String(runId),attempt:String(attempt),stage,visibility};
  function record(providerId,op,actual=1,period='day'){
   if(!Number.isFinite(actual)||actual<0)throw Error('Invalid usage count');
-  const atMs=now(),bucket=period==='month'?new Date(atMs).toISOString().slice(0,7):period==='5min'?Math.floor(atMs/300000):new Date(atMs).toISOString().slice(0,10),key=[providerId,op,period,bucket].join(':');
+  const atMs=now(),bucket=period==='month'?new Date(atMs).toISOString().slice(0,7):period==='5min'?Math.floor(atMs/300000):period==='hour'?new Date(atMs).toISOString().slice(0,13):new Date(atMs).toISOString().slice(0,10),key=[providerId,op,period,bucket].join(':');
   const old=counters.get(key);if(old)old.actual+=actual;else counters.set(key,{providerId,op,actual,period,atMs});
   recordActionCore({kind:'connector.call',calledBy:'youareinthegame',purpose:op,module:'worldmap',surface:'github-runner',meta:{provider:providerId,count:actual}});
  }
@@ -19,6 +19,7 @@ export function createWorldmapActions({baseUrl,token,repo,runId,attempt='1',stag
  function events(){return [...[...counters.entries()].map(([key,e])=>({...e,id:stableId([repo,runId,attempt,stage,key].join(':')),mode:'snapshot',reason:JSON.stringify({source:'logical operation count',trackingOnly:true,capturedAtMs:now()})})),...observations].map(e=>({actor:'youareinthegame',repo,visibility:context.visibility,workflow:stage,runId:context.runId,...e}));}
  async function github(route){record('github-api','worldmap.github.request',1,'hour');const response=await fetchImpl('https://api.github.com/'+route,{headers:{accept:'application/vnd.github+json','user-agent':'worldmap-actions',...(process.env.GITHUB_TOKEN?{authorization:'Bearer '+process.env.GITHUB_TOKEN}:{})},signal:AbortSignal.timeout(30000)});if(!response.ok)throw Error('GitHub usage API HTTP '+response.status);return response.json();}
  async function registerJob(store){
+  if(context.runId.startsWith('local-')){context.visibility=process.env.GITHUB_REPOSITORY_VISIBILITY==='public'?'public':'private';record('github-actions','worldmap.local.runner.minutes',0,'month');return;}
   const key='worldmap:actions:job:'+new Date(now()).toISOString().slice(0,10)+':'+runId+':'+attempt;
   const existing=await store.get(key);if(existing){context.visibility=existing.visibility;return;}
   const repository=await github('repos/'+repo);context.visibility=repository.private?'private':'public';

@@ -8,10 +8,11 @@ export async function rolloutSharedActions({githubToken,cloudflareToken,account,
  const lock=JSON.parse(fs.readFileSync('config/action-runtime-lock.json'));
  if(!/^[a-f0-9]{40}$/.test(lock.revision))throw Error('Shared runtime must pin an approved commit');
  const revision=lock.revision,folder=fs.mkdtempSync(path.join(os.tmpdir(),'shared-action-rollout-'));
+ record('github-api','worldmap.shared.source.request',1,'hour');
  const response=await fetch('https://api.github.com/repos/'+lock.sourceRepo+'/tarball/'+revision,{headers:{authorization:'Bearer '+githubToken,'user-agent':'worldmap-shared-rollout',accept:'application/vnd.github+json'},signal:AbortSignal.timeout(90000)});
  if(!response.ok)throw Error('Pinned shared source download HTTP '+response.status);
  const archive=path.join(folder,'source.tgz'),source=path.join(folder,'source');fs.writeFileSync(archive,Buffer.from(await response.arrayBuffer()));fs.mkdirSync(source);
- const run=(exe,args,phase,env={})=>{const result=spawnSync(exe,args,{cwd:source,encoding:'utf8',env:{...process.env,...env},maxBuffer:8e6});if(result.status!==0)throw Error('Shared '+phase+' failed: '+String(result.stderr||result.stdout||result.error?.message||'').slice(-1800).replace(/[a-f0-9]{32,64}/gi,'[identifier]'));return result.stdout;};
+ const run=(exe,args,phase,env={})=>{if(process.platform==='win32'&&exe==='npx'){args=[path.join(path.dirname(process.execPath),'node_modules/npm/bin/npx-cli.js'),...args];exe=process.execPath;}const result=spawnSync(exe,args,{cwd:source,encoding:'utf8',env:{...process.env,...env},maxBuffer:8e6});if(result.status!==0)throw Error('Shared '+phase+' failed: '+String(result.stderr||result.stdout||result.error?.message||'').slice(-1800).replace(/[a-f0-9]{32,64}/gi,'[identifier]'));return result.stdout;};
  run('tar',['-xzf',archive,'--strip-components=1','-C',source],'source extraction');
  for(const [file,digest]of Object.entries(lock.files))if(crypto.createHash('sha256').update(fs.readFileSync(path.join(source,file),'utf8').replace(/\r\n/g,'\n')).digest('hex')!==digest)throw Error('Shared source digest mismatch');
  const tests=['tests/data-platform','tests/action-handler'].flatMap(dir=>fs.readdirSync(path.join(source,dir)).filter(f=>f.endsWith('.test.mjs')).map(f=>path.join(dir,f)));
