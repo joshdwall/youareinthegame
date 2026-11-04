@@ -97,6 +97,11 @@ async function main(){
  common=await secrets('/cloudflare');site=await secrets('/sites/youareinthegame');cfToken=common.CHATGPT_CLOUDFLARE_API_TOKEN||common['agents-write']||site['site.youareinthegame.cloudflare.api_token'];account=site['site.youareinthegame.cloudflare.account_id']||common.CLOUDFLARE_ACCOUNT_ID;
  if(!cfToken||!account||!common.CF_ACCESS_PAGES_PREVIEW_CLIENT_ID||!common.CF_ACCESS_PAGES_PREVIEW_CLIENT_SECRET)throw Error('Required deployment/Access credentials missing');
  if(process.argv.includes('--history-audit')){const {auditCloudflareHistory}=await import('./cloudflare-history.mjs');await auditCloudflareHistory({account,save,tokens:[{name:'shared',value:common.CHATGPT_CLOUDFLARE_API_TOKEN},{name:'agents',value:common['agents-write']},{name:'site',value:site['site.youareinthegame.cloudflare.api_token']}]});return;}
+ if(process.argv.includes('--history-sync')){
+  const branch=process.env.GITHUB_REF_NAME;if(branch!=='main'&&!branch?.startsWith('costume/'))throw Error('Unexpected history sync branch');
+  let namespace;if(branch==='main'){const project=await cf(apiBase());namespace=project.deployment_configs?.production?.kv_namespaces?.YAITG_SESSION_KV?.namespace_id;}else{const spaces=await cf('/accounts/{account}/storage/kv/namespaces?per_page=1000');namespace=spaces.find(x=>x.title===cfg.previewNamespace)?.id;}
+  if(!namespace)throw Error('History namespace missing');const {syncHistory}=await import('./cloudflare-history.mjs');await syncHistory({token:common.CHATGPT_CLOUDFLARE_API_TOKEN,account,cf,namespace,save});return;
+ }
  if(process.argv.includes('--production-only')){
   if(process.env.GITHUB_REF_NAME!=='main')throw Error('Production verification must run on main');
   let ready=false;for(let i=0;i<40;i++){const p=await cf(apiBase());const d=p.canonical_deployment;if(d?.deployment_trigger?.metadata?.commit_hash===process.env.GITHUB_SHA&&d.latest_stage?.status==='success'){ready=true;break;}await new Promise(r=>setTimeout(r,10000));}if(!ready)throw Error('Approved production commit has not finished deploying');

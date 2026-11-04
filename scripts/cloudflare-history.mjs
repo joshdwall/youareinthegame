@@ -58,6 +58,17 @@ export async function collectHistory({gql,account,now=new Date()}){
 }
 export async function syncHistory({token,account,cf,namespace,save}){
  const gql=async(query,variables)=>{const r=await fetch('https://api.cloudflare.com/client/v4/graphql',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({query,variables}),signal:AbortSignal.timeout(45000)});const j=await r.json();if(!r.ok||j.errors?.length)throw Error('Analytics query failed: '+(j.errors||[]).map(e=>clean(e.message)).join('; '));return j.data;};
- const snapshot=await collectHistory({gql,account});
+ let snapshot;try{snapshot=await collectHistory({gql,account});}catch(e){if(!e.message.includes('property; found 0'))throw e;const zones=await cf('/zones?name=youareinthegame.com');const zone=zones.find(z=>z.name==='youareinthegame.com');if(!zone)throw Error('Public site zone not found');snapshot=await collectEdgeHistory({gql,zone:zone.id});snapshot.collectionNote='No browser Web Analytics property had historical visits for these hosts; using server-side edge visits instead.';}
  await cf(`/accounts/{account}/storage/kv/namespaces/${namespace}/bulk`,'PUT',[{key:HISTORY_KEY,value:JSON.stringify(snapshot)}]);save('cloudflare-history.json',snapshot);console.log('Historical visits synchronized:',snapshot.rows.length,'country/day buckets');return snapshot;
+}
+
+export async function collectEdgeHistory({gql,zone,now=new Date()}){
+ const settings=await gql('query($z:string!){viewer{zones(filter:{zoneTag:$z}){settings{httpRequestsAdaptiveGroups{enabled maxDuration notOlderThan maxPageSize}}}}}',{z:zone});const limits=settings.viewer.zones[0]?.settings.httpRequestsAdaptiveGroups;if(!limits?.enabled)throw Error('Edge visit history unavailable');
+ const end=now.toISOString(),start=new Date(Math.ceil((+now-limits.notOlderThan*1000)/DAY)*DAY).toISOString(),rows=[],dailyTotals=[];let maxInterval=1;
+ for(let t=Date.parse(start);t<+now;t+=Math.min(28*DAY,limits.maxDuration*1000)){
+  const filter={datetime_geq:new Date(t).toISOString(),datetime_lt:new Date(Math.min(+now,t+Math.min(28*DAY,limits.maxDuration*1000))).toISOString(),clientRequestHTTPHost_in:HISTORY_HOSTS,requestSource:'eyeball'};
+  for(const country of [true,false]){const data=await gql(`query($z:string!,$f:ZoneHttpRequestsAdaptiveGroupsFilter_InputObject!,$l:uint64!){viewer{zones(filter:{zoneTag:$z}){httpRequestsAdaptiveGroups(limit:$l,filter:$f,orderBy:[date_ASC${country?',clientCountryName_ASC':''}]){dimensions{date ${country?'clientCountryName':''}} sum{visits} avg{sampleInterval}}}}}`,{z:zone,f:filter,l:limits.maxPageSize});const groups=data.viewer.zones[0]?.httpRequestsAdaptiveGroups;if(!Array.isArray(groups)||groups.length>=limits.maxPageSize)throw Error('Incomplete or truncated edge analytics response');for(const g of groups){maxInterval=Math.max(maxInterval,g.avg?.sampleInterval||1);if(country)rows.push({date:g.dimensions.date,country:/^[A-Z]{2}$/.test(g.dimensions.clientCountryName)?g.dimensions.clientCountryName:'ZZ',count:g.sum.visits});else dailyTotals.push({date:g.dimensions.date,count:g.sum.visits});}}
+ }
+ const merged=new Map();for(const row of rows){const key=row.date+row.country;const old=merged.get(key);if(old)old.count+=row.count;else merged.set(key,{...row});}
+ return validateHistory({schemaVersion:1,source:'cloudflare-edge-analytics',dataset:'httpRequestsAdaptiveGroups',metric:'visits',granularity:'country',hosts:[...HISTORY_HOSTS],fetchedAt:end,coverage:{start,end,complete:true,timezone:'UTC'},sampling:{sampled:maxInterval>1,maxInterval,note:'Server-side visit estimates can include automated traffic and repeat visits. Country and overall totals queried independently.'},rows:[...merged.values()],dailyTotals});
 }
