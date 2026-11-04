@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "include": [
+    "/",
+    "/worldmap",
+    "/worldmap/",
+    "/api/*",
+    "/cambio",
+    "/cambio/*"
+  ],
+  "exclude": [
+    "/assets/*",
+    "/img/*",
+    "/effects/*",
+    "/runtime/*",
+    "/js/*",
+    "/content/*",
+    "/worldmap/*.js",
+    "/worldmap/*.css",
+    "/styles.css",
+    "/script.js",
+    "/mainConfig.js",
+    "/favicon*",
+    "/apple-touch-icon.png",
+    "/cambio/*.js",
+    "/cambio/*.css"
+  ]
+}

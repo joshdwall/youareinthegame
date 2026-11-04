@@ -1,0 +1,9 @@
+{
+  "sourceRepo": "joshdwall/enVivo",
+  "revision": "1cc5b3c8dd993034f44affdf28cca1b0b7cdd117",
+  "files": {
+    "shared/action-handler/http-client.mjs": "94acb097c9c1df1484990f9ab71dff69b15db161b45988e313fd66d5c6a0b678",
+    "shared/global-action-tracker/core.mjs": "74a7d552bb5f95fa4cfc816e0bce84b2a0812d09cc33dacda6b5f010b698f525"
+  },
+  "usedBy": "scripts/worldmap-actions.mjs"
+}

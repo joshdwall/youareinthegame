@@ -5,9 +5,12 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 jobs:
   verify:
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4

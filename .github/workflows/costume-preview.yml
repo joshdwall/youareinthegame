@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   preview:
-    if: github.ref != 'refs/heads/main'
+    if: github.ref != 'refs/heads/main' && !contains(github.event.head_commit.message, '[usage-audit]')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -24,6 +24,12 @@ jobs:
       - run: npm run verify
       - run: npm run test:costumes
       - run: npm run test:worldmap
+      - name: Verify approved shared tracking rollout
+        if: github.ref == 'refs/heads/costume/worldmap-usage-cache'
+        env:
+          INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_CLIENT_ID }}
+          INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_CLIENT_SECRET }}
+        run: node scripts/costume-preview.mjs --shared-actions-rollout
       - name: Build, back up baseline, isolate and deploy preview
         id: preview
         env:
