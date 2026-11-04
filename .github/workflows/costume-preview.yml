@@ -2,6 +2,7 @@ name: Costume preview
 on:
   push:
     branches: ['costume/**']
+    paths-ignore: ['scripts/cloudflare-history.mjs', '.github/workflows/worldmap-history-audit.yml']
   workflow_dispatch:
 permissions:
   contents: read

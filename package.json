@@ -27,7 +27,9 @@
     "check:console": "node scripts/check-no-raw-console-log.mjs"
   },
   "devDependencies": {
+    "d3-geo": "3.1.2",
     "globe.gl": "2.46.2",
+    "i18n-iso-countries": "7.14.0",
     "playwright": "^1.48.0",
     "sharp": "^0.33.5",
     "topojson-client": "3.1.0",
