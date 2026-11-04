@@ -10,10 +10,20 @@ export async function auditCloudflareHistory({tokens,account,save}){
    const zones=await request('/zones?name=youareinthegame.com');const zone=zones.result?.find(z=>z.name==='youareinthegame.com');row.zoneFound=!!zone;
    try{const sites=await request(`/accounts/${account}/rum/site_info/list?per_page=100`);const site=sites.result?.find(s=>s.ruleset?.zone_name==='youareinthegame.com'||s.rules?.some(r=>['youareinthegame.com','www.youareinthegame.com'].includes(r.host)));row.rumSiteFound=!!site;if(site){row.siteCreated=site.created;row.sitePaused=site.ruleset?.enabled===false;}}
    catch(e){row.siteListError=clean(e.message);}
-   const settingsQuery=`query($a:string!${zone?',$z:string!':''}){viewer{accounts(filter:{accountTag:$a}){settings{rumPageloadEventsAdaptiveGroups{enabled availableFields maxPageSize maxDuration notOlderThan}}}${zone?'zones(filter:{zoneTag:$z}){settings{httpRequests1dGroups{enabled availableFields maxPageSize maxDuration notOlderThan} httpRequestsAdaptiveGroups{enabled availableFields maxPageSize maxDuration notOlderThan}}}':''}}`;
+   if(!zone)throw Error('Site zone not found');
+   const settingsQuery=`query($a:string!,$z:string!){
+    viewer{
+     accounts(filter:{accountTag:$a}){settings{rumPageloadEventsAdaptiveGroups{enabled availableFields maxPageSize maxDuration notOlderThan}}}
+     zones(filter:{zoneTag:$z}){settings{
+      httpRequests1dGroups{enabled availableFields maxPageSize maxDuration notOlderThan}
+      httpRequestsAdaptiveGroups{enabled availableFields maxPageSize maxDuration notOlderThan}
+     }}
+    }
+   }`;
    const settings=await gql(settingsQuery,{a:account,...(zone?{z:zone.id}:{})});row.settings=settings.data?.viewer;row.errors=settings.errors?.map(e=>clean(e.message));
    const schema=await gql(`{account:__type(name:"Account"){fields{name type{${typeRef}} args{name type{${typeRef}}}}} zone:__type(name:"Zone"){fields{name type{${typeRef}} args{name type{${typeRef}}}}}}`);
    row.schemaErrors=schema.errors?.map(e=>clean(e.message));
+   const namesQuery=await gql('{__schema{types{name}}}');row.typeNames=(namesQuery.data?.__schema?.types||[]).map(t=>t.name).filter(n=>/^(account|zone)$|rumPageloadEventsAdaptiveGroups|httpRequests1dGroups|httpRequestsAdaptiveGroups/i.test(n)).slice(0,120);row.schemaShape={keys:Object.keys(schema),dataKeys:Object.keys(schema.data||{}),data:schema.data};
    const fields=[...(schema.data?.account?.fields||[]),...(schema.data?.zone?.fields||[])].filter(f=>['rumPageloadEventsAdaptiveGroups','httpRequests1dGroups','httpRequestsAdaptiveGroups'].includes(f.name));
    row.fields=fields;
    const leaf=t=>t?.ofType?leaf(t.ofType):t?.name;row.types={};
