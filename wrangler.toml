@@ -16,3 +16,9 @@ id = "384434fdf4f241be872e33e6c5fcbff3"
 [[r2_buckets]]
 binding = "YAITG_ASSETS_R2"
 bucket_name = "youareinthegame-assets"
+
+# Independent production visitor database; previews override this binding.
+[[d1_databases]]
+binding = "YAITG_WORLDMAP_DB"
+database_name = "youareinthegame-worldmap"
+database_id = "dc3f9e8b-5b98-406d-a0d7-a0d7c355b24e"

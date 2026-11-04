@@ -57,11 +57,11 @@ async function ensurePreviewAccess(apps){
 function headers(){return {'CF-Access-Client-Id':common.CF_ACCESS_PAGES_PREVIEW_CLIENT_ID,'CF-Access-Client-Secret':common.CF_ACCESS_PAGES_PREVIEW_CLIENT_SECRET};}
 async function verifyAccess(url){
  const u=new URL(url);if(!u.hostname.endsWith('.'+cfg.project+'.pages.dev'))throw Error('Unexpected preview host');
- const publicResponse=await fetch(new URL('/cambio/',u),{redirect:'manual'});
+ const publicResponse=await fetch(new URL('/cambio/',u),{redirect:'manual',headers:{'user-agent':'YAITG automated monitor'}});
  const loc=publicResponse.headers.get('location')||'';
  if(![302,303].includes(publicResponse.status)||!loc.includes('/cdn-cgi/access/login'))throw Error('Preview Access protection not confirmed; refusing to expose authoring');
  const checks=[];
- for(const p of ['/','/cambio/','/api/animations']){const r=await fetch(new URL(p,u),{headers:headers(),redirect:'manual'});checks.push({path:p,status:r.status});if(r.status!==200)throw Error(`Protected preview check ${p}: HTTP ${r.status}`);}
+ for(const p of ['/','/cambio/','/api/animations']){const r=await fetch(new URL(p,u),{headers:{...headers(),'user-agent':'YAITG automated monitor'},redirect:'manual'});checks.push({path:p,status:r.status});if(r.status!==200)throw Error(`Protected preview check ${p}: HTTP ${r.status}`);}
  return checks;
 }
 async function verifyReady(url){let last;for(let attempt=1;attempt<=8;attempt++){try{return await verifyAccess(url);}catch(e){last=e;if(attempt<8)await new Promise(resolve=>setTimeout(resolve,10000));}}throw last;}
@@ -83,8 +83,12 @@ async function browser(url){
  await page.waitForFunction(()=>document.querySelectorAll('#costumeAccessoryEditors fieldset').length===2&&!document.querySelector('#costumeSaveDraft').disabled);
  await page.locator('#costumeSaveDraft').click();await page.waitForFunction(()=>document.querySelector('#costumeWorkshopStatus').textContent.startsWith('Saved as draft'));
  const draftHidden=await page.evaluate(async()=>!(await(await fetch('/api/animations')).json()).animations.some(a=>a.id==='verification-bandana'));if(!draftHidden)throw Error('Verification draft leaked into public pool');
- await page.reload({waitUntil:'networkidle'});await page.getByText('Bandana verification',{exact:true}).first().waitFor();
+ await page.reload({waitUntil:'networkidle'});await page.waitForSelector('#costumeWorkshop');
+ // The animation list is virtualized in the mobile sidebar. Verify persisted
+ // server state after reload rather than requiring an off-screen row to mount.
+ await page.waitForFunction(async()=>{const data=await(await fetch('/api/cambio/runtime-config',{cache:'no-store'})).json();const saved=data.config?.animations?.find(a=>a.id==='verification-bandana');return saved?.label==='Bandana verification'&&saved.live===false&&saved.elements?.length===2;},null,{timeout:65000,polling:1000});
  save('draft-verification.json',{uploadedStock:true,savedAndReloaded:true,excludedFromPublicPool:true});
+ if(cfg.worldmap){stage='visitor globe';const map=await context.newPage();const {verifyWorldmap}=await import('../tests/helpers/worldmap-browser.mjs');save('worldmap-browser.json',await verifyWorldmap(map,url,{screenshotDir:evidence,requireHistory:true}));await map.close();}
  save('browser.json',{ok:errors.length===0,errors});if(errors.length)throw Error('Preview browser errors: '+errors.join('; '));
  }catch(e){throw Error(`Browser ${stage}: ${e.message}`);}finally{await browser.close();}
 }
@@ -92,10 +96,16 @@ async function main(){
  const login=await inf('/api/v1/auth/universal-auth/login',{clientId:process.env.INFISICAL_CLIENT_ID,clientSecret:process.env.INFISICAL_CLIENT_SECRET});infToken=login.accessToken;sensitive.add(infToken);
  common=await secrets('/cloudflare');site=await secrets('/sites/youareinthegame');cfToken=common.CHATGPT_CLOUDFLARE_API_TOKEN||common['agents-write']||site['site.youareinthegame.cloudflare.api_token'];account=site['site.youareinthegame.cloudflare.account_id']||common.CLOUDFLARE_ACCOUNT_ID;
  if(!cfToken||!account||!common.CF_ACCESS_PAGES_PREVIEW_CLIENT_ID||!common.CF_ACCESS_PAGES_PREVIEW_CLIENT_SECRET)throw Error('Required deployment/Access credentials missing');
+ if(process.argv.includes('--history-audit')){const {auditCloudflareHistory}=await import('./cloudflare-history.mjs');await auditCloudflareHistory({account,save,tokens:[{name:'shared',value:common.CHATGPT_CLOUDFLARE_API_TOKEN},{name:'agents',value:common['agents-write']},{name:'site',value:site['site.youareinthegame.cloudflare.api_token']}]});return;}
+ if(process.argv.includes('--history-sync')){
+  const branch=process.env.GITHUB_REF_NAME;if(branch!=='main'&&!branch?.startsWith('costume/'))throw Error('Unexpected history sync branch');
+  let namespace;if(branch==='main'){const project=await cf(apiBase());namespace=project.deployment_configs?.production?.kv_namespaces?.YAITG_SESSION_KV?.namespace_id;}else{const spaces=await cf('/accounts/{account}/storage/kv/namespaces?per_page=1000');namespace=spaces.find(x=>x.title===cfg.previewNamespace)?.id;}
+  if(!namespace)throw Error('History namespace missing');const {syncHistory}=await import('./cloudflare-history.mjs');await syncHistory({token:common.CHATGPT_CLOUDFLARE_API_TOKEN,account,cf,namespace,save});return;
+ }
  if(process.argv.includes('--production-only')){
   if(process.env.GITHUB_REF_NAME!=='main')throw Error('Production verification must run on main');
   let ready=false;for(let i=0;i<40;i++){const p=await cf(apiBase());const d=p.canonical_deployment;if(d?.deployment_trigger?.metadata?.commit_hash===process.env.GITHUB_SHA&&d.latest_stage?.status==='success'){ready=true;break;}await new Promise(r=>setTimeout(r,10000));}if(!ready)throw Error('Approved production commit has not finished deploying');
-  const url='https://youareinthegame.com';for(const path of ['/','/api/animations']){const r=await fetch(url+path);if(r.status!==200)throw Error('Production HTTP check failed: '+path);}
+  const url='https://youareinthegame.com';for(const path of ['/','/api/animations']){const r=await fetch(url+path,{headers:{'user-agent':'YAITG automated monitor'}});if(r.status!==200)throw Error('Production HTTP check failed: '+path);}
   const {chromium}=await import('playwright'),b=await chromium.launch();try{const page=await b.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));const {verifyResetBoundary}=await import('../tests/helpers/reset-boundary.mjs');const results=await verifyResetBoundary(page,url);if(errors.length)throw Error(errors.join('; '));save('production.json',{url,commit:process.env.GITHUB_SHA,resetCycles:results,browserErrors:errors});await page.screenshot({path:path.join(evidence,'production.png')});console.log('Production reset verification passed:',url);}finally{await b.close();}return;
  }
  if(process.argv.includes('--browser-only')){const url=process.env.COSTUME_PREVIEW_URL;await verifyReady(url);await browser(url);return;}
@@ -111,8 +121,10 @@ async function main(){
  const assetSources=[...new Set((backup.keys['cambio:runtime-config'].animations||[]).flatMap(a=>(a.elements||[]).map(e=>e.src)).filter(Boolean))];
  if(assetSources.length>cfg.maxAssets)throw Error('Asset inventory exceeds configured free-tier preview bound');
  save('baseline.json',backup);save('asset-manifest.json',{sources:assetSources,staticAssetsPinnedByCheckpoint:true});
- const recent=await cf(apiBase()+'/deployments?env=preview&per_page=25');if(recent.length===25)recent.push(...await cf(apiBase()+'/deployments?env=preview&per_page=25&page=2'));const month=new Date().toISOString().slice(0,7);
- if(recent.filter(d=>(d.created_on||'').startsWith(month)).length>=cfg.maxMonthlyPreviewRuns)throw Error('Monthly preview run budget reached');
+ const recent=[];for(let page=1;page<=40;page++){const batch=await cf(apiBase()+`/deployments?env=preview&per_page=25&page=${page}`);recent.push(...batch);if(batch.length<25)break;if(page===40)throw Error('Deployment budget pagination exceeded');}const month=new Date().toISOString().slice(0,7);
+ const previewRuns=recent.filter(d=>(d.created_on||'').startsWith(month)&&d.deployment_trigger?.metadata?.branch==='costume-scalable-workflow').length;
+ save('preview-budget.json',{month,previewRuns,limit:cfg.maxMonthlyPreviewRuns});
+ if(previewRuns>=cfg.maxMonthlyPreviewRuns)throw Error('Monthly preview run budget reached');
  accessToken=common.CHATGPT_CLOUDFLARE_API_TOKEN||site['site.youareinthegame.cloudflare.api_token']||cfToken;const accessApps=await cfList('/accounts/{account}/access/apps');
  const previewHost='costume-scalable-workflow.'+cfg.project+'.pages.dev';
  const covers=domain=>domain&&new RegExp('^'+domain.replace(/[.+?^${}()|[\]\\]/g,'\\$&').replaceAll('*','.*')+'$').test(previewHost);
@@ -124,13 +136,17 @@ async function main(){
   let exists=true;try{await cf(`/accounts/{account}/storage/kv/namespaces/${kv.id}/values/${encodeURIComponent(key)}`,'GET',undefined,true);}catch{exists=false;}
   if(!exists)await cf(`/accounts/{account}/storage/kv/namespaces/${kv.id}/bulk`,'PUT',[{key,value:JSON.stringify(value)}]);
  }
+ if(cfg.worldmap){const {syncHistory}=await import('./cloudflare-history.mjs');await syncHistory({token:common.CHATGPT_CLOUDFLARE_API_TOKEN,account,cf,namespace:kv.id,save});}
  const previewVars=project.deployment_configs?.preview?.env_vars||{};
+ let worldmap;
+ if(cfg.worldmap){const {provisionWorldmap}=await import('./worldmap-cloud.mjs');worldmap=await provisionWorldmap({cf,config:cfg.worldmap,primaryToken:cfToken,fallbackToken:common['agents-write'],redactValue:value=>sensitive.add(value),withToken:async(token,fn)=>{const previous=cfToken;cfToken=token;try{return await fn();}finally{cfToken=previous;}}});save('worldmap-bindings.json',worldmap);}
  const sessionMarker='costume:preview-session:v1';let independentSession=false;
  try{independentSession=JSON.parse(await cf(`/accounts/{account}/storage/kv/namespaces/${kv.id}/values/${encodeURIComponent(sessionMarker)}`,'GET',undefined,true))?.independent===true;}catch{}
  if(!previewVars.YAITG_SESSION_SECRET||!independentSession){await cf(apiBase(),'PATCH',{deployment_configs:{preview:{env_vars:{...previewVars,YAITG_SESSION_SECRET:{type:'secret_text',value:crypto.randomBytes(32).toString('hex')}}}}});await cf(`/accounts/{account}/storage/kv/namespaces/${kv.id}/bulk`,'PUT',[{key:sessionMarker,value:JSON.stringify({independent:true,createdAt:new Date().toISOString()})}]);}
  run('npm',['run','build']);usage.builds++;
  const configFile=path.resolve('wrangler.toml');const original=fs.readFileSync('wrangler.toml','utf8');
- fs.writeFileSync(configFile,original+`\n[env.preview]\n[env.preview.vars]\nYAITG_RATE_MAX = "120"\nYAITG_RATE_WINDOW_SEC = "3600"\n[[env.preview.kv_namespaces]]\nbinding = "YAITG_SESSION_KV"\nid = "${kv.id}"\n[[env.preview.r2_buckets]]\nbinding = "YAITG_ASSETS_R2"\nbucket_name = "${cfg.previewBucket}"\n`);
+ const productionMap=worldmap&&!original.includes('YAITG_WORLDMAP_DB')?`\n[[d1_databases]]\nbinding = "YAITG_WORLDMAP_DB"\ndatabase_name = "${worldmap.production.name}"\ndatabase_id = "${worldmap.production.id}"\n`:'';
+ fs.writeFileSync(configFile,original+productionMap+`\n[env.preview]\n[env.preview.vars]\nYAITG_WORLDMAP_PREVIEW = "1"\nYAITG_RATE_MAX = "120"\nYAITG_RATE_WINDOW_SEC = "3600"\n[[env.preview.kv_namespaces]]\nbinding = "YAITG_SESSION_KV"\nid = "${kv.id}"\n[[env.preview.r2_buckets]]\nbinding = "YAITG_ASSETS_R2"\nbucket_name = "${cfg.previewBucket}"\n`+(worldmap?`\n[[env.preview.d1_databases]]\nbinding = "YAITG_WORLDMAP_DB"\ndatabase_name = "${worldmap.preview.name}"\ndatabase_id = "${worldmap.preview.id}"\n`:''));
  let output;try{output=wrangler(['pages','deploy','dist','--project-name',cfg.project,'--branch','costume-scalable-workflow','--commit-hash',process.env.GITHUB_SHA]);usage.deploys++;}finally{fs.writeFileSync(configFile,original);}
  const deployedProject=await cf(apiBase());const deployedProd=deployedProject.deployment_configs?.production||{},deployedPreview=deployedProject.deployment_configs?.preview||{};
  if(deployedProd.kv_namespaces?.YAITG_SESSION_KV?.namespace_id!==prodKv)throw Error('Production KV binding changed unexpectedly');
@@ -138,6 +154,7 @@ async function main(){
  if(deployedPreview.kv_namespaces?.YAITG_SESSION_KV?.namespace_id!==kv.id)throw Error('Deployed preview KV binding does not match isolated namespace');
  const boundBucket=deployedPreview.r2_buckets?.YAITG_ASSETS_R2?.name||deployedPreview.r2_buckets?.YAITG_ASSETS_R2?.bucket_name;
  if(boundBucket!==cfg.previewBucket)throw Error('Deployed preview R2 binding does not match isolated bucket');
+ if(worldmap){const binding=deployedPreview.d1_databases?.YAITG_WORLDMAP_DB;if((binding?.id||binding?.database_id)!==worldmap.preview.id)throw Error('Preview worldmap D1 binding is not isolated');save('worldmap-isolation.json',{previewD1Separate:true,productionDatabaseUntouched:true});}
  save('isolation.json',{productionKvUnchanged:true,previewKvSeparate:true,previewBucketSeparate:true,previewSessionIndependent:true,checkedAt:new Date().toISOString()});
  const urls=[...output.matchAll(/https:\/\/[a-z0-9-]+\.youareinthegame-web\.pages\.dev/g)].map(m=>m[0]);const url=urls.find(x=>!x.includes('costume-scalable-workflow.'))||urls[0];if(!url)throw Error('Preview deployment URL missing');
  save('deployment.json',{url,branch,commit:process.env.GITHUB_SHA});
@@ -145,4 +162,5 @@ async function main(){
  if(process.env.GITHUB_OUTPUT)fs.appendFileSync(process.env.GITHUB_OUTPUT,`url=${url}\n`);if(process.env.GITHUB_STEP_SUMMARY)fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,`## Costume preview\n\n[Open protected preview](${url}) · [Cambio](${url}/cambio/)\n\nProduction remains unchanged. Isolated preview KV/R2. Baseline backup is in the private evidence artifact.\n`);
  console.log('Protected costume preview:',url);
 }
-try{await main();}catch(e){save('failure.json',{error:redact(e.message)});console.error(redact(e.message));process.exitCode=1;}finally{usage.finishedAt=new Date().toISOString();save('usage.json',usage);if(infToken){try{await inf('/api/v1/auth/token/revoke',{accessToken:infToken});}catch{console.error('Temporary token revocation could not be confirmed.');}}}
+try{await main();}catch(e){save('failure.json',{error:redact(e.message)});console.error(redact(e.message));process.exitCode=1;}finally{usage.finishedAt=new Date().toISOString();const stage=process.argv.includes('--browser-only')?'browser':process.argv.includes('--production-only')?'production':'deploy';save('usage-'+stage+'.json',usage);let aggregate={...usage};if(stage==='browser'&&fs.existsSync(path.join(evidence,'usage-deploy.json'))){const deploy=JSON.parse(fs.readFileSync(path.join(evidence,'usage-deploy.json')));aggregate.startedAt=deploy.startedAt;for(const field of ['builds','deploys','cfApiCalls','wranglerCalls'])aggregate[field]+=deploy[field];}save('usage.json',aggregate);if(infToken){try{await inf('/api/v1/auth/token/revoke',{accessToken:infToken});}catch{console.error('Temporary token revocation could not be confirmed.');}}}
+

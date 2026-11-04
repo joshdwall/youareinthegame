@@ -1,0 +1,31 @@
+name: Sync visitor globe history
+on:
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: worldmap-history-${{ github.ref_name }}
+  cancel-in-progress: false
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Refresh country history without deploying
+        env:
+          INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_CLIENT_ID }}
+          INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_CLIENT_SECRET }}
+        run: node scripts/costume-preview.mjs --history-sync
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: worldmap-history-sync
+          path: .preview-evidence/
+          include-hidden-files: true
+          retention-days: 7

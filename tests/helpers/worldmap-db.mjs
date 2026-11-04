@@ -1,0 +1,4 @@
+import {DatabaseSync} from 'node:sqlite';import fs from 'node:fs';
+export function worldmapDatabase(){const sqlite=new DatabaseSync(':memory:');sqlite.exec(fs.readFileSync(new URL('../../migrations/worldmap/0001.sql',import.meta.url),'utf8'));
+ const execute=(sql,args)=>{const statement=sqlite.prepare(sql);if(/^\s*SELECT/i.test(sql))return {success:true,results:statement.all(...args),meta:{changes:0}};const changed=statement.run(...args);return {success:true,results:[],meta:{changes:Number(changed.changes)}};};
+ const db={prepare(sql){return {sql,args:[],bind(...args){this.args=args;return this;},async run(){return execute(this.sql,this.args);},async all(){return execute(this.sql,this.args);}};},async batch(statements){sqlite.exec('BEGIN');try{const results=statements.map(s=>execute(s.sql,s.args));sqlite.exec('COMMIT');return results;}catch(e){sqlite.exec('ROLLBACK');throw e;}}};return {db,sqlite};}

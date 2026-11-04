@@ -7,7 +7,9 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "node scripts/sync-envivo-ui.mjs && node scripts/build.mjs",
+    "build": "node scripts/build-worldmap.mjs && node scripts/sync-envivo-ui.mjs && node scripts/build.mjs",
+    "test:worldmap": "node --test tests/worldmap.test.mjs tests/worldmap-history.test.mjs",
+    "test:worldmap-browser": "node tests/worldmap-browser.mjs",
     "verify": "node tests/verify-yaitg-session-roll.mjs && node tests/verify-yaitg-animation-preview.mjs && node tests/loot-table-weights.test.mjs && node tests/placement-math.test.mjs && node tests/selection-cursor-last-played.test.mjs && node tests/loot-table-alternate.test.mjs && node tests/spore-burst-math.test.mjs && node tests/log-gate.test.mjs && node scripts/check-image-budget.mjs && node scripts/check-no-raw-console-log.mjs",
     "test": "npm run verify",
     "test:costumes": "node --test tests/costume-contracts.test.mjs && node --test tools/costume-workshop/tests.mjs",
@@ -25,7 +27,12 @@
     "check:console": "node scripts/check-no-raw-console-log.mjs"
   },
   "devDependencies": {
+    "d3-geo": "3.1.2",
+    "globe.gl": "2.46.2",
+    "i18n-iso-countries": "7.14.0",
     "playwright": "^1.48.0",
-    "sharp": "^0.33.5"
+    "sharp": "^0.33.5",
+    "topojson-client": "3.1.0",
+    "world-atlas": "2.0.2"
   }
 }
