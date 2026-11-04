@@ -21,7 +21,7 @@ export async function auditCloudflareHistory({tokens,account,save}){
     }
    }`;
    const settings=await gql(settingsQuery,{a:account,...(zone?{z:zone.id}:{})});row.settings=settings.data?.viewer;row.errors=settings.errors?.map(e=>clean(e.message));
-   const schema=await gql(`{account:__type(name:"Account"){fields{name type{${typeRef}} args{name type{${typeRef}}}}} zone:__type(name:"Zone"){fields{name type{${typeRef}} args{name type{${typeRef}}}}}}`);
+   const schema=await gql(`query($aType:String!,$zType:String!){account:__type(name:$aType){fields{name type{${typeRef}} args{name type{${typeRef}}}}} zone:__type(name:$zType){fields{name type{${typeRef}} args{name type{${typeRef}}}}}}`,{aType:'account',zType:'zone'});
    row.schemaErrors=schema.errors?.map(e=>clean(e.message));
    const namesQuery=await gql('{__schema{types{name}}}');row.typeNames=(namesQuery.data?.__schema?.types||[]).map(t=>t.name).filter(n=>/^(account|zone)$|rumPageloadEventsAdaptiveGroups|httpRequests1dGroups|httpRequestsAdaptiveGroups/i.test(n)).slice(0,120);row.schemaShape={keys:Object.keys(schema),dataKeys:Object.keys(schema.data||{})};
    const fields=[...(schema.data?.account?.fields||[]),...(schema.data?.zone?.fields||[])].filter(f=>['rumPageloadEventsAdaptiveGroups','httpRequests1dGroups','httpRequestsAdaptiveGroups'].includes(f.name));
