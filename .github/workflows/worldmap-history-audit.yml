@@ -1,5 +1,8 @@
 name: Discover Cloudflare history
 on:
+  push:
+    branches: ['costume/visitor-worldmap']
+    paths: ['scripts/cloudflare-history.mjs', '.github/workflows/worldmap-history-audit.yml']
   workflow_dispatch:
 permissions:
   contents: read
