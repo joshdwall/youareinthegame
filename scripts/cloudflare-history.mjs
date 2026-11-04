@@ -1,3 +1,4 @@
+import {WORLDMAP_SETTINGS} from '../runtime/worldmap/settings.js';
 const typeRef=`kind name ofType { kind name ofType { kind name } }`;
 const clean=text=>String(text).replace(/[a-f0-9]{32,64}/gi,'[identifier]');
 export async function auditCloudflareHistory({tokens,account,save}){
@@ -58,7 +59,7 @@ export async function collectHistory({gql,account,now=new Date()}){
 }
 export async function syncHistory({token,account,cf,namespace,save,tracker}){
  const gql=async(query,variables)=>{tracker?.record('cloudflare-api','worldmap.history.analytics.request',1,'5min');tracker?.record('cloudflare-analytics','worldmap.history.analytics.request',1,'5min');const r=await fetch('https://api.cloudflare.com/client/v4/graphql',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({query,variables}),signal:AbortSignal.timeout(45000)});const j=await r.json();if(!r.ok||j.errors?.length)throw Error('Analytics query failed: '+(j.errors||[]).map(e=>clean(e.message)).join('; '));return j.data;};
- let snapshot;try{snapshot=await collectHistory({gql,account});}catch(e){if(!e.message.includes('property; found 0'))throw e;const zones=await cf('/zones?name=youareinthegame.com');const zone=zones.find(z=>z.name==='youareinthegame.com');if(!zone)throw Error('Public site zone not found');snapshot=await collectEdgeHistory({gql,zone:zone.id});snapshot.collectionNote='No browser Web Analytics property had historical visits for these hosts; using server-side edge visits instead.';}
+ const snapshot=await collectSiteHistory({source:WORLDMAP_SETTINGS.historySource,gql,account,cf});
  await cf(`/accounts/{account}/storage/kv/namespaces/${namespace}/bulk`,'PUT',[{key:HISTORY_KEY,value:JSON.stringify(snapshot)}]);save('cloudflare-history.json',snapshot);console.log('Historical visits synchronized:',snapshot.rows.length,'country/day buckets');return snapshot;
 }
 
@@ -71,4 +72,11 @@ export async function collectEdgeHistory({gql,zone,now=new Date()}){
  }
  const merged=new Map();for(const row of rows){const key=row.date+row.country;const old=merged.get(key);if(old)old.count+=row.count;else merged.set(key,{...row});}
  return validateHistory({schemaVersion:1,source:'cloudflare-edge-analytics',dataset:'httpRequestsAdaptiveGroups',metric:'visits',granularity:'country',hosts:[...HISTORY_HOSTS],fetchedAt:end,coverage:{start,end,complete:true,timezone:'UTC'},sampling:{sampled:maxInterval>1,maxInterval,note:'Server-side visit estimates can include automated traffic and repeat visits. Country and overall totals queried independently.'},rows:[...merged.values()],dailyTotals});
+}
+
+export async function collectSiteHistory({source='edge',gql,account,cf,now}){
+ if(source==='web')return collectHistory({gql,account,...(now?{now}:{})});
+ if(source!=='edge')throw Error('Unsupported history source');
+ const zones=await cf('/zones?name=youareinthegame.com'),zone=zones.find(z=>z.name==='youareinthegame.com');if(!zone)throw Error('Public site zone not found');
+ return collectEdgeHistory({gql,zone:zone.id,...(now?{now}:{})});
 }

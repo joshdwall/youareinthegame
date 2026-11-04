@@ -5,5 +5,6 @@ export const WORLDMAP_SETTINGS={
   "historyRefreshMinute": 23,
   "browserCacheSeconds": 900,
   "edgeCacheSeconds": 300,
-  "visitorCacheSeconds": 60
+  "visitorCacheSeconds": 60,
+  "historySource": "edge"
 };
