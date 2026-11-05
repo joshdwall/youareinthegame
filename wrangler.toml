@@ -9,13 +9,7 @@ YAITG_RATE_MAX = "12"
 YAITG_RATE_WINDOW_SEC = "3600"
 CONTACT_TO = "joshdwall@gmail.com"
 CONTACT_FROM = "hello@youareinthegame.com"
-
-[[send_email]]
-name = "SEND_EMAIL"
-destination_address = "joshdwall@gmail.com"
-
-[[send_email]]
-name = "SEND_VISITOR"
+CONTACT_WORKER_URL = "https://youareinthegame-contact.joshdwall.workers.dev"
 
 # YAITG_SESSION_SECRET is a Pages secret (Infisical /sites/youareinthegame), never in git.
 [[kv_namespaces]]

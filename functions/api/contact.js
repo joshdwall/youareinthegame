@@ -1,4 +1,3 @@
-import { EmailMessage } from "cloudflare:email";
 import { MAX_BODY, MAX_PER_WINDOW, WINDOW_SECONDS, BRAND, readContact, leadRaw, receiptRaw } from "../_shared/contact.js";
 
 const SEND_MS = 12_000;
@@ -33,12 +32,14 @@ export async function onRequestPost(context) {
 
   const to = env.CONTACT_TO || "joshdwall@gmail.com";
   const from = env.CONTACT_FROM || "hello@youareinthegame.com";
-  if (!env.SEND_EMAIL) return reply(request, "error");
+  const mailer = env.CONTACT_WORKER_URL;
+  if (!mailer || !env.CONTACT_AUTH) return reply(request, "error");
 
   const raw = leadRaw({ from, to, email: contact.email, name: contact.name, message: contact.message, brand: BRAND });
+  const receipt = receiptRaw({ from, email: contact.email, name: contact.name, brand: BRAND });
   let lead;
   try {
-    lead = await within(SEND_MS, env.SEND_EMAIL.send(new EmailMessage(from, to, raw)));
+    lead = await within(SEND_MS, postMail(mailer, env.CONTACT_AUTH, { raw, receipt, receiptTo: contact.email }));
   } catch {
     return reply(request, "error");
   }
@@ -46,19 +47,16 @@ export async function onRequestPost(context) {
     waitUntil(lead.promise.catch(() => {}));
     return reply(request, "slow");
   }
-
-  waitUntil(sendVisitorReceipt(env, from, contact.email, contact.name).catch(() => {}));
   return reply(request, "sent");
 }
 
-async function sendVisitorReceipt(env, from, email, name) {
-  if (!env.SEND_VISITOR) return false;
-  try {
-    await env.SEND_VISITOR.send(new EmailMessage(from, email, receiptRaw({ from, email, name, brand: BRAND })));
-    return true;
-  } catch {
-    return false;
-  }
+async function postMail(url, auth, payload) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-contact-auth": auth },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("mail");
 }
 
 function within(ms, promise) {
