@@ -318,6 +318,7 @@ input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-sele
   position: relative;
   display: inline-block;
   line-height: 0;
+  z-index: 10;
 }
 .creature-rig > .creature {
   display: block;

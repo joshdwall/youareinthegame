@@ -411,6 +411,11 @@
 .rot-row input[type="range"] { flex: 1; }
 .rot-row input[type="number"] { width: 4.2rem; }
 .cambio-actions { display: flex; gap: 0.45rem; margin-top: 0.65rem; flex-wrap: wrap; }
+.cambio-playtest summary { padding: .5rem .65rem; cursor: pointer; }
+#playtestChoices { display: flex; flex-wrap: wrap; gap: .5rem 1rem; }
+#playtestChoices label { display: inline-flex; align-items: center; gap: .35rem; }
+#cambioPlaytestFrame { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; z-index: 20; }
+#stopPlaytest { position: fixed; top: 12px; right: 12px; z-index: 55; padding: .55rem .8rem; border: 1px solid #9db2c4; border-radius: .25rem; background: #243447; color: #fff; cursor: pointer; }
 .connector-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 0.4rem 0; }
 .cambio-status { font-size: 0.72rem; min-height: 1.2em; opacity: 0.85; }
 .cambio-foot { margin-top: 1.5rem; font-size: 0.72rem; }

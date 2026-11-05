@@ -350,6 +350,7 @@ export function textProjectileOnce({ root, el, action }) {
   if (action.sprite) {
     const width = Math.max(8, Math.min(64, Number(action.spriteWidthPx) || 28));
     cssParts.push(`width:${width}px`, 'height:auto');
+    if (Number.isFinite(action.spriteRotationDeg)) cssParts.push(`rotate:${action.spriteRotationDeg}deg`);
   }
   tip.style.cssText = cssParts.join(';');
   root.appendChild(tip);
