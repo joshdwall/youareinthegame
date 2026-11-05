@@ -32,5 +32,8 @@
 /content/*
   Cache-Control: public, max-age=60, must-revalidate
 
+/api/contact
+  Cache-Control: no-store
+
 /api/*
   Cache-Control: public, max-age=15, stale-while-revalidate=30
