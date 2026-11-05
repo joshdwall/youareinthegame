@@ -57,5 +57,25 @@ body{caret-color:transparent}#globe,#globe canvas{user-select:none;-webkit-user-
   }
   .earth-stage .mobile-map-jump { display: flex; width: max-content; margin: 12px auto 0; }
   .country-list .mobile-map-jump { display: flex; width: max-content; }
-  .area-list { max-height: none; overflow: visible; padding-inline-end: 0; }
+
+}
+
+.country-results { position: relative; --country-row-height: 44px; }
+.country-results .area-list {
+  block-size: calc(6 * var(--country-row-height));
+  max-height: none;
+  overflow-y: auto;
+  overflow-anchor: none;
+  align-content: start;
+  grid-auto-rows: var(--country-row-height);
+}
+.country-results .area-list button {
+  block-size: var(--country-row-height);
+  padding-block: 0;
+}
+.country-results > p {
+  position: absolute;
+  inset: 0 auto auto 0;
+  margin: .75rem 0 0;
+  pointer-events: none;
 }

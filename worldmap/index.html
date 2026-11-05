@@ -18,9 +18,11 @@
     <a class="mobile-map-jump" href="#world-map">↑ Back to globe</a>
     <input type="search" id="countrySearch" aria-label="Search countries" placeholder="Search countries" autocomplete="off">
     <p id="areaSelection" class="selection-note" aria-live="polite"></p>
-    <ol id="areaList" class="area-list" aria-label="Visitor countries"></ol>
-    <p id="emptyMap" hidden>Visitor countries will appear here.</p>
-    <p id="countryNoResults" class="selection-note" role="status" hidden>No countries match your search.</p>
+    <div class="country-results">
+     <ol id="areaList" class="area-list" aria-label="Visitor countries" tabindex="0"></ol>
+     <p id="emptyMap" hidden>Visitor countries will appear here.</p>
+     <p id="countryNoResults" class="selection-note" role="status" hidden>No countries match your search.</p>
+    </div>
    </section>
   </section>
 

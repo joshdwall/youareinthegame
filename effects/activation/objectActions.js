@@ -139,8 +139,18 @@ export function fireOnce({ root, el, action }) {
   const img = root.querySelector(`[data-element-id="${el.id}"]`);
   if (!img || !root.isConnected) return;
 
-  const point = action.point || { x: 0.5, y: 0.5 };
-  const localDeg = Number.isFinite(+action.direction) ? +action.direction : 0;
+  let point = action.point || { x: 0.5, y: 0.5 };
+  let localDeg = Number.isFinite(+action.direction) ? +action.direction : 0;
+  // Repair known old points on the stock Cowboy art; keep custom edits.
+  const source = (el.src || '').split('?')[0];
+  const near = (x, y) => Math.abs(point.x - x) < .001 && Math.abs(point.y - y) < .001;
+  if (/\/cowboy\/revolver-l\.webp$/.test(source) && near(.08, .32)) {
+    point = { x: .04, y: .058 };
+    localDeg = -145;
+  } else if (/\/cowboy\/revolver-r\.webp$/.test(source) && (near(.92, .32) || near(.903557, .19452))) {
+    point = { x: .96, y: .058 };
+    localDeg = -35;
+  }
   const st = el.placement || {};
   const rot = +(st.rotation || 0);
   const flip = !!st.flipX;
@@ -150,23 +160,20 @@ export function fireOnce({ root, el, action }) {
   deg = deg + rot;
 
   const w = img.offsetWidth || parseFloat(img.style.width) || 20;
-  const h = img.offsetHeight || w * 0.6;
-  const ox = point.x * w;
-  const oy = point.y * h;
+  const h = img.offsetHeight || (img.naturalWidth && w * img.naturalHeight / img.naturalWidth);
+  if (!h) return;
 
   // Position relative to element: element's left/top already set; flash as child of root
   const elLeft = parseFloat(img.style.left) || 0;
   const elTop = parseFloat(img.style.top) || 0;
   // Account for transform-origin translate of objectAnchor
   const oa = st.objectAnchor || { x: 0.5, y: 0.5 };
-  const originX = elLeft; // left is already at character anchor
-  const originY = elTop;
-  // img is translated by -oa; muzzle in element bitmap space maps to:
-  const mx = originX + (point.x - oa.x) * w;
-  const my = originY + (point.y - oa.y) * h;
+  const dx = (point.x - oa.x) * w * (flip ? -1 : 1);
+  const dy = (point.y - oa.y) * h;
+  const rotation = rot * Math.PI / 180;
+  const mx = elLeft + dx * Math.cos(rotation) - dy * Math.sin(rotation);
+  const my = elTop + dx * Math.sin(rotation) + dy * Math.cos(rotation);
 
-  const rad = (deg * Math.PI) / 180;
-  const dist = Math.max(10, w * 0.35);
   const puff = document.createElement('div');
   puff.className = 'activation-muzzle-flash';
   puff.setAttribute('data-fire-for', el.id);
@@ -181,29 +188,12 @@ export function fireOnce({ root, el, action }) {
     'pointer-events:none',
     'z-index:30'
   ].join(';');
-  // Projectile streak
-  const streak = document.createElement('div');
-  streak.className = 'activation-muzzle-streak';
-  streak.style.cssText = [
-    'position:absolute',
-    `left:${mx}px`,
-    `top:${my}px`,
-    `width:${dist}px`,
-    'height:2px',
-    `transform:translate(0,-50%) rotate(${deg}deg)`,
-    'transform-origin:0% 50%',
-    'pointer-events:none',
-    'z-index:29'
-  ].join(';');
   root.appendChild(puff);
-  root.appendChild(streak);
   requestAnimationFrame(() => {
     puff.classList.add('is-on');
-    streak.classList.add('is-on');
   });
   setTimeout(() => {
     puff.remove();
-    streak.remove();
   }, 140);
 }
 
