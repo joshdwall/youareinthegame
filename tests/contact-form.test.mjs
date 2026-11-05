@@ -18,6 +18,8 @@ test('globe page puts the contact form under the map for every width', () => {
   assert.match(html, /placeholder="Message"/);
   assert.doesNotMatch(html, /Send a note|name="name"/);
   assert.match(css, /calc\(4 \* var\(--country-row-height\)\)/);
+  assert.match(css, /\.contact-form \{[^}]*border: 1px solid var\(--line\)/s);
+  assert.match(css, /\.contact-form \{[^}]*margin-top: auto/s);
   assert.match(css, /caret-color: auto/);
 });
 

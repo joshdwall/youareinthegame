@@ -80,12 +80,29 @@ body{caret-color:transparent}#globe,#globe canvas{user-select:none;-webkit-user-
   pointer-events: none;
 }
 
-.intro { position: relative; }
+.intro {
+  position: relative;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0;
+}
+.earth-stage {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 8px;
+}
+.globe-hint { margin-top: auto; }
 .contact-form {
   display: grid;
   gap: 6px;
-  margin-top: 8px;
+  margin-top: auto;
   min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffdf6;
 }
 .contact-field {
   width: 100%;
