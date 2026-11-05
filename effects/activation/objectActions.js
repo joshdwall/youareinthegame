@@ -6,6 +6,7 @@
  */
 
 import { clampBurstDelta, getViewportSpreadScale } from '../spore/sporeBurstMath.js';
+import { safeAssetSource } from '../../runtime/costumes/contracts.js';
 
 /** @type {Map<string, Function>} */
 const registry = new Map();
@@ -130,6 +131,10 @@ function runAlternatingFire({ root, slots, sporeIndex }) {
  * Spawn a muzzle flash / puff along the action direction from the muzzle point.
  */
 export function fireOnce({ root, el, action }) {
+  if (action.sprite) {
+    textProjectileOnce({ root, el, action });
+    return;
+  }
   const img = root.querySelector(`[data-element-id="${el.id}"]`);
   if (!img || !root.isConnected) return;
 
@@ -224,6 +229,7 @@ function resolveActionNode(root, el) {
  */
 export function textProjectileOnce({ root, el, action }) {
   if (!root?.isConnected) return;
+  if (action.sprite && !safeAssetSource(action.sprite)) return;
   const node = resolveActionNode(root, el);
   if (!node) return;
 
@@ -312,10 +318,17 @@ export function textProjectileOnce({ root, el, action }) {
   const fontWeight = action.fontWeight != null ? String(action.fontWeight) : '700';
   const fontFamily = (action.fontFamily != null ? String(action.fontFamily).trim() : '');
 
-  const tip = document.createElement('div');
+  const tip = document.createElement(action.sprite ? 'img' : 'div');
   tip.className = 'activation-text-projectile';
   tip.setAttribute('data-text-projectile-for', el?.id || 'spore');
-  tip.textContent = rawText;
+  if (action.sprite) {
+    tip.src = '/' + action.sprite.replace(/^\//, '');
+    tip.alt = '';
+    tip.draggable = false;
+    tip.setAttribute('aria-hidden', 'true');
+  } else {
+    tip.textContent = rawText;
+  }
   const cssParts = [
     'position:absolute',
     `left:${mx}px`,
@@ -334,6 +347,10 @@ export function textProjectileOnce({ root, el, action }) {
     'opacity:1'
   ];
   if (fontFamily) cssParts.splice(5, 0, `font-family:${fontFamily}`);
+  if (action.sprite) {
+    const width = Math.max(8, Math.min(64, Number(action.spriteWidthPx) || 28));
+    cssParts.push(`width:${width}px`, 'height:auto');
+  }
   tip.style.cssText = cssParts.join(';');
   root.appendChild(tip);
 

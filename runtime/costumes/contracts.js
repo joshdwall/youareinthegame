@@ -26,6 +26,8 @@ export function validateActions(actions=[]){
   if(a.amplitude!==undefined)requireOk(finite(a.amplitude,0,50),'Action amplitude exceeds limits');
   if(a.count!==undefined)requireOk(Number.isInteger(a.count)&&finite(a.count,1,12),'Particle count exceeds limits');
   if(a.type==='textProjectile')requireOk(typeof a.text==='string'&&a.text.length>0&&a.text.length<=64,'Text action requires 1-64 characters');
+  if(a.sprite!==undefined)requireOk(a.type==='fire'&&safeAssetSource(a.sprite),'Projectile sprite must be a site asset on a fire action');
+  if(a.spriteWidthPx!==undefined)requireOk(a.sprite!==undefined&&finite(a.spriteWidthPx,8,64),'Projectile sprite width must be 8–64 px');
  }
  return actions;
 }
