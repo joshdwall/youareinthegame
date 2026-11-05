@@ -24,21 +24,13 @@
      <p id="countryNoResults" class="selection-note" role="status" hidden>No countries match your search.</p>
     </div>
    </section>
-  </section>
-  <section class="map-contact" id="contact" aria-labelledby="contact-title">
-   <div class="map-contact-copy">
-    <p class="eyebrow">Contact</p>
-    <h2 id="contact-title">Send a note</h2>
-    <p>A person reads this and replies.</p>
-   </div>
-   <form method="post" action="/api/contact" class="contact-form" aria-label="Contact">
-    <p id="form-sent" class="form-note" role="status" hidden>Message sent. Confirmation is on its way.</p>
+   <form method="post" action="/api/contact" id="contact" class="contact-form" aria-label="Contact">
+    <p id="form-sent" class="form-note" role="status" hidden>Message sent.</p>
     <p id="form-slow" class="form-note form-note-warn" role="status" hidden>Message sent. If you do not hear back, try again in a few minutes.</p>
     <p id="form-limited" class="form-note form-note-warn" role="status" hidden>Too many sends. Wait a minute and try again.</p>
     <p id="form-error" class="form-note form-note-bad" role="status" hidden>That message did not send. Try again.</p>
-    <label class="contact-field">Name <input name="name" type="text" maxlength="120" autocomplete="name"></label>
-    <label class="contact-field">Email <input name="email" type="email" required maxlength="200" autocomplete="email" inputmode="email"></label>
-    <label class="contact-field">Message <textarea name="message" rows="4" required maxlength="4000"></textarea></label>
+    <input class="contact-field" name="email" type="email" required maxlength="200" autocomplete="email" inputmode="email" placeholder="Email" aria-label="Email">
+    <textarea class="contact-field" name="message" rows="2" required maxlength="4000" placeholder="Message" aria-label="Message"></textarea>
     <div class="hp" aria-hidden="true"><label>Company URL <input name="company_url" tabindex="-1" autocomplete="off"></label></div>
     <div class="contact-actions">
      <div class="cf-turnstile" data-sitekey="0x4AAAAAAF1aECr019WDOHBg" data-size="flexible" data-theme="light"></div>

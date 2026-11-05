@@ -14,9 +14,11 @@ test('globe page puts the contact form under the map for every width', () => {
   assert.match(html, /name="company_url"/);
   assert.match(html, /data-sitekey="0x4AAAAAAF1aECr019WDOHBg"/);
   assert.match(html, /data-size="flexible"/);
-  assert.match(css, /\.map-contact \{[^}]*grid-column: 1 \/ -1/s);
+  assert.match(html, /placeholder="Email"/);
+  assert.match(html, /placeholder="Message"/);
+  assert.doesNotMatch(html, /Send a note|name="name"/);
+  assert.match(css, /calc\(4 \* var\(--country-row-height\)\)/);
   assert.match(css, /caret-color: auto/);
-  assert.match(css, /@media \(max-width: 800px\) \{[^}]*\.map-contact \{ grid-template-columns: 1fr/s);
 });
 
 test('contact fields reject junk and a filled honeypot, and the lead mail stays plain text', () => {
