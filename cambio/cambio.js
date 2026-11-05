@@ -514,7 +514,7 @@ function ensurePrimaryActionOfType(st, type) {
       pattern: 'alternate',
       rate: 3.2,
       jitter: 0.5,
-      appliesTo: ['spore', 'activation']
+      appliesTo: ['spore']
     };
   }
   st.objectActions = [...st.objectActions.filter((a) => a?.type !== type), act];
@@ -1097,7 +1097,7 @@ function enterMode(mode) {
         pattern: 'alternate',
         rate: 3.2,
         jitter: 0.5,
-        appliesTo: ['spore', 'activation']
+        appliesTo: ['spore']
       };
     }
     const ah = $('actionHint');
@@ -2117,7 +2117,7 @@ function bindPropPointer(img, animId, elementId) {
           const existing = primaryObjectAction(currentElement());
           state.actionDraft = existing
             ? { ...existing, point: { x: nx, y: ny } }
-            : { type: 'fire', point: { x: nx, y: ny }, direction: 0, pattern: 'alternate', rate: 3.2, jitter: 0.5, appliesTo: ['spore', 'activation'] };
+            : { type: 'fire', point: { x: nx, y: ny }, direction: 0, pattern: 'alternate', rate: 3.2, jitter: 0.5, appliesTo: ['spore'] };
         } else {
           state.actionDraft.point = { x: nx, y: ny };
         }

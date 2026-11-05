@@ -72,7 +72,7 @@ export const DEFAULT_PLACEMENTS_BY_ANIMATION = {
             pattern: 'alternate',
             rate: 3.2,
             jitter: 0.5,
-            appliesTo: ['spore', 'activation']
+            appliesTo: ['spore']
           }
         ]
       },
@@ -91,7 +91,7 @@ export const DEFAULT_PLACEMENTS_BY_ANIMATION = {
             pattern: 'alternate',
             rate: 3.2,
             jitter: 0.5,
-            appliesTo: ['spore', 'activation']
+            appliesTo: ['spore']
           }
         ]
       }

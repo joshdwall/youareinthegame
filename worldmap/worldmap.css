@@ -31,3 +31,4 @@ body{caret-color:transparent}#globe,#globe canvas{user-select:none;-webkit-user-
 .area-list::-webkit-scrollbar { width: 8px; }
 .area-list::-webkit-scrollbar-track { background: #e4dbc9; border-radius: 8px; }
 .area-list::-webkit-scrollbar-thumb { background: #60796e; border-radius: 8px; }
+.back-link { display: inline-flex; align-items: center; gap: .35rem; }

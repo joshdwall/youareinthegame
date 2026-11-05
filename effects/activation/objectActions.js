@@ -63,6 +63,7 @@ export function runObjectActions({ root, elements = [], target = 'spore', sporeI
       const handler = registry.get(action.type);
       if (!handler) continue;
       if (action.type === 'fire') {
+        if (target !== 'spore') continue;
         fireSlots.push({ el, action });
         continue;
       }

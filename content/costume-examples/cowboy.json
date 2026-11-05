@@ -158,8 +158,7 @@
               "rate": 3.2,
               "jitter": 0.5,
               "appliesTo": [
-                "spore",
-                "activation"
+                "spore"
               ]
             }
           ]
@@ -198,8 +197,7 @@
               "rate": 3.2,
               "jitter": 0.5,
               "appliesTo": [
-                "spore",
-                "activation"
+                "spore"
               ]
             }
           ]
