@@ -1791,6 +1791,7 @@ function startPlaytest() {
     ...state.runtimeConfig,
     settings: state.settings,
     animations,
+    seasons: [],
     placementsByAnimation: Object.fromEntries(animations.map(animation => [
       animation.id, ensureAnimPlacement(animation.id)
     ]))

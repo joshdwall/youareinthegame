@@ -5,11 +5,20 @@ export async function verifyWorldmap(page,base,{screenshotDir,requireHistory=fal
  await page.goto(base+'/worldmap/',{waitUntil:'networkidle'});await page.waitForSelector('#globe[data-ready="true"]');await page.waitForFunction(()=>document.querySelector('#visitorTotal').textContent!=='—');
  assert.equal(await page.locator('select').count(),0,'Source and period dropdowns must be removed');assert.equal(await page.locator('#historyDetails').count(),0,'Technical history paragraph must be removed');assert.equal(await page.locator('[contenteditable="true"]').count(),0);assert.equal(await page.evaluate(()=>getComputedStyle(document.body).caretColor),'rgba(0, 0, 0, 0)');
  if(verifyRouting){const html=await page.request.get(base+'/worldmap/');assert.equal(html.headers()['x-yaitg-function'],'1');for(const asset of ['/assets/worldmap/countries.geojson','/worldmap/worldmap.js','/img/mushroom-platypus.webp']){const response=await page.request.get(base+asset);assert.equal(response.status(),200);assert.equal(response.headers()['x-yaitg-function'],undefined,'Static asset must bypass Functions: '+asset);}}
- await page.evaluate(()=>window.addEventListener('pointerdown',event=>{window.__plainClickPrevented=event.defaultPrevented;},{once:true}));await page.locator('.intro-copy').click();assert.equal(await page.evaluate(()=>window.__plainClickPrevented),true,'Plain background/text clicks should not place a caret');
+ await page.evaluate(()=>window.addEventListener('pointerdown',event=>{window.__plainClickPrevented=event.defaultPrevented;},{once:true}));await page.locator('#map-title').click();assert.equal(await page.evaluate(()=>window.__plainClickPrevented),true,'Plain background/text clicks should not place a caret');
  const history=await(await page.request.get(base+'/api/worldmap?source=cloudflare&range=all')).json();if(requireHistory){assert.equal(history.metric,'visits');assert(history.totals.visitors>0);}
  const view=JSON.parse(await page.locator('#globe').getAttribute('data-initial-view'));assert(Math.abs(view.lat-38.5)<.01&&Math.abs(view.lng+98)<.01,'Globe should initially face Kansas');
  const readVisitors=async()=>{const response=await page.request.get(base+'/api/worldmap');assert.equal(response.status(),200);return (await response.json()).totals.visitors;};const initial=await readVisitors();assert(initial>=1,'Verification browser should have an approximate origin');assert.equal(await page.locator('#metricLabel').innerText(),'Unique browsers');assert.equal(Number((await page.locator('#visitorTotal').innerText()).replaceAll(',','')),initial);assert.equal(await page.locator('.site-header').evaluate(el=>el.offsetHeight),50);
- assert.equal(await page.locator('footer,#historyTotal,#refreshMap,#excludeBrowser').count(),0);assert.equal(await page.locator('.totals ~ .country-list #areaList li').count(),Number(await page.locator('#countryTotal').innerText()));
+ assert.equal(await page.locator('footer,#historyTotal,#refreshMap,#excludeBrowser,.intro-copy').count(),0);
+ const search=page.getByRole('searchbox',{name:'Search countries'});
+ const firstCountry=await page.locator('#areaList li button span').first().innerText();
+ await search.fill(firstCountry);
+ assert(await page.locator('#areaList li:not([hidden])').count()>=1);
+ await search.fill('no-such-country-zzyy');
+ assert.equal(await page.locator('#areaList li:not([hidden])').count(),0);
+ assert(await page.locator('#countryNoResults').isVisible());
+ await search.fill('');
+ assert.equal(await page.locator('#areaList li[hidden]').count(),0);assert.equal(await page.locator('.totals ~ .country-list #areaList li').count(),Number(await page.locator('#countryTotal').innerText()));
  const denied=await page.request.post(base+'/api/worldmap',{headers:{origin:new URL(base).origin},data:{excluded:true}});assert.equal(denied.status(),405);
  for(let i=0;i<3;i++)await page.reload({waitUntil:'networkidle'});assert.equal(await readVisitors(),initial,'Reload must not add visitors');assert.equal(historyRequests,0,'The globe should not request historical visits');
  await page.locator('#rotateGlobe').click();assert.equal(await page.locator('#rotateGlobe').getAttribute('aria-pressed'),'false');await page.locator('#zoomIn').click();await page.locator('#resetGlobe').click();await page.locator('#areaList button:not([disabled])').first().click();assert.match(await page.locator('#areaSelection').innerText(),/unique browser/);
