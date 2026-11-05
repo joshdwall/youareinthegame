@@ -21,6 +21,18 @@ let cacheAt = 0;
 /** @type {object | null} */
 let hookedEffect = null;
 const CACHE_MS = 15_000;
+// Cambio embeds this same entry point with a private, in-memory test pool.
+function readPlaytestConfig() {
+  try {
+    const frame = window.frameElement;
+    if (frame?.id === 'cambioPlaytestFrame' && /^\/cambio\/?$/.test(window.parent.location.pathname)) {
+      return frame.cambioPlaytestConfig || null;
+    }
+  } catch { /* Ordinary public page or cross-origin embed. */ }
+  return null;
+}
+const playtestConfig = readPlaytestConfig();
+let playtestCursor = { index: -1, lastPlayedId: null, lastId: null };
 
 /** @type {{ id: string, anim: object, prepared?: object } | null} */
 let upcoming = null;
@@ -36,6 +48,7 @@ const SELECTION_CURSOR_VERSION = 2;
 
 /** @returns {{ index: number, lastPlayedId: string|null, lastId: string|null }} */
 export function readSelectionCursor() {
+  if (playtestConfig) return playtestCursor;
   try {
     if (typeof localStorage === 'undefined') {
       return { index: -1, lastPlayedId: null, lastId: null };
@@ -65,6 +78,10 @@ export function readSelectionCursor() {
  * @param {{ index?: number, lastPlayedId?: string|null, lastId?: string|null }} cursor
  */
 export function writeSelectionCursor(cursor) {
+  if (playtestConfig) {
+    playtestCursor = { ...cursor, lastId: cursor.lastPlayedId };
+    return;
+  }
   try {
     if (typeof localStorage === 'undefined') return;
     const lastPlayedId =
@@ -110,6 +127,10 @@ export function recordPlayed(playedId, playedIndex = -1) {
 let prepared = null;
 
 export async function fetchAnimationConfig(force = false) {
+  if (playtestConfig) {
+    cachedConfig = playtestConfig;
+    return cachedConfig;
+  }
   const now = Date.now();
   if (!force && cachedConfig && now - cacheAt < CACHE_MS) return cachedConfig;
   try {

@@ -5,6 +5,23 @@ let lastRead=0;
 let globe,points=[],rotating=!reduced,visitorRequest;const country=code=>{try{return countries.of(code)||code;}catch{return code;}};
 function select(point){$('areaSelection').textContent=`${point.region?point.region+', ':''}${country(point.country)} · ${number.format(point.count)} ${(point.count===1?'visitor':'visitors')+' in this approximate area'}.`;globe?.pointOfView({lat:point.lat,lng:point.lng,altitude:1.6},reduced?0:700);if(globe){rotating=false;rotation();}}
 function rotation(){if(globe)globe.controls().autoRotate=rotating;$('rotateGlobe').textContent=rotating?'Pause rotation':'Start rotation';$('rotateGlobe').setAttribute('aria-pressed',String(rotating));}
+function searchKey(text) {
+ return text.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase();
+}
+function filterCountries() {
+ const query = searchKey($('countrySearch').value.trim());
+ const rows = [...$('areaList').children];
+ let matches = 0;
+ for (const row of rows) {
+  row.hidden = !row.dataset.search.includes(query);
+  if (!row.hidden) matches++;
+ }
+ $('countryNoResults').hidden = !rows.length || matches > 0;
+}
+$('countrySearch').addEventListener('input', () => {
+ filterCountries();
+ $('areaList').scrollTop = 0;
+});
 function render(data) {
  points = data.points;
  $('visitorTotal').textContent = number.format(data.totals.visitors);
@@ -25,6 +42,7 @@ function render(data) {
  }
  const rows = [...byCountry.values()].sort((a,b) => b.count - a.count || country(a.focus.country).localeCompare(country(b.focus.country)));
  const list = $('areaList');
+ const scrollTop = list.scrollTop;
  list.replaceChildren();
  for (const {count, focus} of rows) {
   const row = document.createElement('li');
@@ -33,6 +51,7 @@ function render(data) {
   const total = document.createElement('strong');
   button.type = 'button';
   name.textContent = country(focus.country);
+  row.dataset.search = searchKey(name.textContent + ' ' + focus.country);
   total.textContent = number.format(count);
   button.append(name, total);
   button.addEventListener('click', () => {
@@ -42,6 +61,8 @@ function render(data) {
   row.appendChild(button);
   list.appendChild(row);
  }
+ filterCountries();
+ list.scrollTop = scrollTop;
  if (globe) globe.pointsData(points).labelsData(points.slice(0,100));
 }
 async function refresh() {

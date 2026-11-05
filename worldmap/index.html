@@ -8,12 +8,18 @@
  <script src="/assets/worldmap/globe.gl.min.js" defer></script><script type="module" src="/worldmap/worldmap.js"></script>
 </head>
 <body>
- <header class="site-header"><a class="brand" href="/"><img src="/img/mushroom-platypus.webp" width="40" height="27" alt=""><span>You are in the game</span></a><a class="back-link" href="/">Back to the game <span aria-hidden="true">↗</span></a></header>
+ <header class="site-header"><a class="brand" href="/"><img src="/img/mushroom-platypus.webp" width="40" height="27" alt=""><span>You are in the game</span></a><a class="back-link" href="/"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m0 0 6-6m-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>PlatapusShroom</a></header>
  <main>
-  <section class="intro" aria-labelledby="map-title"><p class="eyebrow">Mushroom Platypus / Visitor globe</p><h1 id="map-title">You are in<br><em>the world.</em></h1><p class="intro-copy">A little game, with visitors from all over. Spin the Earth and see where everyone joined in.</p>
+  <section class="intro" aria-labelledby="map-title"><p class="eyebrow">Mushroom Platypus / Visitor globe</p><h1 id="map-title">You are in<br><em>the world.</em></h1>
    <dl class="totals" aria-label="Visitor totals"><div><dt id="metricLabel">Unique browsers</dt><dd id="visitorTotal">—</dd></div><div><dt>Countries</dt><dd id="countryTotal">—</dd></div></dl>
    <p class="live-note" id="mapStatus" role="status">Finding our place in the world…</p>
-   <section class="country-list" aria-label="Visitor countries"><p id="areaSelection" class="selection-note" aria-live="polite"></p><ol id="areaList" class="area-list" aria-label="Visitor countries"></ol><p id="emptyMap" hidden>Visitor countries will appear here.</p></section>
+   <section class="country-list" aria-label="Visitor countries">
+    <input type="search" id="countrySearch" aria-label="Search countries" placeholder="Search countries" autocomplete="off">
+    <p id="areaSelection" class="selection-note" aria-live="polite"></p>
+    <ol id="areaList" class="area-list" aria-label="Visitor countries"></ol>
+    <p id="emptyMap" hidden>Visitor countries will appear here.</p>
+    <p id="countryNoResults" class="selection-note" role="status" hidden>No countries match your search.</p>
+   </section>
   </section>
   <section class="earth-stage" aria-label="Interactive world map"><div class="orbit" aria-hidden="true"></div><div id="globe" tabindex="0" role="img" aria-label="Visitor globe. Drag to rotate, scroll to zoom, or use arrow keys and the controls below."></div><p class="globe-hint">Drag to spin <span aria-hidden="true">·</span> Scroll or pinch to zoom</p><div class="globe-controls" aria-label="Globe controls"><button id="zoomIn" type="button" aria-label="Zoom in">+</button><button id="zoomOut" type="button" aria-label="Zoom out">−</button><button id="rotateGlobe" type="button" aria-pressed="true">Pause rotation</button><button id="resetGlobe" type="button">Reset view</button></div><p id="globeFallback" hidden>Interactive 3D is unavailable in this browser. You can still explore the visitor countries list.</p></section>
  </main>

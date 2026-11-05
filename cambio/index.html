@@ -27,6 +27,7 @@
     <img id="sporeSticker" class="spore-sticker" src="/img/Now%20With%20Spores%20Large%20Image%20Circular%20Blue%20Orange.png" alt="" draggable="false" />
     <div id="lightningFlash" class="lightning-flash" hidden></div>
   </div>
+  <button type="button" id="stopPlaytest" hidden>Stop playtest</button>
 
   <!-- Cambio harness overlay — all CoreUI/enVivo state scoped here; sibling of stage, not a layout parent -->
   <div id="cambioRoot" class="cambio-root ev-compact" data-ui-base="coreui-bootstrap5" data-coreui-theme="dark" data-ev-theme="dark" data-ev-sidebar-theme="follow" data-sidebar-collapsed="0" data-edit-sidebar-collapsed="1" data-editing="0">
@@ -129,6 +130,17 @@
         </div><!-- /.card -->
       </div>
 
+      <details class="card cambio-playtest">
+        <summary>Playtest selected animations</summary>
+        <div class="card-body">
+          <p>Choose the animations for this test, then click the platypus as you would on the live site.</p>
+          <div id="playtestChoices" aria-label="Playtest animations"></div>
+          <div class="cambio-actions">
+            <button type="button" class="btn primary" id="startPlaytest">Start playtest</button>
+          </div>
+          <p class="cambio-status" id="playtestStatus" role="status"></p>
+        </div>
+      </details>
       <p id="poolHint" class="cambio-status" style="font-size:.75rem"></p>
       <dialog id="createDialog" class="cambio-dialog">
         <form method="dialog" id="createForm">

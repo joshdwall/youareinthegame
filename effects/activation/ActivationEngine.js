@@ -58,11 +58,12 @@ export async function preloadActivationAssets(urls = [], profileId = 'ghost') {
   await preloadAndDecode(urls);
 }
 
-function bodyFlash(classExtra = '') {
-
+function stageFlash(container, classExtra = '') {
   const el = document.createElement('div');
   el.className = `lightning-flash${classExtra ? ' ' + classExtra : ''}`;
-  document.body.appendChild(el);
+  el.style.position = 'absolute';
+  el.style.zIndex = '1';
+  container.prepend(el);
   return el;
 }
 
@@ -137,7 +138,7 @@ export async function runActivation(opts) {
     if(transition==='lightning'&&!reduced){
       const L=overlayProfile.lightning;const end=Date.now()+duration;
       while(Date.now()<end&&!aborted()){
-        const n=bodyFlash();nodes.add(n);player.show();
+        const n=stageFlash(container);nodes.add(n);player.show();
         await delay(L.FLASH_MIN_MS+Math.random()*(L.FLASH_MAX_MS-L.FLASH_MIN_MS));n.remove();nodes.delete(n);player.hide();
         if(!aborted())await delay(L.FLASH_GAP_MIN_MS+Math.random()*(L.FLASH_GAP_MAX_MS-L.FLASH_GAP_MIN_MS));
       }
@@ -183,7 +184,7 @@ export async function runActivation(opts) {
       await Promise.race([finished,abortPromise]);
       if(aborted())return {ok:false,aborted:true};
       if(transition==='lightning'&&!reduced){
-        const n=bodyFlash('final-reset');nodes.add(n);n.style.opacity='1';
+        const n=stageFlash(container,'final-reset');nodes.add(n);n.style.opacity='1';
         const fadeMs=window.__yaitgEffect?.__liveStormResetMs||overlayProfile.animations.STORM_RESET_DURATION;
         n.style.transition=`opacity ${fadeMs}ms ease-out`;requestAnimationFrame(()=>{n.style.opacity='0';});
         await resetToLight();

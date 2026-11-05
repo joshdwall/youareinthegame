@@ -514,7 +514,7 @@ function ensurePrimaryActionOfType(st, type) {
       pattern: 'alternate',
       rate: 3.2,
       jitter: 0.5,
-      appliesTo: ['spore', 'activation']
+      appliesTo: ['spore']
     };
   }
   st.objectActions = [...st.objectActions.filter((a) => a?.type !== type), act];
@@ -820,6 +820,8 @@ async function boot() {
 
   ensureAnimDeskList();
   renderAnimList();
+  $('startPlaytest').addEventListener('click', startPlaytest);
+  $('stopPlaytest').addEventListener('click', stopPlaytest);
   wireSidebarToggle();
   wireEditSidebarToggle();
   $('createForm')?.addEventListener('submit', onCreateSubmit);
@@ -1095,7 +1097,7 @@ function enterMode(mode) {
         pattern: 'alternate',
         rate: 3.2,
         jitter: 0.5,
-        appliesTo: ['spore', 'activation']
+        appliesTo: ['spore']
       };
     }
     const ah = $('actionHint');
@@ -1728,6 +1730,79 @@ function markAnimRowActive(animId) {
   });
 }
 
+const playtestSelection = new Set();
+let playtestSelectionInitialized = false;
+let playtestSidebarWasVisible = true;
+
+function renderPlaytestChoices(animations) {
+  const list = $('playtestChoices');
+  if (!list) return;
+  const available = animations.filter(animation => !animation.archived);
+  if (!playtestSelectionInitialized) {
+    for (const animation of available) if (animation.live) playtestSelection.add(animation.id);
+    playtestSelectionInitialized = true;
+  }
+  list.replaceChildren();
+  for (const animation of available) {
+    const label = document.createElement('label');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = playtestSelection.has(animation.id);
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) playtestSelection.add(animation.id);
+      else playtestSelection.delete(animation.id);
+    });
+    label.append(checkbox, document.createTextNode(animation.label || animation.id));
+    list.append(label);
+  }
+}
+
+function stopPlaytest() {
+  const frame = $('cambioPlaytestFrame');
+  if (frame) {
+    frame.remove();
+    setSidebarVisible(playtestSidebarWasVisible, { persist: false });
+  }
+  $('siteStage').style.visibility = '';
+  $('stopPlaytest').hidden = true;
+  $('playtestStatus').textContent = '';
+}
+
+function startPlaytest() {
+  const animations = state.manifest.animations
+    .filter(animation => playtestSelection.has(animation.id))
+    .map(animation => ({ ...animation, live: true, weight: Math.max(1, Number(animation.weight) || 1) }));
+  if (!animations.length) {
+    $('playtestStatus').textContent = 'Select at least one animation to playtest.';
+    return;
+  }
+  if (state._activationBusy) {
+    $('playtestStatus').textContent = 'Wait for the current preview to finish.';
+    return;
+  }
+  if (state.editMode) exitEdit();
+  stopPlaytest();
+  playtestSidebarWasVisible = !isSidebarCollapsed();
+  setSidebarVisible(false, { persist: false });
+  const frame = document.createElement('iframe');
+  frame.id = 'cambioPlaytestFrame';
+  frame.title = 'Live game playtest';
+  frame.cambioPlaytestConfig = deepClone({
+    ...state.runtimeConfig,
+    settings: state.settings,
+    animations,
+    seasons: [],
+    placementsByAnimation: Object.fromEntries(animations.map(animation => [
+      animation.id, ensureAnimPlacement(animation.id)
+    ]))
+  });
+  frame.src = '/';
+  $('siteStage').style.visibility = 'hidden';
+  $('siteStage').after(frame);
+  $('stopPlaytest').hidden = false;
+  $('playtestStatus').textContent = 'Playtest running. Click the platypus to play.';
+}
+
 function renderAnimList() {
   ensureAnimDeskList();
   const all = state.runtimeConfig?.animations || state.manifest.animations || [];
@@ -1735,6 +1810,7 @@ function renderAnimList() {
   // mountEvScrollList owns search; pass full pool (archived stay visible so Restore works).
   const pool = all.slice();
   animDeskList.setItems(pool);
+  renderPlaytestChoices(all);
   const hint = $('poolHint');
   if (hint) {
     const pcts = livePercents();
@@ -2041,7 +2117,7 @@ function bindPropPointer(img, animId, elementId) {
           const existing = primaryObjectAction(currentElement());
           state.actionDraft = existing
             ? { ...existing, point: { x: nx, y: ny } }
-            : { type: 'fire', point: { x: nx, y: ny }, direction: 0, pattern: 'alternate', rate: 3.2, jitter: 0.5, appliesTo: ['spore', 'activation'] };
+            : { type: 'fire', point: { x: nx, y: ny }, direction: 0, pattern: 'alternate', rate: 3.2, jitter: 0.5, appliesTo: ['spore'] };
         } else {
           state.actionDraft.point = { x: nx, y: ny };
         }
@@ -2414,6 +2490,7 @@ function enterEdit(animId) {
   const pool = state.runtimeConfig?.animations || state.manifest?.animations || [];
   const anim = pool.find((a) => a.id === animId) || state.manifest?.animations?.find((a) => a.id === animId);
   if (!anim || anim.editable === false || anim.placementEditable === false) return;
+  if ($('cambioPlaytestFrame')) stopPlaytest();
   if (!state.manifest?.animations?.some((a) => a.id === animId) && state.manifest) {
     state.manifest.animations.push(anim);
   }
@@ -2553,6 +2630,7 @@ function previewClickAnimation(animId) {
 async function playAnimation(animId,{signal}={}) {
   const anim = state.manifest.animations.find((a) => a.id === animId);
   if (!anim) return;
+  if ($('cambioPlaytestFrame')) stopPlaytest();
   if (state._activationBusy) {
     $('stageHint').textContent = 'Activation already playing…';
     return;

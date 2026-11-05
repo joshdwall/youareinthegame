@@ -318,6 +318,7 @@ input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-sele
   position: relative;
   display: inline-block;
   line-height: 0;
+  z-index: 10;
 }
 .creature-rig > .creature {
   display: block;
@@ -353,5 +354,5 @@ img.spore,
   -webkit-user-select: none;
   user-select: none;
 }
-.worldmap-link { position:fixed; left:18px; bottom:18px; z-index:100; min-height:44px; display:flex; align-items:center; padding:10px 14px; border:1px solid #14324466; border-radius:4px; color:#143244; background:#f2ead9e6; font-size:13px; text-decoration:none; }
+.worldmap-link { position:fixed; left:18px; bottom:18px; z-index:100; min-height:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:7px 10px; border:1px solid #14324466; border-radius:4px; color:#143244; background:#f2ead9e6; font-size:13px; text-decoration:none; }
 .worldmap-link:focus-visible { outline:3px solid #143244; outline-offset:3px; }
