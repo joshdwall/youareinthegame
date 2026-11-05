@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';import sharp from 'sharp';import {geoContains} from 'd3-geo';
 export async function verifyGreenland(page,{screenshotDir}={}){
  const land=await page.evaluate(async()=>await(await fetch('/assets/worldmap/countries.geojson')).json()),feature=land.features.find(f=>f.properties.name==='Greenland');const samples=[];
- for(let lat=61.3;lat<82;lat+=1.3)for(let lng=-65.7;lng<-15;lng+=1.3)if([[0,0],[.7,0],[-.7,0],[0,.7],[0,-.7]].every(([dx,dy])=>geoContains(feature,[lng+dx,lat+dy])))samples.push({lat,lng});
+ // Sample land interiors beyond the antialiased coastline.
+ for(let lat=61.3;lat<82;lat+=1.3)for(let lng=-65.7;lng<-15;lng+=1.3)if([-1.4,0,1.4].every(dx=>[-1.4,0,1.4].every(dy=>geoContains(feature,[lng+dx,lat+dy]))))samples.push({lat,lng});
  await page.setViewportSize({width:1280,height:1000});await page.waitForFunction(()=>document.documentElement.scrollWidth<=innerWidth);
  // The preceding mobile preference click scrolls to the footer. Restore the
  // viewport before projecting land samples into screenshot coordinates.
