@@ -44,7 +44,7 @@ async function relativePropBoxes(page) {
     const c = document.getElementById('mainCreature')?.getBoundingClientRect();
     if (!c) return {};
     const out = {};
-    for (const p of document.querySelectorAll('.cambio-prop')) {
+    for (const p of document.querySelectorAll('.cambio-prop, .activation-prop')) {
       const id = p.dataset.elementId;
       if (!id) continue;
       const r = p.getBoundingClientRect();
@@ -133,7 +133,7 @@ async function sampleActivation(page, labelPrefix) {
         const w = el.getBoundingClientRect().width;
         return w >= mainW * 0.85 && w > 40;
       }).length;
-      const props = [...document.querySelectorAll('.cambio-prop')].map((e) => e.dataset.elementId);
+      const props = [...document.querySelectorAll('.cambio-prop, .activation-prop')].map((e) => e.dataset.elementId);
       const flashHost = document.querySelector('#overlayLayer.activation-flash-host, .activation-flash-host');
       return {
         flashBody: document.querySelectorAll('body > .lightning-flash').length,
@@ -158,7 +158,7 @@ async function sampleActivation(page, labelPrefix) {
           const c = document.getElementById('mainCreature')?.getBoundingClientRect();
           if (!c) return {};
           const out = {};
-          for (const el of document.querySelectorAll('.cambio-prop')) {
+          for (const el of document.querySelectorAll('.cambio-prop, .activation-prop')) {
             const id = el.dataset.elementId;
             if (!id) continue;
             const r = el.getBoundingClientRect();
@@ -367,7 +367,7 @@ async function runViewport(browser, vp) {
   const cReset = await page.evaluate(() => ({
     flashOwned: document.querySelectorAll('.activation-flash-layer, #effectOverlay').length,
     flashHost: document.querySelectorAll('.activation-flash-host').length,
-    props: document.querySelectorAll('.cambio-prop').length,
+    props: document.querySelectorAll('.cambio-prop, .activation-prop').length,
     spores: document.querySelectorAll('.activation-spore').length,
     main: document.querySelectorAll('#mainCreature').length
   }));
