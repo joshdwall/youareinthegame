@@ -32,3 +32,30 @@ body{caret-color:transparent}#globe,#globe canvas{user-select:none;-webkit-user-
 .area-list::-webkit-scrollbar-track { background: #e4dbc9; border-radius: 8px; }
 .area-list::-webkit-scrollbar-thumb { background: #60796e; border-radius: 8px; }
 .back-link { display: inline-flex; align-items: center; gap: .35rem; }
+
+/* Keep the desktop columns and let mobile follow the globe-first document order. */
+.earth-stage { grid-column: 2; grid-row: 1; }
+.intro { grid-column: 1; grid-row: 1; }
+.mobile-map-jump { display: none; }
+@media (max-width: 800px) {
+  html { scroll-behavior: smooth; }
+  main { row-gap: 24px; padding-bottom: 24px; }
+  .earth-stage, .intro { grid-column: 1; grid-row: auto; }
+  #world-map, #visitor-countries { scroll-margin-top: 12px; }
+  .mobile-map-jump {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    margin: 8px 0;
+    padding: 0 .9rem;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fff8eb;
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .earth-stage .mobile-map-jump { display: flex; width: max-content; margin: 12px auto 0; }
+  .country-list .mobile-map-jump { display: flex; width: max-content; }
+  .area-list { max-height: none; overflow: visible; padding-inline-end: 0; }
+}
