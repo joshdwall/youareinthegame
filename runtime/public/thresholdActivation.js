@@ -32,6 +32,9 @@ function readPlaytestConfig() {
   return null;
 }
 const playtestConfig = readPlaytestConfig();
+const linkedAnimationId = playtestConfig || typeof location === 'undefined'
+  ? ''
+  : new URLSearchParams(location.search).get('animation')?.trim().toLowerCase() || '';
 let playtestCursor = { index: -1, lastPlayedId: null, lastId: null };
 
 /** @type {{ id: string, anim: object, prepared?: object } | null} */
@@ -324,7 +327,12 @@ export async function pickUpcoming({ forceRefresh = false, creature = null } = {
   const config = await fetchAnimationConfig(forceRefresh);
   applyClickThresholdFromConfig(hookedEffect || (typeof window !== 'undefined' ? window.__yaitgEffect : null), config);
   const forced = resolveForcePick(config);
-  if (forced) {
+  if (linkedAnimationId) {
+    const anim = config?.animations?.find((entry) =>
+      entry.id === linkedAnimationId && entry.live && !entry.archived
+    );
+    upcoming = anim ? { id: anim.id, anim } : null;
+  } else if (forced) {
     upcoming = forced;
     // Do not record forced as played — only activation complete advances the cursor.
   } else if (!config) {
@@ -348,7 +356,8 @@ export async function pickUpcoming({ forceRefresh = false, creature = null } = {
     }
   } catch (_) {}
   const cre = creature || (typeof document !== 'undefined' ? document.getElementById('mainCreature') : null);
-  await prepareUpcoming(cre);
+  if (upcoming || !linkedAnimationId) await prepareUpcoming(cre);
+  else prepared = null;
   return upcoming;
 }
 
@@ -464,7 +473,8 @@ export function installThresholdLootHook(effect) {
   effect.triggerLightningReset = async function patchedTrigger() {
     if (this.lightningSequenceActive || this.finaleInProgress) return;
 
-    const pick = resolveForcePick(cachedConfig) || upcoming;
+    if (linkedAnimationId && !upcoming) return;
+    const pick = linkedAnimationId ? upcoming : resolveForcePick(cachedConfig) || upcoming;
     const ghost = isGhostPick(pick);
 
     this.clearAllTimers?.();
@@ -490,7 +500,7 @@ export function installThresholdLootHook(effect) {
     let nextRound;
     const prepareNextRound=()=>{
       if(nextRound)return nextRound;
-      recordPlayed(ghost?'ghost':pick?.id,Number.isFinite(pick?.index)?pick.index:(ghost?0:-1));
+      if (!linkedAnimationId) recordPlayed(ghost?'ghost':pick?.id,Number.isFinite(pick?.index)?pick.index:(ghost?0:-1));
       upcoming=null;prepared=null;
       nextRound=pickUpcoming({forceRefresh:true,creature}).catch(err=>error('Next costume preparation failed',err));
       return nextRound;
