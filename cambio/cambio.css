@@ -450,12 +450,13 @@
 
 .cambio-prop {
   position: absolute;
-  cursor: grab;
+  cursor: default;
   user-select: none;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
   pointer-events: auto;
   will-change: transform;
 }
+.cambio-prop.draggable-prop { cursor: grab; touch-action: none; }
 .cambio-prop.selected { outline: 2px solid #f0c14b; outline-offset: 4px; }
 .cambio-prop.dragging { cursor: grabbing; opacity: 0.92; }
 .cambio-prop.picking-object { outline: 2px dashed #7ab5a0; outline-offset: 4px; cursor: crosshair; }

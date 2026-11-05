@@ -1869,6 +1869,7 @@ function mountProps(animId, { interactive = false, visible = true } = {}) {
     img.src = '/' + el.src.replace(/^\//, '');
     img.alt = el.id;
     img.className = 'cambio-prop' + (state.selectedElementId === el.id ? ' selected' : '');
+    if (interactive && (!state.activeMode || state.activeMode === 'move')) img.classList.add('draggable-prop');
     if (state.activeMode === 'connector' && state.connectorPick === 'object' && state.selectedElementId === el.id) {
       img.classList.add('picking-object');
     }
@@ -2008,17 +2009,26 @@ function renderRotateHandle(animId, elementId) {
 
 function bindPropPointer(img, animId, elementId) {
   img.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
 
-    // Selecting another element cancels active mode
+    // Keep the hit element mounted so the same press can select and drag.
     if (state.selectedElementId !== elementId) {
-      if (state.activeMode) cancelMode();
+      if (state.activeMode) {
+        cancelMode();
+        state.selectedElementId = elementId;
+        highlightElementRow(elementId);
+        refreshViews();
+        mountProps(animId, { interactive: true });
+        return;
+      }
       state.selectedElementId = elementId;
+      for (const prop of creatureRig.querySelectorAll('.cambio-prop.selected')) prop.classList.remove('selected');
+      img.classList.add('selected');
       highlightElementRow(elementId);
       refreshViews();
-      mountProps(animId, { interactive: true });
-      return;
+      renderMarkers(animId, elementId);
     }
 
     // Action point: click muzzle (normalized on object), then direction
@@ -2091,30 +2101,24 @@ function bindPropPointer(img, animId, elementId) {
       return;
     }
 
-    // Move mode only: drag → characterAnchor under objectAnchor (no jump / no float drift)
-    if (state.activeMode === 'move') {
-      if (elementId !== state.selectedElementId) return;
-      img.classList.add('dragging', 'selected');
+    if (!state.activeMode || state.activeMode === 'move') {
       const st = ensureAnimPlacement(animId).elements[elementId];
-      // Keep objectAnchor; default to center if missing. Never touch scale/rotation.
-      if (!st.objectAnchor || !Number.isFinite(+st.objectAnchor.x)) {
-        st.objectAnchor = { x: 0.5, y: 0.5 };
-      }
-      const rig0 = creatureRig.getBoundingClientRect();
-      // Attach point is CSS left/top (characterAnchor in rig-local space)
-      const attachX = parseFloat(img.style.left) || 0;
-      const attachY = parseFloat(img.style.top) || 0;
-      const grabDx = (e.clientX - rig0.left) - attachX;
-      const grabDy = (e.clientY - rig0.top) - attachY;
+      const original = { ...st.characterAnchor };
+      let moved = false;
       const move = (ev) => {
-        const rig = creatureRig.getBoundingClientRect(); // live — float-safe
+        if (ev.pointerId !== e.pointerId) return;
+        const dx = ev.clientX - e.clientX;
+        const dy = ev.clientY - e.clientY;
+        if (!moved && Math.hypot(dx, dy) < 3) return;
+        if (!moved) {
+          moved = true;
+          img.classList.add('dragging');
+          markerLayer.replaceChildren();
+        }
         const box = creatureBoxInRig();
-        const newAttachX = (ev.clientX - rig.left) - grabDx;
-        const newAttachY = (ev.clientY - rig.top) - grabDy;
-        // characterAnchor = character-normalized point under objectAnchor at this drop pose
         st.characterAnchor = {
-          x: Math.min(1.15, Math.max(-0.15, (newAttachX - box.left) / box.width)),
-          y: Math.min(1.15, Math.max(-0.15, (newAttachY - box.top) / box.height))
+          x: Math.min(1.15, Math.max(-0.15, original.x + dx / box.width)),
+          y: Math.min(1.15, Math.max(-0.15, original.y + dy / box.height))
         };
         positionProp(img, st);
         const mv = $('moveView');
@@ -2123,27 +2127,26 @@ function bindPropPointer(img, animId, elementId) {
             `(${st.characterAnchor.x.toFixed(2)}, ${st.characterAnchor.y.toFixed(2)})`;
         }
       };
-      const up = () => {
+      const finish = (ev) => {
+        if (ev.pointerId !== e.pointerId) return;
+        img.removeEventListener('pointermove', move);
+        img.removeEventListener('pointerup', finish);
+        img.removeEventListener('pointercancel', finish);
+        img.removeEventListener('lostpointercapture', finish);
+        if (img.hasPointerCapture(e.pointerId)) img.releasePointerCapture(e.pointerId);
         img.classList.remove('dragging');
-        window.removeEventListener('pointermove', move);
-        window.removeEventListener('pointerup', up);
-        // Final convert against current creature box (objectAnchor unchanged)
-        const box = creatureBoxInRig();
-        const left = parseFloat(img.style.left) || 0;
-        const top = parseFloat(img.style.top) || 0;
-        st.characterAnchor = {
-          x: Math.min(1.15, Math.max(-0.15, (left - box.left) / box.width)),
-          y: Math.min(1.15, Math.max(-0.15, (top - box.top) / box.height))
-        };
+        if (!moved || !img.isConnected) return;
+        if (ev.type !== 'pointerup') st.characterAnchor = original;
+        else $('saveStatus').textContent = 'Placement changed. Save to keep it.';
         mountProps(animId, { interactive: true });
         refreshViews();
       };
-      window.addEventListener('pointermove', move);
-      window.addEventListener('pointerup', up);
-      return;
+      img.setPointerCapture(e.pointerId);
+      img.addEventListener('pointermove', move);
+      img.addEventListener('pointerup', finish);
+      img.addEventListener('pointercancel', finish);
+      img.addEventListener('lostpointercapture', finish);
     }
-
-    // No active mode: click selects only (already selected) — no drag
   });
 }
 
