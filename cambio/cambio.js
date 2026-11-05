@@ -1,5 +1,6 @@
 import { runActivation, previewClick, activate } from '/effects/activation/ActivationEngine.js';
 import { applyElementPlacement, measureCreatureBoxInHost } from '/effects/activation/placementMath.js';
+import { mountOverlayProps } from '/effects/activation/mountOverlayProps.js';
 import { DEFAULT_PLACEMENTS_BY_ANIMATION } from '/effects/activation/defaultPlacements.js';
 import { escapeHtml } from '/cambio/vendor/envivo-ui/desk-list.mjs';
 import { mountEvScrollList } from '/cambio/vendor/envivo-ui/ev-scroll-list/mount.mjs';
@@ -767,10 +768,30 @@ async function boot() {
   const seedPlacements = migratePlacements(seed);
   state.placements = seedPlacements;
   state.runtimeConfig = runtimeSeed;
-  try {
-    const rc = await apiJson('/api/cambio/runtime-config');
-    if (rc?.config) state.runtimeConfig = rc.config;
-  } catch (_) { /* seed */ }
+  const [runtime, placements] = await Promise.all([
+    apiJson('/api/cambio/runtime-config').catch(() => null),
+    apiJson('/api/cambio/placements').catch(() => null)
+  ]);
+  if (runtime?.config) state.runtimeConfig = runtime.config;
+  if (placements?.placements) {
+    state.placements = mergePlacementsPreferLive(seedPlacements, placements.placements);
+  }
+  if (!runtime?.config || !placements?.placements) {
+    // A read-only Cambio session can still preview the exact live catalog.
+    const live = await apiJson('/api/animations').catch(() => null);
+    if (live?.ok) {
+      if (!runtime?.config) state.runtimeConfig = live;
+      if (!placements?.placements) {
+        const liveIds = new Set(live.animations.map(animation => animation.id));
+        const layouts = Object.fromEntries(Object.entries(live.placementsByAnimation || {})
+          .filter(([id]) => liveIds.has(id)));
+        state.placements = migratePlacements({
+          ...seedPlacements,
+          byAnimation: { ...seedPlacements.byAnimation, ...layouts }
+        });
+      }
+    }
+  }
   if (!state.runtimeConfig) {
     state.runtimeConfig = {
       schemaVersion: 1,
@@ -789,15 +810,6 @@ async function boot() {
     };
   }
   syncManifestFromRuntime();
-  try {
-    const r = await fetch('/api/cambio/placements', { credentials: 'include', cache: 'no-store' });
-    if (r.ok) {
-      const data = await r.json();
-      if (data?.ok && data.placements) {
-        state.placements = mergePlacementsPreferLive(seedPlacements, data.placements);
-      }
-    }
-  } catch (_) { /* seed only */ }
 
   for (const anim of state.manifest.animations) {
     if (anim.preloadedAccessories) {
@@ -1835,6 +1847,7 @@ function positionProp(img, st) {
 
 function mountProps(animId, { interactive = false, visible = true } = {}) {
   overlay.innerHTML = '';
+  overlay.style.pointerEvents = '';
   overlay.__costumeBackLayer?.remove();overlay.__costumeBackLayer=null;
   markerLayer.innerHTML = '';
   overlay.classList.toggle('editing', interactive);
@@ -2492,9 +2505,10 @@ function compositeElementsFor(animId) {
     if (!st) st = defaultElementState(anim, el);
     else st = migrateElement(st);
     return {
+      ...el,
       id: el.id,
       role:el.role||null,
-      src: el.src.startsWith('/') ? el.src : '/' + el.src.replace(/^\//, ''),
+      src: el.src.startsWith('/') || el.src.startsWith('http') ? el.src : '/' + el.src,
       placement: st
     };
   });
@@ -2502,8 +2516,7 @@ function compositeElementsFor(animId) {
 
 /**
  * Play = activate. Ghost uses image-overlay + firework spores (apex parity).
- * Cowboy (and future overlays): flash accessories ON the live #mainCreature via
- * the same mountProps placement path as edit mode (no duplicate base character).
+ * Cowboy and other costumes use the public overlay renderer on #mainCreature.
  * Mini spores remain small base+overlay composites.
  */
 /**
@@ -2520,14 +2533,7 @@ function previewClickAnimation(animId) {
   const cbox = creature.getBoundingClientRect();
   const x = cbox.left + cbox.width / 2 - rect.left;
   const y = cbox.top + cbox.height / 2 - rect.top;
-  const elements = (anim.elements || []).map((el) => {
-    const place = state.placements?.byAnimation?.[animId]?.elements?.[el.id];
-    return {
-      id: el.id,
-      src: el.src.startsWith('/') ? el.src : '/' + el.src.replace(/^\//, ''),
-      placement: place
-    };
-  });
+  const elements = compositeElementsFor(animId);
   const result = previewClick({
     container,
     creature,
@@ -2568,15 +2574,16 @@ async function playAnimation(animId,{signal}={}) {
         creature,
         creatureRig,
         sporeHost: container,
-        profile: 'ghost'
+        profile: 'ghost',
+        stormResetDurationMs: state.settings.stormResetDurationMs
       });
       $('stageHint').textContent = 'Ghost play finished';
       return;
     }
 
-    // Mount accessories with the EXACT edit-mode placement path, then flicker that host.
-    mountProps(animId, { interactive: false, visible: true });
     const elements = compositeElementsFor(animId);
+    mountOverlayProps(overlay, { creature, creatureRig, elements });
+    overlay.style.opacity = '0';
     await activate({
       signal,
       animation:anim,
@@ -2592,7 +2599,7 @@ async function playAnimation(animId,{signal}={}) {
         baseSrc: creature.getAttribute('src') || '/img/mushroom-platypus.png',
         elements
       },
-      spore: { count: 8, scale: 0.32, durationMs: 1800, spreadPx: 140 }
+      stormResetDurationMs: state.settings.stormResetDurationMs
     });
 
     // Reset: hide/remove overlay items; live character untouched
@@ -2600,6 +2607,8 @@ async function playAnimation(animId,{signal}={}) {
       mountProps(animId, { interactive: true });
     } else {
       overlay.innerHTML = '';
+      overlay.__costumeBackLayer?.remove();
+      overlay.__costumeBackLayer = null;
       overlay.style.opacity = '';
       overlay.classList.remove('activation-flash-host');
     }
@@ -2608,6 +2617,8 @@ async function playAnimation(animId,{signal}={}) {
     error('activation failed', err);
     $('stageHint').textContent = `Play failed: ${err.message || err}`;
     overlay.innerHTML = '';
+    overlay.__costumeBackLayer?.remove();
+    overlay.__costumeBackLayer = null;
     overlay.style.opacity = '';
     overlay.classList.remove('activation-flash-host');
   } finally {

@@ -113,7 +113,7 @@ export async function runActivation(opts) {
     let resetPromise;
     const resetToLight=()=>{
       if(resetPromise)return resetPromise;
-      const fadeMs=fadeStormResetToLight(container,{durationMs:window.__yaitgEffect?.__liveStormResetMs||overlayProfile.animations.STORM_RESET_DURATION,backgroundColor:overlayProfile.visuals.BACKGROUND_COLOR});
+      const fadeMs=fadeStormResetToLight(container,{durationMs:opts.stormResetDurationMs||window.__yaitgEffect?.__liveStormResetMs||overlayProfile.animations.STORM_RESET_DURATION,backgroundColor:overlayProfile.visuals.BACKGROUND_COLOR});
       creature.className=creature.className.replace(/storm-level-\d+/g,'');
       opts.onResetStart?.(fadeMs);
       resetPromise=delay(fadeMs);return resetPromise;

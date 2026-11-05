@@ -20,7 +20,16 @@ export async function mountCostumeWorkshop({onPreview,onSaved}){
  const editors=element('div',null,{id:'costumeAccessoryEditors'});form.appendChild(editors);
  const advanced=element('details');advanced.appendChild(element('summary','Bundle details'));const text=element('textarea',null,{rows:'12','aria-label':'Costume bundle JSON',id:'costumeBundleJson'});advanced.appendChild(text);form.appendChild(advanced);
  const buttons=element('div',null,{class:'cambio-actions'});const preview=element('button','Preview',{type:'button',class:'btn',id:'costumePreview'}),cancel=element('button','Stop preview',{type:'button',class:'btn',id:'costumeStop'}),save=element('button','Save draft',{type:'button',class:'btn primary',id:'costumeSaveDraft'});buttons.append(preview,cancel,save);form.append(buttons,status);
- let library=(await api('/api/cambio/costumes')).library;
+ let library;
+ try {
+  library=(await api('/api/cambio/costumes')).library;
+ } catch (error) {
+  for (const control of form.querySelectorAll('input,select,textarea,button')) control.disabled=true;
+  status.textContent=error.message==='access_required'
+   ? 'Costume editing needs an authorized Cambio session. You can still play live costumes above.'
+   : 'Costume library unavailable. Reload Cambio to try again.';
+  return;
+ }
  let bundle={schemaVersion:1,assets:[],costume:{id:'new-costume',version:1,label:'New costume',rig:'mushroom-platypus@1',preset:'gentle-burst@1',elements:[]}},controller=null,busy=false,editorInvalid=false;
  const setBusy=v=>{busy=v;for(const control of form.querySelectorAll('input,select,textarea,button'))if(control!==cancel)control.disabled=v;};
  const serialize=()=>{bundle.costume.id=slug(id.value);bundle.costume.label=name.value.trim();bundle.costume.version=Number(version.value);bundle.costume.preset=preset.value;if(!editorInvalid)text.value=JSON.stringify(bundle,null,2);};
