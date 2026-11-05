@@ -67,8 +67,8 @@ export const DEFAULT_PLACEMENTS_BY_ANIMATION = {
         objectActions: [
           {
             type: 'fire',
-            point: { x: 0.08, y: 0.32 },
-            direction: 180,
+            point: { x: 0.04, y: 0.058 },
+            direction: -145,
             pattern: 'alternate',
             rate: 3.2,
             jitter: 0.5,
@@ -86,8 +86,8 @@ export const DEFAULT_PLACEMENTS_BY_ANIMATION = {
         objectActions: [
           {
             type: 'fire',
-            point: { x: 0.92, y: 0.32 },
-            direction: 0,
+            point: { x: 0.96, y: 0.058 },
+            direction: -35,
             pattern: 'alternate',
             rate: 3.2,
             jitter: 0.5,
