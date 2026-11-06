@@ -13,7 +13,7 @@ const forklift = {
   clickEffect: { type: 'composite-spores', count: 12, scale: 0.16 },
   elements: [{
     id: 'forklift-driver',
-    src: '/assets/animations/forklift/driver.webp',
+    src: '/assets/animations/forklift/driver-6254191e2e9f.webp',
     placement: {
       characterAnchor: { x: 0.5, y: 0.5 },
       objectAnchor: { x: 0.5, y: 0.5 },
