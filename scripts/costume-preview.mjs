@@ -167,9 +167,11 @@ async function main(){
  save('deployment.json',{url,branch,commit:process.env.GITHUB_SHA});
  const checks=await verifyReady(url);
 
- const barberFolder = 'content/costume-examples/barber';
- if (fs.existsSync(barberFolder) && branch === 'costume/barber-straight-razor') {
-  const bundle = JSON.parse(fs.readFileSync(path.join(barberFolder, 'costume.bundle.json'), 'utf8'));
+ if (branch === 'costume/barber-straight-razor') for (const [id, accessory] of [
+  ['barber', 'straight-edge-razor'], ['chef', 'chef-hat']
+ ]) {
+  const folder = path.join('content/costume-examples', id);
+  const bundle = JSON.parse(fs.readFileSync(path.join(folder, 'costume.bundle.json'), 'utf8'));
   const request = async (pathname, body) => {
    const response = await fetch(new URL(pathname, url), {
     method: body === undefined ? 'GET' : 'POST',
@@ -177,26 +179,26 @@ async function main(){
     body: body === undefined ? undefined : JSON.stringify(body),
     redirect: 'manual'
    });
-   if (!response.ok) throw Error('Barber preview ' + pathname + ': HTTP ' + response.status);
+   if (!response.ok) throw Error(id + ' preview ' + pathname + ': HTTP ' + response.status);
    return response.json();
   };
   const library = (await request('/api/cambio/costumes')).library;
-  if (!library.animations.some((animation) => animation.id === 'barber' && animation.live)) {
+  if (!library.animations.some((animation) => animation.id === id && animation.live)) {
    await request('/api/cambio/assets', {
     key: bundle.assets[0].src.slice('/api/assets/'.length),
     contentType: 'image/png',
-    base64: fs.readFileSync(path.join(barberFolder, 'straight-edge-razor.png')).toString('base64')
+    base64: fs.readFileSync(path.join(folder, accessory + '.png')).toString('base64')
    });
    await request('/api/cambio/costumes', {bundle, expectedRevision: library.revision});
    await request('/api/cambio/costumes', {bundle, commit: true, expectedRevision: library.revision});
   }
-  const saved = (await request('/api/cambio/runtime-config')).config.animations.find((animation) => animation.id === 'barber');
-  if (!saved || saved.live || !saved.elements.some((element) => element.id === 'straight-edge-razor')) {
-   throw Error('Barber draft was not saved with the straight razor');
+  const saved = (await request('/api/cambio/runtime-config')).config.animations.find((animation) => animation.id === id);
+  if (!saved || saved.live || !saved.elements.some((element) => element.id === accessory)) {
+   throw Error('Draft was not saved with the expected accessory: ' + id);
   }
-  const review = new URL('/cambio/?animation=barber', url).href;
-  if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, '\n[Review the Barber draft](' + review + ')\n');
-  console.log('Barber draft preview:', review);
+  const review = new URL('/cambio/?animation=' + id, url).href;
+  if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, '\n[Review the ' + bundle.costume.label + ' draft](' + review + ')\n');
+  console.log(bundle.costume.label + ' draft preview:', review);
  }
  save('preview.json',{url,branch,commit:process.env.GITHUB_SHA,isolated:true,checks});
  if(process.env.GITHUB_OUTPUT)fs.appendFileSync(process.env.GITHUB_OUTPUT,`url=${url}\n`);if(process.env.GITHUB_STEP_SUMMARY)fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,`## Costume preview\n\n[Open protected preview](${url}) · [Cambio](${url}/cambio/)\n\nProduction remains unchanged. Isolated preview KV/R2. Baseline backup is in the private evidence artifact.\n`);
