@@ -165,7 +165,40 @@ async function main(){
  save('isolation.json',{productionKvUnchanged:true,previewKvSeparate:true,previewBucketSeparate:true,previewSessionIndependent:true,checkedAt:new Date().toISOString()});
  const urls=[...output.matchAll(/https:\/\/[a-z0-9-]+\.youareinthegame-web\.pages\.dev/g)].map(m=>m[0]);const url=urls.find(x=>!x.includes('costume-scalable-workflow.'))||urls[0];if(!url)throw Error('Preview deployment URL missing');
  save('deployment.json',{url,branch,commit:process.env.GITHUB_SHA});
- const checks=await verifyReady(url);save('preview.json',{url,branch,commit:process.env.GITHUB_SHA,isolated:true,checks});
+ const checks=await verifyReady(url);
+
+ const barberFolder = 'content/costume-examples/barber';
+ if (fs.existsSync(barberFolder) && branch === 'costume/barber-straight-razor') {
+  const bundle = JSON.parse(fs.readFileSync(path.join(barberFolder, 'costume.bundle.json'), 'utf8'));
+  const request = async (pathname, body) => {
+   const response = await fetch(new URL(pathname, url), {
+    method: body === undefined ? 'GET' : 'POST',
+    headers: {...headers(), 'content-type': 'application/json'},
+    body: body === undefined ? undefined : JSON.stringify(body),
+    redirect: 'manual'
+   });
+   if (!response.ok) throw Error('Barber preview ' + pathname + ': HTTP ' + response.status);
+   return response.json();
+  };
+  const library = (await request('/api/cambio/costumes')).library;
+  if (!library.animations.some((animation) => animation.id === 'barber' && animation.live)) {
+   await request('/api/cambio/assets', {
+    key: bundle.assets[0].src.slice('/api/assets/'.length),
+    contentType: 'image/png',
+    base64: fs.readFileSync(path.join(barberFolder, 'straight-edge-razor.png')).toString('base64')
+   });
+   await request('/api/cambio/costumes', {bundle, expectedRevision: library.revision});
+   await request('/api/cambio/costumes', {bundle, commit: true, expectedRevision: library.revision});
+  }
+  const saved = (await request('/api/cambio/runtime-config')).config.animations.find((animation) => animation.id === 'barber');
+  if (!saved || saved.live || !saved.elements.some((element) => element.id === 'straight-edge-razor')) {
+   throw Error('Barber draft was not saved with the straight razor');
+  }
+  const review = new URL('/cambio/?animation=barber', url).href;
+  if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, '\n[Review the Barber draft](' + review + ')\n');
+  console.log('Barber draft preview:', review);
+ }
+ save('preview.json',{url,branch,commit:process.env.GITHUB_SHA,isolated:true,checks});
  if(process.env.GITHUB_OUTPUT)fs.appendFileSync(process.env.GITHUB_OUTPUT,`url=${url}\n`);if(process.env.GITHUB_STEP_SUMMARY)fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,`## Costume preview\n\n[Open protected preview](${url}) · [Cambio](${url}/cambio/)\n\nProduction remains unchanged. Isolated preview KV/R2. Baseline backup is in the private evidence artifact.\n`);
  console.log('Protected costume preview:',url);
 }

@@ -823,6 +823,10 @@ async function boot() {
   $('startPlaytest').addEventListener('click', startPlaytest);
   $('stopPlaytest').addEventListener('click', stopPlaytest);
   wireSidebarToggle();
+  const reviewId = new URLSearchParams(location.search).get('animation');
+  if (state.manifest.animations.some((animation) => animation.id === reviewId)) {
+    enterEdit(reviewId);
+  }
   wireEditSidebarToggle();
   $('createForm')?.addEventListener('submit', onCreateSubmit);
   $('btnSave').addEventListener('click', savePlacements);
@@ -959,7 +963,12 @@ function selectionModeLabel(mode) {
 function syncSelectionModeView() {
   const mode = getSelectionModeSetting();
   const view = $('selectionModeView');
-  if (view) view.textContent = selectionModeLabel(mode);
+  const opening = state.runtimeConfig?.animations.find((anim) =>
+    anim.id === state.settings?.openingAnimationId && anim.live && !anim.archived
+  );
+  if (view) view.textContent = opening
+    ? `${selectionModeLabel(mode)} · First: ${opening.label || opening.id}`
+    : selectionModeLabel(mode);
   const input = $('selectionModeInput');
   if (input && state.activeMode !== 'selectionMode') input.value = mode;
 }
@@ -1019,6 +1028,12 @@ function enterMode(mode) {
     state.activeMode = mode;
     const cur = getSelectionModeSetting();
     state.modeSnapshot = { selectionMode: cur };
+    const openingInput = $('openingAnimationInput');
+    openingInput.replaceChildren(new Option('Use rotation', ''));
+    for (const anim of state.runtimeConfig.animations.filter((a) => a.live && !a.archived)) {
+      openingInput.add(new Option(anim.label || anim.id, anim.id));
+    }
+    openingInput.value = state.settings?.openingAnimationId || '';
     const input = $('selectionModeInput');
     if (input) input.value = cur;
     syncModeUi();
@@ -1194,7 +1209,8 @@ async function commitMode() {
     const raw = $('selectionModeInput')?.value;
     const mode = raw === 'weighted' ? 'weighted' : 'alternate';
     const prev = state.runtimeConfig?.settings || state.settings || {};
-    const settings = { ...prev, selectionMode: mode };
+    const openingAnimationId = $('openingAnimationInput').value || null;
+    const settings = { ...prev, selectionMode: mode, openingAnimationId };
     state.settings = settings;
     if (state.runtimeConfig) state.runtimeConfig.settings = settings;
     try {
@@ -1202,6 +1218,9 @@ async function commitMode() {
       syncSelectionModeView();
       $('poolHint').textContent = `Selection ${selectionModeLabel(mode)} live (next visitors ~15s, no redeploy)`;
     } catch (e) {
+      state.settings = prev;
+      state.runtimeConfig.settings = prev;
+      syncSelectionModeView();
       error(e);
       $('poolHint').textContent = `Selection mode save failed: ${e.message || e}`;
     }

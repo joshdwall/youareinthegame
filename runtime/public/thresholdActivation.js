@@ -323,7 +323,7 @@ export async function prepareUpcoming(creature) {
 /**
  * Pick (or re-pick) the upcoming animation for this cycle + preload its assets.
  */
-export async function pickUpcoming({ forceRefresh = false, creature = null } = {}) {
+export async function pickUpcoming({ forceRefresh = false, creature = null, openingRound = false } = {}) {
   const config = await fetchAnimationConfig(forceRefresh);
   applyClickThresholdFromConfig(hookedEffect || (typeof window !== 'undefined' ? window.__yaitgEffect : null), config);
   const forced = resolveForcePick(config);
@@ -345,7 +345,11 @@ export async function pickUpcoming({ forceRefresh = false, creature = null } = {
       lastId,
       cursorIndex: cursor.index
     });
-    upcoming = pick || { id: 'ghost', anim: { id: 'ghost', playMode: 'legacy-ghost' } };
+    const opening = openingRound && config.settings?.openingAnimationId;
+    const featured = opening && config.animations?.find((anim) =>
+      anim.id === opening && anim.live && !anim.archived
+    );
+    upcoming = (featured ? { id: featured.id, anim: featured } : pick) || { id: 'ghost', anim: { id: 'ghost', playMode: 'legacy-ghost' } };
     // Intentionally do NOT write upcoming.id into the cursor — that skipped the
     // queued animation on reload (cowboy never played → stuck on ghost).
   }
@@ -606,7 +610,7 @@ export function installThresholdLootHook(effect) {
 
   // Cycle start: pick + preload; always ensure shared overlay DOM (ghost + composite).
   (async () => {
-    await pickUpcoming({ creature: effect.creature });
+    await pickUpcoming({ creature: effect.creature, openingRound: true });
     if (effect.creature) {
       ensurePublicOverlayDom(effect.creature);
     }
