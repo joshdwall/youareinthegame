@@ -19,7 +19,7 @@ const DIRS = [
   'assets',
   'runtime',
   'js'
-  ,'worldmap'
+  ,'worldmap', 'contact'
 ];
 
 function rmrf(dir) {

@@ -1,0 +1,8 @@
+:root { color-scheme: light; color: #182923; background: #dce5d8; font: 1rem/1.5 system-ui, sans-serif; }
+main { max-width: 36rem; margin: 2rem auto; padding: 0 1rem; }
+form, label { display: grid; gap: .6rem; }
+form { gap: 1rem; }
+input, textarea, button { font: inherit; padding: .55rem; border: 1px solid #52665b; border-radius: .35rem; }
+button { justify-self: start; background: #274d3d; color: white; }
+button:disabled { opacity: .55; }
+a { color: #254537; }
