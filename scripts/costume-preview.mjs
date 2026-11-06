@@ -167,11 +167,13 @@ async function main(){
  save('deployment.json',{url,branch,commit:process.env.GITHUB_SHA});
  const checks=await verifyReady(url);
 
- if (branch === 'costume/barber-straight-razor') for (const [id, accessory] of [
+ if (branch === 'costume/barber-straight-razor') for (const [costume, accessory] of [
   ['barber', 'straight-edge-razor'], ['chef', 'chef-hat']
  ]) {
-  const folder = path.join('content/costume-examples', id);
+  const folder = path.join('content/costume-examples', costume);
   const bundle = JSON.parse(fs.readFileSync(path.join(folder, 'costume.bundle.json'), 'utf8'));
+  const { id: baseId, version } = bundle.costume;
+  const id = version === 1 ? baseId : baseId + '-v' + version;
   const request = async (pathname, body) => {
    const response = await fetch(new URL(pathname, url), {
     method: body === undefined ? 'GET' : 'POST',
