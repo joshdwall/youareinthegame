@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "assets": [
+    {
+      "id": "barber-straight-edge-razor",
+      "version": 1,
+      "src": "/api/assets/animations/costumes/126973a0277a9e2417cff14a422e20890ec3e7c2968a54bf0b81fd308499e05e.png",
+      "sha256": "126973a0277a9e2417cff14a422e20890ec3e7c2968a54bf0b81fd308499e05e",
+      "width": 512,
+      "height": 512,
+      "bytes": 65843,
+      "pivot": {
+        "x": 0.36,
+        "y": 0.59
+      },
+      "provenance": "Operator stock accessory prepared locally"
+    }
+  ],
+  "costume": {
+    "id": "barber",
+    "version": 1,
+    "label": "Barber",
+    "rig": "mushroom-platypus@1",
+    "preset": "gentle-burst@1",
+    "elements": [
+      {
+        "id": "straight-edge-razor",
+        "asset": "barber-straight-edge-razor@1",
+        "placement": {
+          "objectAnchor": {
+            "x": 0.36,
+            "y": 0.59
+          },
+          "scale": 0.46,
+          "rotation": -8,
+          "flipX": false,
+          "objectActions": [
+            {
+              "type": "sway",
+              "phase": "activation",
+              "appliesTo": [
+                "spore"
+              ],
+              "amplitude": 13,
+              "durationMs": 360
+            }
+          ],
+          "layer": "foreground",
+          "order": 0,
+          "attachment": {
+            "rig": "mushroom-platypus@1",
+            "point": "handR"
+          },
+          "offset": {
+            "x": -0.1499999999999999,
+            "y": 0.33999999999999997
+          }
+        }
+      }
+    ]
+  }
+}

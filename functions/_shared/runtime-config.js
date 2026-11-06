@@ -143,6 +143,9 @@ export function normalizeConfig(raw) {
       clickThresholdMax,
       stormResetDurationMs,
       selectionMode,
+      openingAnimationId: typeof rawSettings.openingAnimationId === 'string'
+        && /^[a-z][a-z0-9-]{0,63}$/.test(rawSettings.openingAnimationId)
+        ? rawSettings.openingAnimationId : null,
       interactionOpacityDuringAnimation
     },
     seasons: Array.isArray(base.seasons) ? base.seasons : [],
