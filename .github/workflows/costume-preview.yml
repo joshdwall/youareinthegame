@@ -36,10 +36,10 @@ jobs:
           INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_CLIENT_SECRET }}
         run: node scripts/costume-preview.mjs
       - name: Install browser
-        if: steps.preview.outputs.url != ''
+        if: ${{ !cancelled() && steps.preview.outputs.url != '' }}
         run: npx playwright install --with-deps chromium
       - name: Browser verification
-        if: steps.preview.outputs.url != ''
+        if: ${{ !cancelled() && steps.preview.outputs.url != '' }}
         env:
           INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_CLIENT_ID }}
           INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_CLIENT_SECRET }}
