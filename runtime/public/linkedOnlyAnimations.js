@@ -25,11 +25,11 @@ const forklift = {
     },
     {
       id: 'forklift-driver',
-      src: '/assets/animations/forklift/front-3028c8f29ac6.webp',
+      src: '/assets/animations/forklift/seated-670c5bdb4e82.webp',
       placement: {
-        // The wheel sits at the bill-bottom landmark, in front of the driver.
+        // Align the cab so the neck tucks under the original bill.
         characterAnchor: MUSHROOM_RIG.anchors['bill-bottom'],
-        objectAnchor: { x: 0.5, y: 0.5 },
+        objectAnchor: { x: 0.5, y: 0.46 },
         scale: 1.49,
         layer: 'foreground',
         order: 1
