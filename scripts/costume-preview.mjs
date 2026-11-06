@@ -125,36 +125,6 @@ async function main(){
  for(const key of ['cambio:runtime-config','cambio:placements']){
   try{backup.keys[key]=JSON.parse(await cf(`/accounts/{account}/storage/kv/namespaces/${prodKv}/values/${encodeURIComponent(key)}`,'GET',undefined,true));}catch(e){throw Error('Unable to capture required production baseline key '+key);}
  }
-
- if(branch==='costume/barber-accessory-swap'){
-  const spaces=await cf('/accounts/{account}/storage/kv/namespaces?per_page=1000');
-  const previewKv=spaces.find(n=>n.title===cfg.previewNamespace)?.id;
-  const report={};
-  for(const [label,kv] of [['production',prodKv],['preview',previewKv]]){
-   if(!kv) continue;
-   report[label]={};
-   for(const key of ['cambio:runtime-config','cambio:placements','cambio:costume-library:v1']){
-    try{
-     const data=JSON.parse(await cf('/accounts/{account}/storage/kv/namespaces/'+kv+'/values/'+encodeURIComponent(key),'GET',undefined,true));
-     report[label][key]={
-      animations:data.animations?.filter(a=>/barber/i.test(a.id+' '+a.label)),
-      placements:Object.fromEntries(Object.entries(data.byAnimation||data.placements||{}).filter(([id])=>/barber/i.test(id))),
-      assets:data.assets?.filter(a=>/barber|scissor|razor/i.test(JSON.stringify(a))),
-      costumes:Object.fromEntries(Object.entries(data.costumes||{}).filter(([id])=>/barber/i.test(id)))
-     };
-    }catch(e){report[label][key]={error:redact(e.message)};}
-   }
-  }
-  for(const [label,bucket] of [['production',prodBucket],['preview',cfg.previewBucket]]){
-   try{
-    const data=await cf('/accounts/{account}/r2/buckets/'+bucket+'/objects?limit=1000');
-    const list=Array.isArray(data)?data:data.objects||[];
-    report[label].objects=list.map(x=>x.key||x.name).filter(k=>/barber|scissor|razor/i.test(k));
-   }catch(e){report[label].objectsError=redact(e.message);}
-  }
-  save('barber-inventory.json',report);
-  return;
- }
  const assetSources=[...new Set((backup.keys['cambio:runtime-config'].animations||[]).flatMap(a=>(a.elements||[]).map(e=>e.src)).filter(Boolean))];
  if(assetSources.length>cfg.maxAssets)throw Error('Asset inventory exceeds configured free-tier preview bound');
  save('baseline.json',backup);save('asset-manifest.json',{sources:assetSources,staticAssetsPinnedByCheckpoint:true});
