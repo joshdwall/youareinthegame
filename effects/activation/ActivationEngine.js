@@ -89,6 +89,8 @@ export async function runActivation(opts) {
   const reduced=typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
   const flashParent=creatureRig||container;
   const elements=(composite?.elements||[]).slice(0,LIMITS.elements);
+  const replaceCreature = profile === 'composite' && animation.replacesCreature === true;
+  const originalVisibility = creature.style.visibility;
   const timers=new Set(),nodes=new Set(),controls=new Set();
   let player=null,manager=null,abortResolve;
   const abortPromise=new Promise(resolve=>{abortResolve=resolve;});
@@ -128,6 +130,7 @@ export async function runActivation(opts) {
       player=createOverlayPlayer({layer:bindFlashHost(flashHost),owned:false,flash,secondaryLayers:flashHost.__costumeBackLayer?[flashHost.__costumeBackLayer]:[]});
     }else throw new Error('Unknown overlay profile');
     const roots=profile==='composite'?[flashHost,flashHost.__costumeBackLayer].filter(Boolean):[];
+    if (replaceCreature) creature.style.visibility = 'hidden';
     player.show();
     const equip=roots.map(root=>actions(root,'activation','equip'));
     if(preset.phases.equipMs)await delay(reduced?100:preset.phases.equipMs);
@@ -148,13 +151,14 @@ export async function runActivation(opts) {
     const hasExit=elements.some(e=>(e.placement?.objectActions||[]).some(a=>a.phase==='exit'));
     if(hasExit){player.show();const exits=roots.map(root=>actions(root,'activation','exit'));await delay(reduced?100:preset.phases.exitMs);exits.forEach(c=>c.stop());}
     player.hide();
+    if (replaceCreature) creature.style.visibility = originalVisibility;
     const charBox={width:box.width,height:box.height};
     const spec=preset.spores;
     const count=reduced?Math.min(spec.count,4):Math.min(spec.count,LIMITS.clones);
     const makeSpore=(dims,index)=>{
       let node;
       if(profile==='composite'){
-        const scale=dims.width/Math.max(1,charBox.width);node=buildCharacterComposite({baseSrc:composite.baseSrc,elements,box:charBox,scale});
+        const scale=dims.width/Math.max(1,charBox.width);node=buildCharacterComposite({baseSrc:replaceCreature?null:composite.baseSrc,elements,box:charBox,scale});
       }else{
         node=document.createElement('div');const image=document.createElement('img');image.src=elements.find(e=>e.role==='sporeBody')?.src||GHOST_CONFIG.ASSETS.SPORE_IMAGE;image.dataset.elementId=elements.find(e=>e.role==='sporeBody')?.id||'ghostBody';image.alt='';image.draggable=false;image.style.cssText='width:100%;height:100%;display:block;pointer-events:none';node.appendChild(image);
       }
@@ -194,6 +198,7 @@ export async function runActivation(opts) {
     await resetToLight();
     return {ok:true};
   }finally{
+    if (replaceCreature) creature.style.visibility = originalVisibility;
     signal?.removeEventListener('abort',onAbort);timers.forEach(id=>{clearTimeout(id);clearInterval(id);});timers.clear();
     [...controls].reverse().forEach(stopControl);manager?.cleanup?.();manager?.destroy?.();player?.cleanup();
     nodes.forEach(n=>{n.__actionStop?.();n.remove();});
@@ -273,7 +278,7 @@ export function previewClick(opts) {
     for (let i = 0; i < perLayer; i++) {
       const scale = baseScale * (0.75 + Math.random() * 0.5);
       const node = buildCharacterComposite({
-        baseSrc: creature.getAttribute('src') || '/img/mushroom-platypus.png',
+        baseSrc: animation?.replacesCreature ? null : (creature.getAttribute('src') || '/img/mushroom-platypus.png'),
         elements: compositeElements,
         box: charBox,
         scale
