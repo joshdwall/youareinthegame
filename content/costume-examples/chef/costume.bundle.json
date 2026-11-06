@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "assets": [
+    {
+      "id": "chef-chef-hat",
+      "version": 2,
+      "src": "/api/assets/animations/costumes/56f97efa54bd0037dbb74f27f19406aeef014387185390392a1c7b43a304955c.png",
+      "sha256": "56f97efa54bd0037dbb74f27f19406aeef014387185390392a1c7b43a304955c",
+      "width": 512,
+      "height": 512,
+      "bytes": 90628,
+      "pivot": {
+        "x": 0.5,
+        "y": 0.77
+      },
+      "provenance": "Generated as a standalone transparent accessory and prepared in the local Costume Workshop"
+    }
+  ],
+  "costume": {
+    "id": "chef",
+    "version": 2,
+    "label": "Chef",
+    "rig": "mushroom-platypus@1",
+    "preset": "gentle-burst@1",
+    "elements": [
+      {
+        "id": "chef-hat",
+        "asset": "chef-chef-hat@2",
+        "placement": {
+          "objectAnchor": {
+            "x": 0.5,
+            "y": 0.77
+          },
+          "scale": 0.36,
+          "rotation": 0,
+          "flipX": false,
+          "objectActions": [
+            {
+              "type": "fire",
+              "phase": "activation",
+              "appliesTo": [
+                "spore"
+              ],
+              "point": {
+                "x": 0.5,
+                "y": 0.32
+              },
+              "direction": -80,
+              "durationMs": 580,
+              "pattern": "once",
+              "sprite": "/assets/costumes/chef-bacon-strip.webp",
+              "spriteWidthPx": 28
+            }
+          ],
+          "layer": "foreground",
+          "order": 0,
+          "attachment": {
+            "rig": "mushroom-platypus@1",
+            "point": "head"
+          },
+          "offset": {
+            "x": 0.002015506951455137,
+            "y": 0.18305050626728364
+          }
+        }
+      }
+    ]
+  }
+}
