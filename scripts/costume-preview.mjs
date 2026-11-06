@@ -183,7 +183,8 @@ async function main(){
    return response.json();
   };
   const library = (await request('/api/cambio/costumes')).library;
-  if (!library.animations.some((animation) => animation.id === id && animation.live)) {
+  const existing = library.animations.find((animation) => animation.id === id);
+  if (!existing) {
    await request('/api/cambio/assets', {
     key: bundle.assets[0].src.slice('/api/assets/'.length),
     contentType: 'image/png',
@@ -193,7 +194,9 @@ async function main(){
    await request('/api/cambio/costumes', {bundle, commit: true, expectedRevision: library.revision});
   }
   const saved = (await request('/api/cambio/runtime-config')).config.animations.find((animation) => animation.id === id);
-  if (!saved || saved.live || !saved.elements.some((element) => element.id === accessory)) {
+  if (!saved || saved.live || !saved.elements.some((element) =>
+   element.id === accessory && element.src === bundle.assets[0].src
+  )) {
    throw Error('Draft was not saved with the expected accessory: ' + id);
   }
   const review = new URL('/cambio/?animation=' + id, url).href;
