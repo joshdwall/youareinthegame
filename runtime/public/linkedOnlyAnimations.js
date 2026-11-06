@@ -1,4 +1,6 @@
-import { PRESETS } from '../costumes/contracts.js';
+import { MUSHROOM_RIG, PRESETS } from '../costumes/contracts.js';
+
+const eyeCenter = MUSHROOM_RIG.anchors.eyes;
 
 // These costumes are available by explicit link, outside the live rotation.
 const forklift = {
@@ -6,25 +8,34 @@ const forklift = {
   label: 'Forklift Driver Certified',
   playMode: 'character-overlay',
   replacesCreature: true,
-  animationPreset: {
-    ...PRESETS['gentle-burst@1'],
-    phases: { equipMs: 140, activationMinMs: 1250, activationMaxMs: 1250, exitMs: 120 }
-  },
+  animationPreset: PRESETS['classic-lightning@1'],
   clickEffect: { type: 'composite-spores', count: 12, scale: 0.16 },
-  elements: [{
-    id: 'forklift-driver',
-    src: '/assets/animations/forklift/driver-6254191e2e9f.webp',
-    placement: {
-      characterAnchor: { x: 0.5, y: 0.5 },
-      objectAnchor: { x: 0.5, y: 0.5 },
-      scale: 1.15,
-      rotation: 0,
-      layer: 'foreground',
-      order: 0,
-      flipX: false,
-      objectActions: [{ type: 'bounce', phase: 'activation', appliesTo: ['activation'], amplitude: 4, durationMs: 500 }]
+  elements: [
+    {
+      id: 'forklift-face',
+      src: '/img/mushroom-platypus.webp',
+      placement: {
+        // Identical pivots keep the original face at its rig coordinates.
+        characterAnchor: eyeCenter,
+        objectAnchor: eyeCenter,
+        scale: 1,
+        layer: 'foreground',
+        order: 0
+      }
+    },
+    {
+      id: 'forklift-driver',
+      src: '/assets/animations/forklift/front-3028c8f29ac6.webp',
+      placement: {
+        // The wheel sits at the bill-bottom landmark, in front of the driver.
+        characterAnchor: MUSHROOM_RIG.anchors['bill-bottom'],
+        objectAnchor: { x: 0.5, y: 0.5 },
+        scale: 1.49,
+        layer: 'foreground',
+        order: 1
+      }
     }
-  }]
+  ]
 };
 
 export const linkedOnlyAnimations = new Map([[forklift.id, forklift]]);
