@@ -5,6 +5,7 @@
  * ghost pre-flash, no await fetch/decode at threshold time.
  */
 import { pickAnimation } from '../loot/LootTable.js';
+import { linkedOnlyAnimations } from './linkedOnlyAnimations.js';
 import { log, info, debug, warn, error } from '../../js/log.js';
 import {
   activate,
@@ -291,7 +292,7 @@ export async function prepareUpcoming(creature) {
   const compositeElements = buildCompositeElements(animForBuild, placementsById);
   const elements = (animForBuild.elements || []).map((el) => ({
     ...el,
-    placement: placementsById[el.id]
+    placement: placementsById[el.id] || el.placement
   }));
 
   const urls = ghost
@@ -331,7 +332,8 @@ export async function pickUpcoming({ forceRefresh = false, creature = null } = {
     const anim = config?.animations?.find((entry) =>
       entry.id === linkedAnimationId && entry.live && !entry.archived
     );
-    upcoming = anim ? { id: anim.id, anim } : null;
+    const linked = anim || linkedOnlyAnimations.get(linkedAnimationId);
+    upcoming = linked ? { id: linked.id, anim: linked } : null;
   } else if (forced) {
     upcoming = forced;
     // Do not record forced as played — only activation complete advances the cursor.

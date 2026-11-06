@@ -10,7 +10,7 @@ import {resolvePlacement} from '../../runtime/costumes/contracts.js';
 
 /**
  * @param {object} opts
- * @param {string} opts.baseSrc
+ * @param {string|null} opts.baseSrc
  * @param {Array<{id:string,src:string,placement:object}>} opts.elements
  * @param {{width:number,height:number}} opts.box - character box size in px (composite local)
  * @param {number} [opts.scale=1] - overall scale of the composite
@@ -27,13 +27,15 @@ export function buildCharacterComposite({ baseSrc, elements = [], box, scale = 1
     'transform-origin:center center'
   ].join(';');
 
-  const base = document.createElement('img');
-  base.className = 'activation-composite-base';
-  base.src = baseSrc;
-  base.alt = '';
-  base.draggable = false;
-  base.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;z-index:2;';
-  root.appendChild(base);
+  if (baseSrc) {
+    const base = document.createElement('img');
+    base.className = 'activation-composite-base';
+    base.src = baseSrc;
+    base.alt = '';
+    base.draggable = false;
+    base.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;z-index:2;';
+    root.appendChild(base);
+  }
 
   for (const el of [...elements].sort((a,b)=>resolvePlacement(a.placement).order-resolvePlacement(b.placement).order)) {
     const st = resolvePlacement({...el.placement,...(Object.prototype.hasOwnProperty.call(el,'flipX')?{flipX:el.flipX}:{})});
