@@ -60,7 +60,7 @@ const rocker = {
       id: 'rocker-guitar',
       src: '/assets/animations/rocknroll/guitar-e08c6a01cb3c.webp',
       placement: {
-        characterAnchor: { x: 0.48, y: 0.93 },
+        characterAnchor: { x: 0.58, y: 0.82 },
         objectAnchor: { x: 0.42, y: 0.54 },
         scale: 0.9,
         layer: 'foreground',
@@ -86,7 +86,55 @@ const rocker = {
   ]
 };
 
+const welder = {
+  id: 'welder',
+  label: 'Welder',
+  playMode: 'character-overlay',
+  animationPreset: PRESETS['classic-lightning@1'],
+  clickEffect: { type: 'composite-spores', count: 12, scale: 0.16 },
+  elements: [
+    {
+      id: 'welder-helmet',
+      src: '/assets/animations/welder/helmet-c6613a99995a.webp',
+      placement: {
+        characterAnchor: eyeCenter,
+        objectAnchor: { x: 0.5, y: 0.5 },
+        scale: 0.52,
+        layer: 'foreground',
+        order: 0
+      }
+    },
+    {
+      id: 'welder-torch',
+      src: '/assets/animations/welder/torch-7145c30f066f.webp',
+      placement: {
+        characterAnchor: { x: 0.76, y: 0.84 },
+        objectAnchor: { x: 0.35, y: 0.62 },
+        scale: 0.42,
+        layer: 'foreground',
+        order: 1,
+        objectActions: [{
+          type: 'textProjectile',
+          phase: 'activation',
+          appliesTo: ['activation', 'spore'],
+          point: { x: 0.98, y: 0.13 },
+          text: '\u2726',
+          color: '#ffd36a',
+          fontSizePx: 15,
+          direction: -35,
+          distanceRatio: 1.05,
+          durationMs: 460,
+          pattern: 'repeat',
+          rate: 3.5,
+          jitter: 0.45
+        }]
+      }
+    }
+  ]
+};
+
 export const linkedOnlyAnimations = new Map([
   [forklift.id, forklift],
-  [rocker.id, rocker]
+  [rocker.id, rocker],
+  [welder.id, welder]
 ]);
