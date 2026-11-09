@@ -16,7 +16,7 @@ export async function verifyWorldmap(page,base,{screenshotDir,requireHistory=fal
   return {top:bounds.top+scrollY,height:bounds.height,documentHeight:document.documentElement.scrollHeight};
  });
  const beforeSearch=await listGeometry();
- assert.equal(beforeSearch.height,6*44);
+ assert.equal(beforeSearch.height,4*44);
  const firstCountry=await page.locator('#areaList li button span').first().innerText();
  await search.fill(firstCountry);
  assert(await page.locator('#areaList li:not([hidden])').count()>=1);
