@@ -8,7 +8,7 @@ import { escapeHtml } from '/cambio/vendor/envivo-ui/desk-list.mjs';
 import { mountEvScrollList } from '/cambio/vendor/envivo-ui/ev-scroll-list/mount.mjs';
 import { SAFE_FONT_OPTIONS, schemaForActionType } from '/cambio/objectActionFieldSchema.js';
 import { log, info, debug, warn, error } from '../js/log.js';
-import {editorPlacement,normalizeEditedPlacement} from '/runtime/costumes/contracts.js';
+import {editorPlacement} from '/runtime/costumes/contracts.js';
 import {mountCostumeWorkshop} from '/cambio/costume-workshop.js';
 
 /**
@@ -108,6 +108,9 @@ const state = {
 
 const $ = (id) => document.getElementById(id);
 const editSection = $('editSection');
+const persistedLayouts = {};
+const placementSnapshots = new Map();
+let savingPlacements = false;
 const elementList = $('elementList');
 const overlay = $('overlayLayer');
 const markerLayer = $('markerLayer');
@@ -803,6 +806,7 @@ async function boot() {
   ]);
   if (runtime?.config) state.runtimeConfig = runtime.config;
   if (placements?.placements) {
+    Object.assign(persistedLayouts, placements.placements.byAnimation);
     state.placements = mergePlacementsPreferLive(seedPlacements, placements.placements);
   }
   if (!runtime?.config || !placements?.placements) {
@@ -855,6 +859,7 @@ async function boot() {
   wireEditSidebarToggle();
   $('createForm')?.addEventListener('submit', onCreateSubmit);
   $('btnSave').addEventListener('click', savePlacements);
+  $('btnCancelPlacements').addEventListener('click', cancelPlacements);
   $('btnExitEdit').addEventListener('click', () => exitEdit());
 
   $('btnEditTransition').addEventListener('click', () => enterMode('transition'));
@@ -2652,6 +2657,7 @@ function refreshEditItemList(animId) {
 }
 
 function enterEdit(animId) {
+  if (savingPlacements) return;
   const pool = state.runtimeConfig?.animations || state.manifest?.animations || [];
   const anim = pool.find((a) => a.id === animId) || state.manifest?.animations?.find((a) => a.id === animId);
   if (!anim || anim.editable === false || anim.placementEditable === false) return;
@@ -2687,6 +2693,7 @@ function enterEdit(animId) {
     if (!place.elements[el.id]) place.elements[el.id] = defaultElementState(anim, el);
     else place.elements[el.id] = migrateElement(place.elements[el.id]);
   }
+  if (!placementSnapshots.has(animId)) placementSnapshots.set(animId, deepClone(place));
   setEditSidebarVisible(true, { persist: false });
   ensureEditItemList();
   refreshEditItemList(animId);
@@ -2712,6 +2719,7 @@ function highlightElementRow(id) {
 }
 
 function exitEdit() {
+  if (savingPlacements) return;
   if (state.activeMode) cancelMode();
   state.editMode = false;
   state.selectedElementId = null;
@@ -2873,30 +2881,48 @@ async function playAnimation(animId,{signal}={}) {
   }
 }
 
+function cancelPlacements() {
+  if (savingPlacements || !state.editMode || !state.selectedAnim) return;
+  const id = state.selectedAnim.id;
+  const layout = placementSnapshots.get(id);
+  if (!layout) return;
+  if (state.activeMode) cancelMode();
+  state.placements.byAnimation[id] = deepClone(layout);
+  transitionSelect.value = layout.transitionId;
+  state.dirty = false;
+  refreshEditItemList(id);
+  refreshViews();
+  mountProps(id, { interactive: true });
+  saveStatus.textContent = 'Placement changes canceled.';
+}
+
 async function savePlacements() {
-  if (state.activeMode) commitMode();
+  if (savingPlacements || !state.editMode || !state.selectedAnim) return;
+  const { id, costumeRef } = state.selectedAnim;
+  savingPlacements = true;
+  const controls = ['btnSave', 'btnCancelPlacements', 'btnExitEdit'].map($);
+  controls.forEach(button => { button.disabled = true; });
+  $('editPanel').inert = true;
   saveStatus.textContent = 'Saving…';
   try {
-    const migrated = migratePlacements(state.placements);
-    for(const layout of Object.values(migrated.byAnimation||{}))for(const [id,p]of Object.entries(layout.elements||{}))if(p.attachment)layout.elements[id]=normalizeEditedPlacement(p);
-    const body = {
-      ...migrated,
-      schemaVersion: 2,
-      updatedAt: new Date().toISOString()
-    };
-    const r = await fetch('/api/cambio/placements', {
-      method: 'PUT',
-      credentials: 'include',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body)
+    if (state.activeMode) await commitMode();
+    const layout = deepClone(ensureAnimPlacement(id));
+    const data = await apiJson('/api/cambio/placements', {
+      method: 'PATCH',
+      body: JSON.stringify({ id, costumeRef: costumeRef ?? null, baseline: persistedLayouts[id] ?? null, layout })
     });
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok || !data.ok) throw new Error(data.error || `HTTP ${r.status}`);
-    state.placements = migratePlacements(data.placements || body);
+    persistedLayouts[id] = data.layout;
+    const saved = migratePlacements({ byAnimation: { [id]: data.layout } }).byAnimation[id];
+    state.placements.byAnimation[id] = saved;
+    placementSnapshots.set(id, deepClone(saved));
     state.dirty = false;
-    saveStatus.textContent = `Saved ${new Date().toLocaleTimeString()}`;
+    saveStatus.textContent = 'Placements saved.';
   } catch (err) {
-    saveStatus.textContent = `Save failed: ${err.message}`;
+    saveStatus.textContent = 'Save failed: ' + err.message;
+  } finally {
+    $('editPanel').inert = false;
+    controls.forEach(button => { button.disabled = false; });
+    savingPlacements = false;
   }
 }
 
