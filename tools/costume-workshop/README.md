@@ -10,11 +10,14 @@ Full workflow and operator gates: [knowledge-hub plan](https://github.com/joshdw
 
 Stable Diffusion runtime: https://github.com/leejet/stable-diffusion.cpp (MIT). Model: https://huggingface.co/second-state/stable-diffusion-v1-5-GGUF (CreativeML Open RAIL-M). Downloaded binaries, models, job data and generated candidates stay outside git.
 
-### Share a published animation
+### Publish and share a character
 
-Use `https://youareinthegame.com/?<id>` with the costume bundle's
-stable ID, such as `cowboy`, `ghost`, or `barber`. After marking the costume
-Live in Cambio, open its link and trigger two rounds to verify both use that
-costume. The game resolves the ID from its public registry on each round.
-Every published costume gets a link automatically. Existing `?animation=<id>` links continue to work. Draft, archived, and
-unknown IDs leave the base game available without triggering a costume.
+Import the Workshop bundle and upload its listed assets in production Cambio.
+Review the costume in Cambio, save it, then enable Live in the character list
+when publication is requested. Use Direct Link instead for a public review
+outside the regular rotation. The public registry populates automatically from
+the saved list. New costume uploads do not need a developer deployment or URL.
+
+Share the production URL with the bare alphanumeric character name, such as
+`https://youareinthegame.com/?showgirl`. For an ID with hyphens, omit the hyphens
+in the URL. Open the link and trigger two rounds to verify the selected costume.

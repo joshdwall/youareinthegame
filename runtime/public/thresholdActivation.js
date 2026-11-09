@@ -34,10 +34,7 @@ function readPlaytestConfig() {
 }
 const playtestConfig = readPlaytestConfig();
 function readLinkedAnimationId(search) {
-  const params = new URLSearchParams(search);
-  const explicit = params.get('animation');
-  if (explicit !== null) return explicit.trim().toLowerCase();
-  const match = /^\?([a-z0-9]+(?:-[a-z0-9]+)*)$/i.exec(search);
+  const match = /^\?([a-z0-9]+)$/i.exec(search);
   return match?.[1].toLowerCase() || '';
 }
 const linkedAnimationId = playtestConfig || typeof location === 'undefined'
