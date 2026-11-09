@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contact · PlatapusShroom</title>
+  <link rel="stylesheet" href="./contact.css">
+  <script type="module" src="./contact.js"></script>
+</head>
+<body>
+  <main>
+    <a href="/">← PlatapusShroom</a>
+    <h1>Contact</h1>
+    <form>
+      <label>Your email <input name="email" type="email" required autocomplete="email" maxlength="254"></label>
+      <label>Message <textarea name="message" rows="7" required maxlength="8000"></textarea></label>
+      <div hidden><label>Website <input name="website" tabindex="-1" autocomplete="off"></label></div>
+      <div id="challenge"></div>
+      <button type="submit" disabled>Send message</button>
+      <p data-message-status role="status">Loading contact form…</p>
+    </form>
+  </main>
+</body>
+</html>
