@@ -200,6 +200,12 @@ function animListActionButtons(anim, playtest = false) {
       attrs: `data-act="play" data-id="${id}"`
     },
     {
+      key: 'show',
+      label: 'Show',
+      title: 'Show the costume and four stationary spores',
+      attrs: `data-act="show" data-id="${id}"`
+    },
+    {
       key: 'edit',
       label: 'Edit',
       enabled: canFullEdit,
@@ -221,13 +227,9 @@ function animListActionButtons(anim, playtest = false) {
       title: anim.archived ? 'Restore from archive' : 'Soft-archive (hide from live pool)',
       attrs: `data-act="archive" data-id="${id}"`
     }
-  ].filter(action => !playtest || ['play', 'click-preview'].includes(action.key)));
-  const show = playtest ? renderActionButtons([{
-    key: 'show', label: 'Show', title: 'Show the costume and four stationary spores',
-    attrs: `data-act="show" data-id="${id}"`
-  }]) : '';
+  ].filter(action => !playtest || ['play', 'show', 'click-preview'].includes(action.key)));
   const url = escapeHtml(costumeUrl(anim.id));
-  return actions + show + ` <span class="btn-group cambio-url-actions" role="group" aria-label="Costume URL">
+  return actions + ` <span class="btn-group cambio-url-actions" role="group" aria-label="Costume URL">
     <a class="btn btn-sm btn-outline-secondary" href="${url}" target="_blank" rel="noopener noreferrer">URL</a>
     <button type="button" class="btn btn-sm btn-outline-secondary" data-act="copy-url" data-id="${id}" aria-label="Copy costume URL" title="Copy costume URL">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="1"/><path d="M11 3V2H2v9h1"/></svg>
