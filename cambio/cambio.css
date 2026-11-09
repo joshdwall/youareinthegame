@@ -983,3 +983,17 @@ body.cambio-body #siteStage.container {
   height: 1.35rem;
   padding: 0;
 }
+
+#cambioRoot #editSection .cambio-placement-footer {
+  flex: 0 0 auto;
+  padding: 0.55rem 0.65rem;
+  border-top: 1px solid var(--cui-border-color, #777);
+}
+#cambioRoot #editSection .cambio-placement-footer .cambio-actions { margin-top: 0; }
+#cambioRoot #editSection .cambio-placement-footer #btnSave,
+#cambioRoot #editSection .cambio-placement-footer #btnCancelPlacements {
+  flex: 1 1 auto;
+  min-height: 2.55rem;
+  font-size: 0.9rem !important;
+  padding: 0 0.75rem !important;
+}

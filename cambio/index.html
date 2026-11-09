@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="/cambio/vendor/scoped/envivo-tokens.scoped.css?v=edit-sb3" />
   <link rel="stylesheet" href="/cambio/vendor/scoped/ev-scroll-list.scoped.css?v=edit-sb3" data-ev-skin="ev-scroll-list" />
   <link rel="stylesheet" href="/cambio/vendor/scoped/sidebar-shell.scoped.css?v=edit-sb3" />
-  <link rel="stylesheet" href="/cambio/cambio.css?v=edit-sb3" />
+  <link rel="stylesheet" href="/cambio/cambio.css?v=placement-save2" />
   <link rel="stylesheet" href="/effects/spore/ghost/effect.css" />
   <link rel="stylesheet" href="/effects/spore/finale.css" />
   <link rel="stylesheet" href="/effects/activation/activation.css?v=ev1" />
@@ -461,15 +461,18 @@
       </div><!-- /.card-body -->
     </div>
 
-    <div class="cambio-actions">
-      <button type="button" id="btnSave" class="btn primary">Save placements</button>
-      <button type="button" id="btnExitEdit" class="btn">Done</button>
     </div>
-    <p id="saveStatus" class="cambio-status" aria-live="polite"></p>
-    </div>
+    <footer class="cambio-placement-footer">
+      <div class="cambio-actions">
+        <button type="button" id="btnSave" class="btn primary">Save Placements</button>
+        <button type="button" id="btnCancelPlacements" class="btn">Cancel Placements</button>
+        <button type="button" id="btnExitEdit" class="btn">Done</button>
+      </div>
+      <p id="saveStatus" class="cambio-status" aria-live="polite"></p>
+    </footer>
   </div>
   </div><!-- /#cambioRoot -->
 
-  <script type="module" src="/cambio/cambio.js?v=ghost-oa-edit1"></script>
+  <script type="module" src="/cambio/cambio.js?v=placement-save2"></script>
 </body>
 </html>

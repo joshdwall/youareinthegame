@@ -4,7 +4,8 @@
  * Requires Cloudflare Access JWT on app host (edge-enforced); Function also rejects missing assertion outside local.
  */
 import {readCostumeLibrary,writeCostumeLibrary} from '../../_shared/costume-library.js';
-import {normalizeEditedPlacement} from '../../../runtime/costumes/contracts.js';
+import {readRuntimeConfig} from '../../_shared/runtime-config.js';
+import {normalizeEditedPlacement,stable} from '../../../runtime/costumes/contracts.js';
 const KV_KEY = 'cambio:placements';
 
 function corsHeaders() {
@@ -80,4 +81,52 @@ export async function onRequestPut(context) {
   try{for(const [id,layout]of Object.entries(placements.byAnimation)){if(!library.animations.some(a=>a.id===id))continue;const elements=Object.fromEntries(Object.entries(layout.elements||{}).map(([key,p])=>[key,normalizeEditedPlacement(p)]));library.placements[id]={...layout,elements};}await writeCostumeLibrary(env,library);}catch(e){return new Response(JSON.stringify({ok:false,error:e.message}),{status:422,headers:corsHeaders()});}
   await env.YAITG_SESSION_KV.put(KV_KEY, JSON.stringify(placements));
   return new Response(JSON.stringify({ ok: true, placements }), { headers: corsHeaders() });
+}
+
+/** Save only the selected character, using its persisted layout as the conflict boundary. */
+export async function onRequestPatch({ request, env }) {
+  const reply = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: corsHeaders() });
+  if (!allowUnauthedHost(new URL(request.url)) && !hasAccessAssertion(request)) {
+    return reply({ ok: false, error: 'access_required' }, 401);
+  }
+  if (!env.YAITG_SESSION_KV) return reply({ ok: false, error: 'kv_missing' }, 500);
+  try {
+    const { id, costumeRef, baseline, layout } = await request.json();
+    if (typeof id !== 'string' || baseline === undefined || !layout?.elements) {
+      return reply({ ok: false, error: 'Invalid placement update' }, 400);
+    }
+    const library = await readCostumeLibrary(env);
+    const costume = library.animations.find(animation => animation.id === id);
+    const animation = costume || (await readRuntimeConfig(env)).config.animations.find(entry => entry.id === id);
+    if (!animation || animation.archived || animation.editable === false || animation.placementEditable === false) {
+      return reply({ ok: false, error: 'Character placements are unavailable' }, 404);
+    }
+    const raw = await env.YAITG_SESSION_KV.get(KV_KEY, 'json');
+    const current = library.placements[id] ?? raw?.byAnimation?.[id] ?? null;
+    const saved = {
+      transitionId: layout.transitionId,
+      elements: Object.fromEntries(Object.entries(layout.elements).map(([key, placement]) => [
+        key, normalizeEditedPlacement(placement)
+      ]))
+    };
+    if ((animation.costumeRef ?? null) !== costumeRef) {
+      return reply({ ok: false, error: 'This character’s costume was replaced. Reopen it before saving.' }, 409);
+    }
+    if (stable(current) === stable(saved)) return reply({ ok: true, layout: current });
+    if (stable(current) !== stable(baseline)) {
+      return reply({ ok: false, error: 'This character’s placements changed in another session. Your edits are still open.' }, 409);
+    }
+    if (costume) {
+      library.placements[id] = saved;
+      await writeCostumeLibrary(env, library);
+    } else {
+      await env.YAITG_SESSION_KV.put(KV_KEY, JSON.stringify({
+        ...raw, schemaVersion: 2, updatedAt: new Date().toISOString(),
+        byAnimation: { ...raw?.byAnimation, [id]: saved }
+      }));
+    }
+    return reply({ ok: true, layout: saved });
+  } catch (e) {
+    return reply({ ok: false, error: String(e.message || e) }, 422);
+  }
 }
