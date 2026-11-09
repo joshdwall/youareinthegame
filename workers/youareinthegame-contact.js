@@ -1,5 +1,6 @@
 import { EmailMessage } from "cloudflare:email";
 import { archiveForm, receive, report } from "./contact-communications.js";
+import { sendZohoReceipt } from "./zoho-mail.mjs";
 
 const FROM = "howdy@youareinthegame.com";
 const LEGACY_FROM = "hello@youareinthegame.com";
@@ -76,10 +77,12 @@ export default {
       console.error("Gmail owner copy failed", String(error?.message || error));
     }
 
-    if (typeof body.receipt === "string" && typeof body.receiptTo === "string" && env.SEND_VISITOR) {
+    if (typeof body.receipt === "string" && typeof body.receiptTo === "string") {
       try {
         events.push(["unrouted-actions", "communications.receipt.send"]);
-        await env.SEND_VISITOR.send(new EmailMessage(FROM, body.receiptTo, withCurrentSender(body.receipt)));
+        // Zoho reaches arbitrary visitor inboxes; CF SEND_VISITOR only hits verified destinations.
+        const zoho = await sendZohoReceipt(env, { toAddress: body.receiptTo, receiptRaw: body.receipt });
+        if (!zoho.ok) throw new Error(zoho.detail || "zoho_receipt_failed");
         try {
           await archiveForm(
             env,
@@ -93,15 +96,16 @@ export default {
               `Email: ${body.receiptTo}`,
               `Page: auto-reply`,
               "",
-              `[auto-reply sent from ${FROM}]`,
+              `[auto-reply via zoho from ${env.ZOHO_FROM_ADDRESS || OWNER}; reply-to ${FROM}]`,
             ].join("\r\n"),
             events
           );
         } catch {
           /* receipt mail already went out */
         }
-      } catch {
-        /* The note to the owner already went out. */
+      } catch (error) {
+        console.error("Visitor receipt failed", String(error?.message || error));
+        /* Owner notify already went out. */
       }
     }
 
