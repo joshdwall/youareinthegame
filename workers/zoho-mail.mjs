@@ -59,10 +59,12 @@ export async function sendZohoReceipt(env, { toAddress, receiptRaw }) {
   const to = String(toAddress || parsed.to || "").trim();
   if (!to) return { ok: false, via: "zoho", detail: "missing_to" };
 
-  const fromAddress = env.ZOHO_FROM_ADDRESS || "josh@joshdwall.com";
+  const fromEmail = env.ZOHO_FROM_ADDRESS || "josh@joshdwall.com";
+  const fromName = (env.ZOHO_FROM_DISPLAY_NAME || "You are in the game").replace(/[\r\n"]/g, "").slice(0, 80);
+  // Zoho uses mailbox display name unless fromAddress includes a quoted name.
+  const fromAddress = `"${fromName}" <${fromEmail}>`;
   // Zoho rejects Reply-To unless that address is verified on the mailbox.
-  // howdy@ is not a Zoho identity yet — put it in the body (parseReceiptMime) and
-  // only set replyTo when ZOHO_REPLY_TO_VERIFIED=1 after verifying in Zoho.
+  // howdy@ is Reply-To verified — set replyTo when ZOHO_REPLY_TO_VERIFIED=1.
   const replyTo = env.ZOHO_REPLY_TO || HOWDY;
   const accessToken = await refreshZohoAccessToken(env);
 
