@@ -971,7 +971,15 @@ body.cambio-body #siteStage.container {
 
 /* Reserve space for the checkbox and both edit-mode controls. */
 .cambio-visibility {
-  min-width: 5.75rem;
+  min-width: 4.25rem;
   white-space: nowrap;
 }
 .cambio-visibility > * { flex-shrink: 0; }
+
+.cambio-visibility button:not([hidden]) {
+  display: inline-grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  padding: 0;
+}

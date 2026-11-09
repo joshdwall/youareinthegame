@@ -1520,7 +1520,7 @@ function visibilityControl(anim, field) {
   return `<span class="cambio-visibility" data-visibility>
     <input type="checkbox" aria-label="${label}"${checked} disabled>
     <button type="button" class="btn btn-sm btn-outline-secondary" data-act="visibility-edit" ${attrs} aria-label="Edit ${label}" title="Edit ${label}"${anim.archived ? ' disabled' : ''}>✎</button>
-    <button type="button" class="btn btn-sm btn-success" data-act="visibility-save" ${attrs} aria-label="Save ${label}" title="Save ${label}" hidden>✓</button>
+    <button type="button" class="btn btn-sm btn-success" data-act="visibility-save" ${attrs} aria-label="Save ${label}" title="Save ${label}" hidden><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><path d="M2 2h10l2 2v10H2zM5 2v5h6V2M5 14v-4h6v4"/></svg></button>
     <button type="button" class="btn btn-sm btn-outline-danger" data-act="visibility-cancel" ${attrs} aria-label="Cancel ${label} edit" title="Cancel ${label} edit" hidden>×</button>
   </span>`;
 }
@@ -1569,7 +1569,7 @@ function ensureAnimDeskList() {
       label: 'Actions',
       fit: 'content',
       sortType: 'none',
-      className: 'cambio-col-actions ev-sl-col--tight text-end',
+      className: 'cambio-col-actions ev-sl-col--tight text-start',
       render: (anim) => animListActionButtons(anim)
     },
     {
@@ -1811,7 +1811,7 @@ function renderPlaytestChoices(animations) {
       maxHeightCss: '27rem',
       columns: [
         { key: 'label', label: 'Name', render: animation => `<label><input type="checkbox" data-playtest-id="${escapeHtml(animation.id)}"${playtestSelection.has(animation.id) ? ' checked' : ''}> ${escapeHtml(animation.label || animation.id)}</label>` },
-        { key: 'actions', label: 'Actions', render: animation => animListActionButtons(animation, true) },
+        { key: 'actions', label: 'Actions', className: 'text-start', render: animation => animListActionButtons(animation, true) },
         { key: 'live', label: 'Status', render: animation => visibilityControl(animation, 'live') },
         { key: 'directLink', label: 'Direct Link', render: animation => visibilityControl(animation, 'directLink') }
       ],
