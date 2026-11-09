@@ -956,3 +956,11 @@ body.cambio-body #siteStage.container {
 .cambio-ten-rows .ev-desk-list__scroll { overflow-y: auto; }
 .cambio-ten-rows tbody tr { height: 2.5rem; }
 .cambio-ten-rows tbody td { white-space: nowrap; }
+
+/* Immediate feedback for mouse, touch, and keyboard button activation. */
+#cambioRoot :is(button, a.btn):active:not(:disabled),
+#stopPlaytest:active {
+  filter: brightness(.78);
+  translate: 0 1px;
+  box-shadow: inset 0 2px 4px rgb(0 0 0 / 30%);
+}
