@@ -30,13 +30,13 @@ export default {
     if (![FROM, LEGACY_FROM].some(address => body.raw.startsWith(fromHeader(address) + "\r\n")) || !body.raw.includes(`To: ${TO}`)) {
       return new Response("Bad request", { status: 400 });
     }
-    const events = [["cloudflare-workers", "communications.form.worker"]];
+    const events = [["workers", "communications.form.worker"]];
     try {
       await archiveForm(env, body.raw, events);
     } catch {
       console.error("Communications form archive failed");
     }
-    events.push(["cloudflare-email", "communications.admin.send"]);
+    events.push(["unrouted-actions", "communications.admin.send"]);
     try {
       await env.SEND_EMAIL.send(new EmailMessage(FROM, TO, withCurrentSender(body.raw)));
     } catch (error) {
@@ -45,7 +45,7 @@ export default {
     }
     if (typeof body.receipt === "string" && typeof body.receiptTo === "string" && env.SEND_VISITOR) {
       try {
-        events.push(["cloudflare-email", "communications.receipt.send"]);
+        events.push(["unrouted-actions", "communications.receipt.send"]);
         await env.SEND_VISITOR.send(new EmailMessage(FROM, body.receiptTo, withCurrentSender(body.receipt).replace(`\r\nReply-To: ${LEGACY_FROM}\r\n`, `\r\nReply-To: ${FROM}\r\n`)));
       } catch {
         /* The note to Josh already went out. */

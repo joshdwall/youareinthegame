@@ -38,9 +38,9 @@ export async function archiveForm(env, raw, events) {
   const email = /^Reply-To: ([^\r\n]+)\r?$/m.exec(raw)?.[1];
   const id = await fingerprint(crypto.randomUUID());
   const text = body.replace(/^Name:[^\r\n]*\r\nEmail:[^\r\n]*\r\nPage:[^\r\n]*\r\n\r\n/, "");
-  events.push(["cloudflare-workers", "communications.archive.request"]);
+  events.push(["workers", "communications.archive.request"]);
   await archive(env, id, email, text);
-  events.push(["cloudflare-workers", "communications.archive.saved"]);
+  events.push(["do-requests", "communications.archive.saved"]);
 }
 
 export function report(ctx, env, events) {
@@ -54,21 +54,21 @@ export async function receive(message, env, ctx) {
     message.setReject("Unknown contact address");
     return;
   }
-  const events = [["cloudflare-workers", "communications.inbound.worker"]];
+  const events = [["workers", "communications.inbound.worker"]];
   try {
     if (message.rawSize <= 2_000_000) {
       const mail = await PostalMime.parse(message.raw);
       const id = await fingerprint(JSON.stringify([message.to, message.from, mail.messageId, mail.date, mail.subject, mail.text, mail.html]));
       const body = mail.text?.trim() || (mail.html ? "[HTML-only email. See forwarded copy.]" : "[No text body]");
-      events.push(["cloudflare-workers", "communications.archive.request"]);
+      events.push(["workers", "communications.archive.request"]);
       await archive(env, id, mail.from?.address || message.from, body);
-      events.push(["cloudflare-workers", "communications.archive.saved"]);
+      events.push(["do-requests", "communications.archive.saved"]);
     }
   } catch {
     console.error("Communications inbound archive failed");
   }
   try {
-    events.push(["cloudflare-email", "communications.inbound.forward"]);
+    events.push(["unrouted-actions", "communications.inbound.forward"]);
     await message.forward(destination);
   } finally {
     report(ctx, env, events);
