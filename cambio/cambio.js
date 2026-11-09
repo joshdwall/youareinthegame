@@ -189,7 +189,7 @@ function animListActionButtons(anim) {
   if (anim.id === 'ghost') archiveReason = 'Ghost cannot be archived (core animation)';
   else if (anim.editable === false) archiveReason = 'This animation is not editable / archivable';
   const archiveLabel = anim.archived ? 'Restore' : 'Archive';
-  return renderActionButtons([
+  const actions = renderActionButtons([
     {
       key: 'play',
       label: 'Play',
@@ -220,6 +220,27 @@ function animListActionButtons(anim) {
       attrs: `data-act="archive" data-id="${id}"`
     }
   ]);
+  const url = escapeHtml(costumeUrl(anim.id));
+  return actions + ` <span class="btn-group cambio-url-actions" role="group" aria-label="Costume URL">
+    <a class="btn btn-sm btn-outline-secondary" href="${url}" target="_blank" rel="noopener noreferrer">URL</a>
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-act="copy-url" data-id="${id}" aria-label="Copy costume URL" title="Copy costume URL">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="1"/><path d="M11 3V2H2v9h1"/></svg>
+    </button>
+  </span>`;
+}
+
+function costumeUrl(id) {
+  return 'https://youareinthegame.com/?' + encodeURIComponent(id);
+}
+
+async function copyCostumeUrl(id) {
+  const status = $('poolHint');
+  try {
+    await navigator.clipboard.writeText(costumeUrl(id));
+    if (status) status.textContent = 'Copied link for ' + id + '.';
+  } catch {
+    if (status) status.textContent = 'Could not copy. Link for ' + id + ' is ' + costumeUrl(id);
+  }
 }
 
 function editItemActionButtons(row) {
@@ -1651,7 +1672,8 @@ function wireAnimListActions() {
       if (!act || !id) return;
       ev.preventDefault();
       ev.stopPropagation();
-      if (act === 'play') void playAnimation(id);
+      if (act === 'copy-url') void copyCostumeUrl(id);
+      else if (act === 'play') void playAnimation(id);
       else if (act === 'click-preview') void previewClickAnimation(id);
       else if (act === 'edit') enterEdit(id);
       else if (act === 'archive') void toggleArchive(id);
