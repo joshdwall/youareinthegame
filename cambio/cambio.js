@@ -1,5 +1,7 @@
 import { runActivation, previewClick, activate } from '/effects/activation/ActivationEngine.js';
 import { applyElementPlacement, measureCreatureBoxInHost } from '/effects/activation/placementMath.js';
+import { buildCharacterComposite } from '/effects/activation/CharacterComposite.js';
+import { runObjectActions } from '/effects/activation/objectActions.js';
 import { mountOverlayProps } from '/effects/activation/mountOverlayProps.js';
 import { DEFAULT_PLACEMENTS_BY_ANIMATION } from '/effects/activation/defaultPlacements.js';
 import { escapeHtml } from '/cambio/vendor/envivo-ui/desk-list.mjs';
@@ -220,8 +222,12 @@ function animListActionButtons(anim, playtest = false) {
       attrs: `data-act="archive" data-id="${id}"`
     }
   ].filter(action => !playtest || ['play', 'click-preview'].includes(action.key)));
+  const show = playtest ? renderActionButtons([{
+    key: 'show', label: 'Show', title: 'Show the costume and four stationary spores',
+    attrs: `data-act="show" data-id="${id}"`
+  }]) : '';
   const url = escapeHtml(costumeUrl(anim.id));
-  return actions + ` <span class="btn-group cambio-url-actions" role="group" aria-label="Costume URL">
+  return actions + show + ` <span class="btn-group cambio-url-actions" role="group" aria-label="Costume URL">
     <a class="btn btn-sm btn-outline-secondary" href="${url}" target="_blank" rel="noopener noreferrer">URL</a>
     <button type="button" class="btn btn-sm btn-outline-secondary" data-act="copy-url" data-id="${id}" aria-label="Copy costume URL" title="Copy costume URL">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="1"/><path d="M11 3V2H2v9h1"/></svg>
@@ -1679,7 +1685,8 @@ function wireAnimListActions() {
       if (!act || !id) return;
       ev.preventDefault();
       ev.stopPropagation();
-      if (act === 'copy-url') void copyCostumeUrl(id);
+      if (act === 'show') showAnimation(id);
+      else if (act === 'copy-url') void copyCostumeUrl(id);
       else if (act === 'play') void playAnimation(id);
       else if (act === 'click-preview') void previewClickAnimation(id);
       else if (act === 'edit') enterEdit(id);
@@ -1815,7 +1822,72 @@ function renderPlaytestChoices(animations) {
   playtestList.setItems(playtestChoices);
 }
 
+let stopShowing;
+
+function showAnimation(animId) {
+  if (state._activationBusy) return;
+  const anim = state.manifest.animations.find(entry => entry.id === animId);
+  if (!anim) return;
+  stopPlaytest();
+  if (state.editMode) exitEdit();
+  state.selectedAnim = anim;
+  mountProps(animId);
+
+  const stage = $('siteStage');
+  const bounds = stage.getBoundingClientRect();
+  const body = creature.getBoundingClientRect();
+  const box = { width: body.width, height: body.height };
+  const elements = compositeElementsFor(animId);
+  const ghostBody = anim.playMode === 'legacy-ghost' ? elements.find(el => el.role === 'sporeBody' || el.id === 'ghostBody') : null;
+  const scale = Math.min(.21, bounds.width / (box.width * 5), bounds.height / (box.height * 5));
+  const width = box.width * scale;
+  const height = box.height * scale;
+  const x = body.left - bounds.left + box.width / 2;
+  const y = body.top - bounds.top + box.height / 2;
+  const dx = box.width / 2 + width * .65;
+  const dy = box.height / 2 + height * .65;
+  const spores = [[x - dx, y], [x + dx, y], [x, y - dy], [x, y + dy]].map(([left, top]) => {
+    const node = buildCharacterComposite({
+      baseSrc: ghostBody ? null : creature.getAttribute('src'),
+      elements, box, scale
+    });
+    node.classList.add('cambio-show-spore');
+    node.style.left = Math.max(0, Math.min(bounds.width - width, left - width / 2)) + 'px';
+    node.style.top = Math.max(0, Math.min(bounds.height - height, top - height / 2)) + 'px';
+    node.style.zIndex = '25';
+    stage.append(node);
+    return node;
+  });
+  const sporeElements = elements.map(el => ({
+    ...el, placement: {
+      ...el.placement,
+      objectActions: (el.placement.objectActions || []).filter(action => (action.phase || 'activation') === 'activation')
+    }
+  }));
+  let actions = [];
+  const fire = () => {
+    actions.forEach(action => action.stop());
+    actions = spores.map((root, sporeIndex) => runObjectActions({ root, elements: sporeElements, target: 'spore', sporeIndex }));
+  };
+  fire();
+  const timer = setInterval(fire, 2400);
+  stopShowing = () => {
+    clearInterval(timer);
+    actions.forEach(action => action.stop());
+    spores.forEach(node => node.remove());
+    mountProps(null);
+  };
+  $('stopPlaytest').textContent = 'Stop show';
+  $('stopPlaytest').hidden = false;
+  $('stageHint').textContent = 'Showing ' + anim.label;
+}
+
 function stopPlaytest() {
+  if (stopShowing) {
+    stopShowing();
+    stopShowing = null;
+  }
+  $('stopPlaytest').textContent = 'Stop playtest';
   const frame = $('cambioPlaytestFrame');
   if (frame) {
     frame.remove();
@@ -2565,7 +2637,7 @@ function enterEdit(animId) {
   const pool = state.runtimeConfig?.animations || state.manifest?.animations || [];
   const anim = pool.find((a) => a.id === animId) || state.manifest?.animations?.find((a) => a.id === animId);
   if (!anim || anim.editable === false || anim.placementEditable === false) return;
-  if ($('cambioPlaytestFrame')) stopPlaytest();
+  if ($('cambioPlaytestFrame') || stopShowing) stopPlaytest();
   if (!state.manifest?.animations?.some((a) => a.id === animId) && state.manifest) {
     state.manifest.animations.push(anim);
   }
@@ -2679,6 +2751,7 @@ function compositeElementsFor(animId) {
  * Editable later via manifest; default = mini composite replicas or ghost spores.
  */
 function previewClickAnimation(animId) {
+  if (stopShowing) stopPlaytest();
   const anim = (state.runtimeConfig?.animations || state.manifest.animations || [])
     .find((a) => a.id === animId);
   if (!anim) return;
@@ -2705,7 +2778,7 @@ function previewClickAnimation(animId) {
 async function playAnimation(animId,{signal}={}) {
   const anim = state.manifest.animations.find((a) => a.id === animId);
   if (!anim) return;
-  if ($('cambioPlaytestFrame')) stopPlaytest();
+  if ($('cambioPlaytestFrame') || stopShowing) stopPlaytest();
   if (state._activationBusy) {
     $('stageHint').textContent = 'Activation already playing…';
     return;
