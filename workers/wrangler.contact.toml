@@ -1,0 +1,13 @@
+# Deploy-only config for the contact Worker (separate from Pages wrangler.toml).
+name = "youareinthegame-contact"
+main = "youareinthegame-contact.js"
+compatibility_date = "2024-09-23"
+workers_dev = true
+preview_urls = false
+
+[[send_email]]
+name = "SEND_EMAIL"
+destination_address = "joshdwall@gmail.com"
+
+[[send_email]]
+name = "SEND_VISITOR"

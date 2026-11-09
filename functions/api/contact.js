@@ -30,7 +30,7 @@ export async function onRequestPost(context) {
   const token = String(form.get("cf-turnstile-response") || "");
   if (!(await verifyTurnstile(token, ip, env.TURNSTILE_SECRET_KEY))) return reply(request, "error");
 
-  const to = env.CONTACT_TO || "joshdwall@gmail.com";
+  const to = env.CONTACT_TO || "josh@joshdwall.com";
   const from = env.CONTACT_FROM || "howdy@youareinthegame.com";
   const mailer = env.CONTACT_WORKER_URL;
   if (!mailer || !env.CONTACT_AUTH) return reply(request, "error");
