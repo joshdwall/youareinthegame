@@ -181,7 +181,7 @@ function renderActionButtons(actionsSpec, opts = {}) {
   return `<div class="${wrapClass}">${html}</div>`;
 }
 
-function animListActionButtons(anim) {
+function animListActionButtons(anim, playtest = false) {
   const id = escapeHtml(anim.id);
   const canFullEdit = anim.editable !== false && anim.placementEditable !== false;
   const canArchive = anim.editable !== false && anim.id !== 'ghost';
@@ -219,7 +219,7 @@ function animListActionButtons(anim) {
       title: anim.archived ? 'Restore from archive' : 'Soft-archive (hide from live pool)',
       attrs: `data-act="archive" data-id="${id}"`
     }
-  ]);
+  ].filter(action => !playtest || ['play', 'click-preview'].includes(action.key)));
   const url = escapeHtml(costumeUrl(anim.id));
   return actions + ` <span class="btn-group cambio-url-actions" role="group" aria-label="Costume URL">
     <a class="btn btn-sm btn-outline-secondary" href="${url}" target="_blank" rel="noopener noreferrer">URL</a>
@@ -230,7 +230,7 @@ function animListActionButtons(anim) {
 }
 
 function costumeUrl(id) {
-  return 'https://youareinthegame.com/?' + encodeURIComponent(id);
+  return 'https://youareinthegame.com/?' + encodeURIComponent(id.replaceAll('-', ''));
 }
 
 async function copyCostumeUrl(id) {
@@ -1533,6 +1533,12 @@ function ensureAnimDeskList() {
       }
     },
     {
+      key: 'directLink',
+      label: 'Direct link',
+      fit: 'content',
+      render: (anim) => `<label><input type="checkbox" data-act="direct-link" data-id="${escapeHtml(anim.id)}"${anim.directLink ? ' checked' : ''}${anim.archived ? ' disabled' : ''}> Direct</label>`
+    },
+    {
       key: 'tier',
       label: 'Tier',
       fit: 'content',
@@ -1597,7 +1603,8 @@ function ensureAnimDeskList() {
     searchFields: ['id', 'label', 'tier'],
     columns,
     minRows: 10,
-    maxHeightCss: 'min(70vh, 36rem)',
+    padWhenEmpty: true,
+    maxHeightCss: '27rem',
     emptyHtml: `<tr><td colspan="7" class="ev-hint">No animations yet</td></tr>`,
     rowKey: (item) => String(item.id),
     detailHost,
@@ -1679,6 +1686,7 @@ function wireAnimListActions() {
       else if (act === 'archive') void toggleArchive(id);
     });
   };
+  wireClick($('playtestChoices'));
   wireClick($('animListHost'));
   wireClick($('animDetailHost'));
   wireClick($('animList'));
@@ -1695,11 +1703,12 @@ function wireAnimListActions() {
     if (!act || !id) return;
     const anim = (state.runtimeConfig?.animations || state.manifest.animations || []).find((a) => a.id === id);
     if (!anim) return;
-    if (act === 'live' && el instanceof HTMLInputElement) {
+    if ((act === 'live' || act === 'direct-link') && el instanceof HTMLInputElement) {
+      const field = act === 'live' ? 'live' : 'directLink';
       void (async () => {
         try {
-          await patchAnimation(id, { live: el.checked });
-          saveStatus.textContent = `${anim.label} live=${el.checked} (immediate)`;
+          await patchAnimation(id, { [field]: el.checked });
+          saveStatus.textContent = `${anim.label} ${field}=${el.checked} (immediate)`;
         } catch (err) {
           el.checked = !el.checked;
           saveStatus.textContent = err.message;
@@ -1756,27 +1765,54 @@ const playtestSelection = new Set();
 let playtestSelectionInitialized = false;
 let playtestSidebarWasVisible = true;
 
+let playtestList;
+let playtestChoices = [];
+
 function renderPlaytestChoices(animations) {
   const list = $('playtestChoices');
   if (!list) return;
-  const available = animations.filter(animation => !animation.archived);
+  playtestChoices = animations.filter(animation => !animation.archived);
   if (!playtestSelectionInitialized) {
-    for (const animation of available) if (animation.live) playtestSelection.add(animation.id);
+    for (const animation of playtestChoices) if (animation.live) playtestSelection.add(animation.id);
     playtestSelectionInitialized = true;
   }
-  list.replaceChildren();
-  for (const animation of available) {
-    const label = document.createElement('label');
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.checked = playtestSelection.has(animation.id);
-    checkbox.addEventListener('change', () => {
-      if (checkbox.checked) playtestSelection.add(animation.id);
-      else playtestSelection.delete(animation.id);
+  if (!playtestList) {
+    playtestList = mountEvScrollList(list, {
+      title: 'Animations',
+      searchPlaceholder: 'Search animations…',
+      searchFields: ['id', 'label'],
+      minRows: 10,
+      padWhenEmpty: true,
+      maxHeightCss: '27rem',
+      headerActions: ['all', 'none', 'live', 'inactive'].map(mode => ({
+        label: 'Select ' + mode, attrs: 'data-playtest-select="' + mode + '"'
+      })),
+      columns: [
+        { key: 'label', label: 'Name', render: animation => `<label><input type="checkbox" data-playtest-id="${escapeHtml(animation.id)}"${playtestSelection.has(animation.id) ? ' checked' : ''}> ${escapeHtml(animation.label || animation.id)}</label>` },
+        { key: 'live', label: 'Status', render: animation => animation.live ? 'Live' : 'Inactive' },
+        { key: 'actions', label: 'Actions', render: animation => animListActionButtons(animation, true) }
+      ],
+      afterPaint: () => wireAnimListActions()
     });
-    label.append(checkbox, document.createTextNode(animation.label || animation.id));
-    list.append(label);
+    list.addEventListener('click', event => {
+      const mode = event.target.closest('[data-playtest-select]')?.dataset.playtestSelect;
+      if (!mode) return;
+      playtestSelection.clear();
+      for (const animation of playtestChoices) {
+        if (mode === 'all' || (mode === 'live' && animation.live) || (mode === 'inactive' && !animation.live)) {
+          playtestSelection.add(animation.id);
+        }
+      }
+      playtestList.setItems(playtestChoices);
+    });
+    list.addEventListener('change', event => {
+      const id = event.target.dataset.playtestId;
+      if (!id) return;
+      if (event.target.checked) playtestSelection.add(id);
+      else playtestSelection.delete(id);
+    });
   }
+  playtestList.setItems(playtestChoices);
 }
 
 function stopPlaytest() {
@@ -1791,7 +1827,7 @@ function stopPlaytest() {
 }
 
 function startPlaytest() {
-  const animations = state.manifest.animations
+  const animations = playtestChoices
     .filter(animation => playtestSelection.has(animation.id))
     .map(animation => ({ ...animation, live: true, weight: Math.max(1, Number(animation.weight) || 1) }));
   if (!animations.length) {
@@ -1822,7 +1858,24 @@ function startPlaytest() {
   $('siteStage').style.visibility = 'hidden';
   $('siteStage').after(frame);
   $('stopPlaytest').hidden = false;
-  $('playtestStatus').textContent = 'Playtest running. Click the platypus to play.';
+  $('playtestStatus').textContent = 'Starting playtest…';
+  const deadline = Date.now() + 12000;
+  const checkReady = () => {
+    if (!frame.isConnected) return;
+    try {
+      if (animations.some(animation => animation.id === frame.contentWindow.__yaitgPrepared?.id)
+          && frame.contentWindow.__yaitgPrepared?.ready) {
+        $('playtestStatus').textContent = 'Playtest running. Click the platypus to play.';
+        return;
+      }
+    } catch { /* A redirected frame cannot run the local selection. */ }
+    if (Date.now() < deadline) setTimeout(checkReady, 150);
+    else {
+      stopPlaytest();
+      $('playtestStatus').textContent = 'Playtest could not load the selected costumes.';
+    }
+  };
+  checkReady();
 }
 
 function renderAnimList() {

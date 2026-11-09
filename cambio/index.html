@@ -45,7 +45,7 @@
     <div class="cambio-sidebar-body" id="cambioPanel">
       <!-- mountEvScrollList host — same module enVivo features import -->
       <div id="animDetailHost" class="cambio-anim-detail d-none"></div>
-      <div id="animListHost" class="cambio-anim-list-host"></div>
+      <details class="card cambio-playtest" open><summary>Animations</summary><div id="animListHost" class="cambio-anim-list-host cambio-ten-rows"></div></details>
 
       <!-- Site settings (live KV — no redeploy) -->
       <div class="cambio-site-settings" id="siteSettings">
@@ -134,7 +134,7 @@
         <summary>Playtest selected animations</summary>
         <div class="card-body">
           <p>Choose the animations for this test, then click the platypus as you would on the live site.</p>
-          <div id="playtestChoices" aria-label="Playtest animations"></div>
+          <div id="playtestChoices" class="cambio-ten-rows" aria-label="Playtest animations"></div>
           <div class="cambio-actions">
             <button type="button" class="btn primary" id="startPlaytest">Start playtest</button>
           </div>

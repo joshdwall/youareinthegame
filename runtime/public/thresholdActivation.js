@@ -339,7 +339,10 @@ export async function pickUpcoming({ forceRefresh = false, creature = null } = {
     const anim = config?.animations?.find((entry) =>
       entry.id === linkedAnimationId && entry.live && !entry.archived
     );
-    const linked = anim || linkedOnlyAnimations.get(linkedAnimationId);
+    const direct = [...(config?.animations || []), ...(config?.directAnimations || [])].find(entry =>
+      !entry.archived && (entry.id === linkedAnimationId || entry.id.replaceAll('-', '') === linkedAnimationId)
+    );
+    const linked = anim || direct || linkedOnlyAnimations.get(linkedAnimationId);
     upcoming = linked ? { id: linked.id, anim: linked } : null;
   } else if (forced) {
     upcoming = forced;
@@ -482,7 +485,13 @@ export function installThresholdLootHook(effect) {
   effect.triggerLightningReset = async function patchedTrigger() {
     if (this.lightningSequenceActive || this.finaleInProgress) return;
 
-    if (linkedAnimationId && !upcoming) return;
+    if (linkedAnimationId && !upcoming) {
+      this.stormLevel = 0;
+      this.clickCount = 0;
+      this.resetVisuals();
+      this.calculateResetThreshold();
+      return;
+    }
     const pick = linkedAnimationId ? upcoming : resolveForcePick(cachedConfig) || upcoming;
     const ghost = isGhostPick(pick);
 
