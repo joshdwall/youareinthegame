@@ -964,3 +964,7 @@ body.cambio-body #siteStage.container {
   translate: 0 1px;
   box-shadow: inset 0 2px 4px rgb(0 0 0 / 30%);
 }
+
+.cambio-playtest-shortcuts { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .5rem; }
+.cambio-visibility { display: inline-flex; align-items: center; gap: .3rem; }
+.cambio-visibility button[hidden] { display: none; }

@@ -134,6 +134,12 @@
         <summary>Playtest selected animations</summary>
         <div class="card-body">
           <p>Choose the animations for this test, then click the platypus as you would on the live site.</p>
+          <div id="playtestShortcuts" class="cambio-playtest-shortcuts" aria-label="Playtest selection shortcuts">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-playtest-select="all">Select all</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-playtest-select="none">Select none</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-playtest-select="live">Select live</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-playtest-select="inactive">Select inactive</button>
+          </div>
           <div id="playtestChoices" class="cambio-ten-rows" aria-label="Playtest animations"></div>
           <div class="cambio-actions">
             <button type="button" class="btn primary" id="startPlaytest">Start playtest</button>
