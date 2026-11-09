@@ -36,14 +36,6 @@ const JOBS = [
     ]
   },
   {
-    kind: 'overlay',
-    src: 'effects/spore/ghost/img/ghost-platypus.png',
-    outs: [
-      { rel: 'effects/spore/ghost/img/ghost-platypus.webp', format: 'webp', maxEdge: 800, quality: 82 },
-      { rel: 'effects/spore/ghost/img/ghost-platypus.png', format: 'png', maxEdge: 800, quality: 80, replaceSrc: true }
-    ]
-  },
-  {
     kind: 'prop',
     src: 'assets/characters/pirate-mushroom/hat.png',
     outs: [
