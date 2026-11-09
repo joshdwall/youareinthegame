@@ -1858,18 +1858,18 @@ function showAnimation(animId) {
   const scale = Math.min(.21, bounds.width / (box.width * 5), bounds.height / (box.height * 5));
   const width = box.width * scale;
   const height = box.height * scale;
-  const x = body.left - bounds.left + box.width / 2;
-  const y = body.top - bounds.top + box.height / 2;
-  const dx = box.width / 2 + width * .65;
-  const dy = box.height / 2 + height * .65;
-  const spores = [[x - dx, y], [x + dx, y], [x, y - dy], [x, y + dy]].map(([left, top]) => {
+  // Use the stage corners so large accessories have room around the central costume.
+  const inset = Math.min(24, bounds.width * .05, bounds.height * .05);
+  const right = Math.max(inset, bounds.width - width - inset);
+  const bottom = Math.max(inset, bounds.height - height - inset);
+  const spores = [[inset, inset], [right, inset], [inset, bottom], [right, bottom]].map(([left, top]) => {
     const node = buildCharacterComposite({
       baseSrc: ghostBody ? null : creature.getAttribute('src'),
       elements, box, scale
     });
     node.classList.add('cambio-show-spore');
-    node.style.left = Math.max(0, Math.min(bounds.width - width, left - width / 2)) + 'px';
-    node.style.top = Math.max(0, Math.min(bounds.height - height, top - height / 2)) + 'px';
+    node.style.left = left + 'px';
+    node.style.top = top + 'px';
     node.style.zIndex = '25';
     stage.append(node);
     return node;
