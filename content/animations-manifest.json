@@ -2,29 +2,6 @@
   "schemaVersion": 1,
   "animations": [
     {
-      "id": "ghost",
-      "label": "Ghost",
-      "editable": true,
-      "module": "./effects/spore/ghost/effect.js",
-      "playMode": "legacy-ghost",
-      "elements": [],
-      "transitionsAvailable": [
-        "lightning"
-      ],
-      "type": "character-overlay-activation",
-      "overlayFlashMode": "image",
-      "live": true,
-      "archived": false,
-      "placementEditable": true,
-      "tier": "legendary",
-      "multiplier": 1,
-      "weight": 1,
-      "clickEffect": {
-        "type": "ghost-spores"
-      },
-      "previewObjectActions": false
-    },
-    {
       "id": "cowboy",
       "label": "Cowboy",
       "editable": true,

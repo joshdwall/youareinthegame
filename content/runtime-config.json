@@ -25,38 +25,6 @@
   "seasons": [],
   "animations": [
     {
-      "id": "ghost",
-      "label": "Ghost",
-      "editable": true,
-      "module": "./effects/spore/ghost/effect.js",
-      "playMode": "legacy-ghost",
-      "elements": [
-        {
-          "id": "ghostBody",
-          "role": "sporeBody",
-          "anchor": "mouth",
-          "src": "effects/spore/ghost/img/mushroom-platypus-ghost-spores.png",
-          "defaultWidthFrac": 1
-        }
-      ],
-      "transitionsAvailable": [
-        "lightning"
-      ],
-      "type": "character-overlay-activation",
-      "overlayFlashMode": "image",
-      "live": true,
-      "archived": false,
-      "placementEditable": true,
-      "tier": "legendary",
-      "multiplier": 1,
-      "weight": 1,
-      "clickEffect": {
-        "type": "ghost-spores"
-      },
-      "previewObjectActions": false,
-      "order": 0
-    },
-    {
       "id": "cowboy",
       "label": "Cowboy",
       "editable": true,

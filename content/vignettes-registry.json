@@ -75,7 +75,7 @@
       "isSiteDefault": false,
       "visibleInPool": true,
       "projectile": {
-        "sprite": "effects/spore/ghost/img/mushroom-platypus-ghost-spores.png",
+        "sprite": "assets/animations/ghostremake/spore.png",
         "behavior": "storm"
       },
       "transitions": {

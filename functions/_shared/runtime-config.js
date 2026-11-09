@@ -38,33 +38,6 @@ export const BUILTIN_SEED = {
   seasons: [],
   animations: [
     {
-      id: 'ghost',
-      label: 'Ghost',
-      editable: true,
-      placementEditable: true,
-      live: true,
-      archived: false,
-      module: './effects/spore/ghost/effect.js',
-      playMode: 'legacy-ghost',
-      elements: [
-        {
-          id: 'ghostBody',
-          role: 'sporeBody',
-          anchor: 'mouth',
-          src: 'effects/spore/ghost/img/mushroom-platypus-ghost-spores.png',
-          defaultWidthFrac: 1
-        }
-      ],
-      transitionsAvailable: ['lightning'],
-      type: 'character-overlay-activation',
-      overlayFlashMode: 'image',
-      tier: 'legendary',
-      multiplier: 1,
-      weight: 1,
-      order: 0,
-      previewObjectActions: false
-    },
-    {
       id: 'cowboy',
       label: 'Cowboy',
       editable: true,

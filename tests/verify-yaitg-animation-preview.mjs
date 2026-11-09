@@ -59,8 +59,8 @@ for (const e of effects.effects) {
 
 for (const a of [
   'effects/spore/mushroom-platypus-spores.png',
-  'effects/spore/ghost/img/mushroom-platypus-ghost-spores.png',
-  'effects/spore/ghost/img/ghost-platypus.png',
+  'assets/animations/ghostremake/spore.png',
+  'assets/animations/ghostremake/sheet.png',
   'effects/spore/ghost/effect.css',
   'effects/spore/finale.css',
   ...assetChecks

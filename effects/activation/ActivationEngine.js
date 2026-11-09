@@ -248,7 +248,7 @@ export function previewClick(opts) {
     // When previewObjectActions is on, prefer our image burst so textProjectile can run.
     // Otherwise keep legacy fallback (SporeBaseEffect.createSporeExplosion) unchanged.
     if (animation?.previewObjectActions === true) {
-      const img = fx.sporeImage || '/effects/spore/ghost/img/mushroom-platypus-ghost-spores.png';
+      const img = fx.sporeImage || '/assets/animations/ghostremake/spore.png';
       spawnImageBurst(sporeHost, x, y, img, fx.count || 16, {
         runObjectActions: true,
         elements: compositeElements
@@ -260,7 +260,7 @@ export function previewClick(opts) {
       return { ok: true, type: fx.type, via: 'fallback' };
     }
     // Minimal image burst if no fallback provided
-    const img = fx.sporeImage || '/effects/spore/ghost/img/mushroom-platypus-ghost-spores.png';
+    const img = fx.sporeImage || '/assets/animations/ghostremake/spore.png';
     spawnImageBurst(sporeHost, x, y, img, fx.count || 16);
     return { ok: true, type: fx.type, via: 'image' };
   }

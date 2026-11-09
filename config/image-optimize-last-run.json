@@ -52,26 +52,6 @@
       "maxEdge": 800
     },
     {
-      "kind": "overlay",
-      "src": "effects/spore/ghost/img/ghost-platypus.png",
-      "out": "effects/spore/ghost/img/ghost-platypus.webp",
-      "before": 165986,
-      "after": 28620,
-      "format": "webp",
-      "quality": 82,
-      "maxEdge": 800
-    },
-    {
-      "kind": "overlay",
-      "src": "effects/spore/ghost/img/ghost-platypus.png",
-      "out": "effects/spore/ghost/img/ghost-platypus.png",
-      "before": 165986,
-      "after": 31158,
-      "format": "png",
-      "quality": 80,
-      "maxEdge": 800
-    },
-    {
       "kind": "prop",
       "src": "assets/characters/pirate-mushroom/hat.png",
       "out": "assets/characters/pirate-mushroom/hat.webp",

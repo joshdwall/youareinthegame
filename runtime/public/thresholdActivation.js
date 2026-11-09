@@ -276,7 +276,7 @@ export async function prepareUpcoming(creature) {
         id: 'ghostBody',
         role: 'sporeBody',
         anchor: 'mouth',
-        src: GHOST_CONFIG.ASSETS.SPORE_IMAGE || '/effects/spore/ghost/img/mushroom-platypus-ghost-spores.png',
+        src: GHOST_CONFIG.ASSETS.SPORE_IMAGE || '/assets/animations/ghostremake/spore.png',
         defaultWidthFrac: 1
       }]
     };
