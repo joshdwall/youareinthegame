@@ -1,8 +1,7 @@
 name: Costume preview
 on:
-  push:
-    branches: ['costume/**']
-    paths-ignore: ['scripts/cloudflare-history.mjs', '.github/workflows/worldmap-history-audit.yml']
+  # Preview Pages deploys only when explicitly requested (workflow_dispatch).
+  # Do not auto-run on costume/** pushes — burns monthly preview budget.
   workflow_dispatch:
 permissions:
   contents: read
