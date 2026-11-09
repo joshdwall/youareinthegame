@@ -1,9 +1,9 @@
 import PostalMime from "postal-mime";
 import { createActionClient } from "./action-client.mjs";
+import { resolveSettings } from "./site-settings.mjs";
 
 const BASE = "https://envivo-data.joshdwall.workers.dev/enVivo/api/data";
-const destination = "josh@joshdwall.com";
-const acceptedAliases = new Set(["howdy@youareinthegame.com", "hello@youareinthegame.com"]);
+const LEGACY_ALIASES = new Set(["howdy@youareinthegame.com", "hello@youareinthegame.com"]);
 
 async function fingerprint(value) {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
@@ -50,7 +50,9 @@ export function report(ctx, env, events) {
 }
 
 export async function receive(message, env, ctx) {
-  if (!acceptedAliases.has(message.to.toLowerCase())) {
+  const settings = await resolveSettings(env);
+  const accepted = new Set([...LEGACY_ALIASES, settings.alias, settings.from, settings.replyTo].map((v) => String(v).toLowerCase()));
+  if (!accepted.has(String(message.to || "").toLowerCase())) {
     message.setReject("Unknown contact address");
     return;
   }
@@ -69,7 +71,7 @@ export async function receive(message, env, ctx) {
   }
   try {
     events.push(["unrouted-actions", "communications.inbound.forward"]);
-    await message.forward(destination);
+    await message.forward(settings.forwardTo);
   } finally {
     report(ctx, env, events);
   }

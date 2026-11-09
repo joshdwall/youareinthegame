@@ -1,6 +1,6 @@
 /**
  * Zoho Mail send helper for visitor receipts (arbitrary To: addresses).
- * From: ZOHO_FROM_ADDRESS (josh@…). Reply-To: howdy@ when Zoho accepts it.
+ * From: ZOHO_FROM_ADDRESS (josh@…). Reply-To: desk replyTo when Zoho accepts it.
  */
 
 const HOWDY = "howdy@youareinthegame.com";
@@ -14,14 +14,14 @@ function bodyText(raw) {
   return (sep >= 0 ? raw.slice(sep).replace(/^\r?\n\r?\n/, "") : "").trim();
 }
 
-export function parseReceiptMime(raw) {
+export function parseReceiptMime(raw, replyTo = HOWDY) {
   const subject = headerValue(raw, "Subject") || "We received your note";
   const to = headerValue(raw, "To");
   let content = bodyText(raw);
   if (!content) content = "We have your message. Reply to this email to reach us.";
-  // Point replies at howdy even if Zoho strips Reply-To.
-  if (!/howdy@youareinthegame\.com/i.test(content)) {
-    content += "\n\n—\nReply to: " + HOWDY + "\nYou are in the game";
+  const reply = String(replyTo || HOWDY).trim() || HOWDY;
+  if (!content.toLowerCase().includes(reply.toLowerCase())) {
+    content += "\n\n—\nReply to: " + reply + "\nYou are in the game";
   }
   return { subject, to, content };
 }
@@ -51,11 +51,28 @@ export async function refreshZohoAccessToken(env) {
  * Send visitor receipt via Zoho Mail API.
  * @returns {{ ok: boolean, via: string, detail?: string }}
  */
-export async function sendZohoReceipt(env, { toAddress, receiptRaw }) {
+export async function sendZohoReceipt(env, {
+  toAddress,
+  receiptRaw,
+  replyTo: replyToOverride,
+  subject: subjectOverride,
+  content: contentOverride,
+} = {}) {
   if (!env.ZOHO_CLIENT_ID || !env.ZOHO_CLIENT_SECRET || !env.ZOHO_REFRESH_TOKEN || !env.ZOHO_ACCOUNT_ID) {
     return { ok: false, via: "zoho", detail: "missing_zoho_secrets" };
   }
-  const parsed = parseReceiptMime(receiptRaw);
+  const replyTo = String(replyToOverride || env.ZOHO_REPLY_TO || HOWDY).trim() || HOWDY;
+  const parsed = parseReceiptMime(receiptRaw, replyTo);
+  if (typeof subjectOverride === "string" && subjectOverride.trim()) {
+    parsed.subject = subjectOverride.trim().slice(0, 160);
+  }
+  if (typeof contentOverride === "string" && contentOverride.trim()) {
+    let content = contentOverride.trim();
+    if (!content.toLowerCase().includes(replyTo.toLowerCase())) {
+      content += "\n\n—\nReply to: " + replyTo + "\nYou are in the game";
+    }
+    parsed.content = content;
+  }
   const to = String(toAddress || parsed.to || "").trim();
   if (!to) return { ok: false, via: "zoho", detail: "missing_to" };
 
@@ -63,9 +80,8 @@ export async function sendZohoReceipt(env, { toAddress, receiptRaw }) {
   const fromName = (env.ZOHO_FROM_DISPLAY_NAME || "You are in the game").replace(/[\r\n"]/g, "").slice(0, 80);
   // Zoho uses mailbox display name unless fromAddress includes a quoted name.
   const fromAddress = `"${fromName}" <${fromEmail}>`;
-  // Zoho rejects Reply-To unless that address is verified on the mailbox.
-  // howdy@ is Reply-To verified — set replyTo when ZOHO_REPLY_TO_VERIFIED=1.
-  const replyTo = env.ZOHO_REPLY_TO || HOWDY;
+  // Zoho rejects Reply-To unless that address is verified under Send Mail As.
+  // Set ZOHO_REPLY_TO_VERIFIED=1 only after workplace.zoho.com Send Mail As confirms the address.
   const accessToken = await refreshZohoAccessToken(env);
 
   const payload = {
