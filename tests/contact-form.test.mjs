@@ -38,7 +38,7 @@ test('contact fields reject junk and a filled honeypot, and the lead mail stays 
   good.set('message', 'Hello from the globe');
   const contact = readContact(good);
   assert.equal(contact.code, 'ok');
-  const raw = leadRaw({ from: 'hello@youareinthegame.com', to: 'joshdwall@gmail.com', ...contact, brand: 'You are in the game' });
+  const raw = leadRaw({ from: 'howdy@youareinthegame.com', to: 'joshdwall@gmail.com', ...contact, brand: 'You are in the game' });
   assert.match(raw, /Reply-To: ada@example.com/);
   assert.match(raw, /Hello from the globe/);
   assert.doesNotMatch(raw, /<script/);

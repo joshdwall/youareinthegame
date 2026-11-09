@@ -1,6 +1,12 @@
 import { EmailMessage } from "cloudflare:email";
 
-const FROM = "hello@youareinthegame.com";
+const FROM = "howdy@youareinthegame.com";
+const LEGACY_FROM = "hello@youareinthegame.com";
+const fromHeader = (address) => `From: "You are in the game" <${address}>`;
+
+function withCurrentSender(raw) {
+  return raw.replace(fromHeader(LEGACY_FROM) + "\r\n", fromHeader(FROM) + "\r\n");
+}
 const TO = "joshdwall@gmail.com";
 
 export default {
@@ -19,13 +25,13 @@ export default {
       return new Response("Bad request", { status: 400 });
     }
     if (typeof body.raw !== "string" || body.raw.length > 20000) return new Response("Bad request", { status: 400 });
-    if (!body.raw.includes(`From: "You are in the game" <${FROM}>`) || !body.raw.includes(`To: ${TO}`)) {
+    if (![FROM, LEGACY_FROM].some(address => body.raw.startsWith(fromHeader(address) + "\r\n")) || !body.raw.includes(`To: ${TO}`)) {
       return new Response("Bad request", { status: 400 });
     }
-    await env.SEND_EMAIL.send(new EmailMessage(FROM, TO, body.raw));
+    await env.SEND_EMAIL.send(new EmailMessage(FROM, TO, withCurrentSender(body.raw)));
     if (typeof body.receipt === "string" && typeof body.receiptTo === "string" && env.SEND_VISITOR) {
       try {
-        await env.SEND_VISITOR.send(new EmailMessage(FROM, body.receiptTo, body.receipt));
+        await env.SEND_VISITOR.send(new EmailMessage(FROM, body.receiptTo, withCurrentSender(body.receipt).replace(`\r\nReply-To: ${LEGACY_FROM}\r\n`, `\r\nReply-To: ${FROM}\r\n`)));
       } catch {
         /* The note to Josh already went out. */
       }
