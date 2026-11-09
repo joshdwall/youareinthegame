@@ -1513,6 +1513,44 @@ function wireSidebarToggle() {
   setSidebarVisible(show, { persist: false });
 }
 
+function visibilityControl(anim, field) {
+  const label = field === 'live' ? 'Live' : 'Direct link';
+  const checked = anim[field] && !anim.archived ? ' checked' : '';
+  const attrs = `data-id="${escapeHtml(anim.id)}" data-visibility-field="${field}"`;
+  return `<span class="cambio-visibility" data-visibility>
+    <input type="checkbox" aria-label="${label}"${checked} disabled>
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-act="visibility-edit" ${attrs} aria-label="Edit ${label}" title="Edit ${label}"${anim.archived ? ' disabled' : ''}>✎</button>
+    <button type="button" class="btn btn-sm btn-success" data-act="visibility-save" ${attrs} aria-label="Save ${label}" title="Save ${label}" hidden>✓</button>
+    <button type="button" class="btn btn-sm btn-outline-danger" data-act="visibility-cancel" ${attrs} aria-label="Cancel ${label} edit" title="Cancel ${label} edit" hidden>×</button>
+  </span>`;
+}
+
+async function handleVisibilityAction(button, action, id) {
+  const control = button.closest('[data-visibility]');
+  const checkbox = control.querySelector('input');
+  const edit = control.querySelector('[data-act="visibility-edit"]');
+  const save = control.querySelector('[data-act="visibility-save"]');
+  const cancel = control.querySelector('[data-act="visibility-cancel"]');
+  const editing = action === 'visibility-edit';
+  if (action === 'visibility-save') {
+    save.disabled = cancel.disabled = checkbox.disabled = true;
+    try {
+      await patchAnimation(id, { [button.dataset.visibilityField]: checkbox.checked });
+      saveStatus.textContent = 'Visibility saved.';
+      return;
+    } catch (error) {
+      saveStatus.textContent = error.message;
+      save.disabled = cancel.disabled = checkbox.disabled = false;
+      return;
+    }
+  }
+  if (!editing) checkbox.checked = checkbox.defaultChecked;
+  checkbox.disabled = !editing;
+  edit.hidden = editing;
+  save.hidden = cancel.hidden = !editing;
+  (editing ? checkbox : edit).focus();
+}
+
 function ensureAnimDeskList() {
   if (animDeskList) return animDeskList;
   const host = $('animListHost');
@@ -1527,22 +1565,20 @@ function ensureAnimDeskList() {
       render: (anim) => `<span class="label">${escapeHtml(anim.label)}</span>`
     },
     {
-      key: 'live',
-      label: 'Live',
+      key: 'actions',
+      label: 'Actions',
       fit: 'content',
       sortType: 'none',
-      className: 'cambio-col-live ev-sl-col--tight',
-      render: (anim) => {
-        const liveDisabled = anim.archived ? ' disabled' : '';
-        const liveChecked = anim.live && !anim.archived ? ' checked' : '';
-        return `<label class="cambio-live-lab"><input type="checkbox" data-act="live" data-id="${escapeHtml(anim.id)}"${liveChecked}${liveDisabled} /> Live</label>`;
-      }
+      className: 'cambio-col-actions ev-sl-col--tight text-end',
+      render: (anim) => animListActionButtons(anim)
     },
     {
-      key: 'directLink',
-      label: 'Direct link',
-      fit: 'content',
-      render: (anim) => `<label><input type="checkbox" data-act="direct-link" data-id="${escapeHtml(anim.id)}"${anim.directLink ? ' checked' : ''}${anim.archived ? ' disabled' : ''}> Direct</label>`
+      key: 'live', label: 'Live', fit: 'content', sortType: 'none',
+      render: anim => visibilityControl(anim, 'live')
+    },
+    {
+      key: 'directLink', label: 'Direct Link', fit: 'content', sortType: 'none',
+      render: anim => visibilityControl(anim, 'directLink')
     },
     {
       key: 'tier',
@@ -1592,14 +1628,6 @@ function ensureAnimDeskList() {
         return `<span class="pct">${escapeHtml(pct)}</span>`;
       }
     },
-    {
-      key: 'actions',
-      label: 'Actions',
-      fit: 'content',
-      sortType: 'none',
-      className: 'cambio-col-actions ev-sl-col--tight text-end',
-      render: (anim) => animListActionButtons(anim)
-    }
   ];
 
   const detailHost = $('animDetailHost');
@@ -1685,7 +1713,8 @@ function wireAnimListActions() {
       if (!act || !id) return;
       ev.preventDefault();
       ev.stopPropagation();
-      if (act === 'show') showAnimation(id);
+      if (act.startsWith('visibility-')) void handleVisibilityAction(btn, act, id);
+      else if (act === 'show') showAnimation(id);
       else if (act === 'copy-url') void copyCostumeUrl(id);
       else if (act === 'play') void playAnimation(id);
       else if (act === 'click-preview') void previewClickAnimation(id);
@@ -1710,18 +1739,7 @@ function wireAnimListActions() {
     if (!act || !id) return;
     const anim = (state.runtimeConfig?.animations || state.manifest.animations || []).find((a) => a.id === id);
     if (!anim) return;
-    if ((act === 'live' || act === 'direct-link') && el instanceof HTMLInputElement) {
-      const field = act === 'live' ? 'live' : 'directLink';
-      void (async () => {
-        try {
-          await patchAnimation(id, { [field]: el.checked });
-          saveStatus.textContent = `${anim.label} ${field}=${el.checked} (immediate)`;
-        } catch (err) {
-          el.checked = !el.checked;
-          saveStatus.textContent = err.message;
-        }
-      })();
-    } else if (act === 'tier' && el instanceof HTMLSelectElement) {
+    if (act === 'tier' && el instanceof HTMLSelectElement) {
       void (async () => {
         try {
           await patchAnimation(id, { tier: el.value });
@@ -1791,17 +1809,15 @@ function renderPlaytestChoices(animations) {
       minRows: 10,
       padWhenEmpty: true,
       maxHeightCss: '27rem',
-      headerActions: ['all', 'none', 'live', 'inactive'].map(mode => ({
-        label: 'Select ' + mode, attrs: 'data-playtest-select="' + mode + '"'
-      })),
       columns: [
         { key: 'label', label: 'Name', render: animation => `<label><input type="checkbox" data-playtest-id="${escapeHtml(animation.id)}"${playtestSelection.has(animation.id) ? ' checked' : ''}> ${escapeHtml(animation.label || animation.id)}</label>` },
-        { key: 'live', label: 'Status', render: animation => animation.live ? 'Live' : 'Inactive' },
-        { key: 'actions', label: 'Actions', render: animation => animListActionButtons(animation, true) }
+        { key: 'actions', label: 'Actions', render: animation => animListActionButtons(animation, true) },
+        { key: 'live', label: 'Status', render: animation => visibilityControl(animation, 'live') },
+        { key: 'directLink', label: 'Direct Link', render: animation => visibilityControl(animation, 'directLink') }
       ],
       afterPaint: () => wireAnimListActions()
     });
-    list.addEventListener('click', event => {
+    $('playtestShortcuts').addEventListener('click', event => {
       const mode = event.target.closest('[data-playtest-select]')?.dataset.playtestSelect;
       if (!mode) return;
       playtestSelection.clear();
