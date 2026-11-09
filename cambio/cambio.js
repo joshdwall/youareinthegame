@@ -1565,6 +1565,14 @@ function ensureAnimDeskList() {
 
   const columns = [
     {
+      key: 'actions',
+      label: 'Actions',
+      fit: 'content',
+      sortType: 'none',
+      className: 'cambio-col-actions ev-sl-col--tight text-end',
+      render: (anim) => animListActionButtons(anim)
+    },
+    {
       key: 'label',
       label: 'Name',
       fit: 'content',
@@ -1572,12 +1580,10 @@ function ensureAnimDeskList() {
       render: (anim) => `<span class="label">${escapeHtml(anim.label)}</span>`
     },
     {
-      key: 'actions',
-      label: 'Actions',
+      key: 'id',
+      label: 'Animation ID',
       fit: 'content',
-      sortType: 'none',
-      className: 'cambio-col-actions ev-sl-col--tight text-start',
-      render: (anim) => animListActionButtons(anim)
+      render: (anim) => `<code>${escapeHtml(anim.id)}</code>`
     },
     {
       key: 'live', label: 'Live', fit: 'content', sortType: 'none',
@@ -2094,6 +2100,8 @@ function positionProp(img, st) {
 function mountProps(animId, { interactive = false, visible = true } = {}) {
   overlay.innerHTML = '';
   overlay.style.pointerEvents = '';
+  overlay.style.opacity = '';
+  overlay.classList.remove('activation-flash-host');
   overlay.__costumeBackLayer?.remove();overlay.__costumeBackLayer=null;
   markerLayer.innerHTML = '';
   overlay.classList.toggle('editing', interactive);
@@ -2109,7 +2117,6 @@ function mountProps(animId, { interactive = false, visible = true } = {}) {
     } else {
       st = place.elements[el.id] = migrateElement(st);
     }
-    if (Object.prototype.hasOwnProperty.call(el, 'flipX')) st.flipX = !!el.flipX;
 
     const img = document.createElement('img');
     img.src = '/' + el.src.replace(/^\//, '');
@@ -2859,7 +2866,7 @@ async function playAnimation(animId,{signal}={}) {
 
     // Reset: hide/remove overlay items; live character untouched
     if (state.editMode) {
-      mountProps(animId, { interactive: true });
+      mountProps(state.selectedAnim?.id, { interactive: true });
     } else {
       overlay.innerHTML = '';
       overlay.__costumeBackLayer?.remove();
