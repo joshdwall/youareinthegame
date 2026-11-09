@@ -968,3 +968,10 @@ body.cambio-body #siteStage.container {
 .cambio-playtest-shortcuts { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .5rem; }
 .cambio-visibility { display: inline-flex; align-items: center; gap: .3rem; }
 .cambio-visibility button[hidden] { display: none; }
+
+/* Reserve space for the checkbox and both edit-mode controls. */
+.cambio-visibility {
+  min-width: 5.75rem;
+  white-space: nowrap;
+}
+.cambio-visibility > * { flex-shrink: 0; }
