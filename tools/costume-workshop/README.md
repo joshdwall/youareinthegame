@@ -12,9 +12,9 @@ Stable Diffusion runtime: https://github.com/leejet/stable-diffusion.cpp (MIT). 
 
 ### Share a published animation
 
-Use `https://youareinthegame.com/?animation=<id>` with the costume bundle's
+Use `https://youareinthegame.com/?<id>` with the costume bundle's
 stable ID, such as `cowboy`, `ghost`, or `barber`. After marking the costume
 Live in Cambio, open its link and trigger two rounds to verify both use that
 costume. The game resolves the ID from its public registry on each round.
-Every published costume gets a link automatically. Draft, archived, and
+Every published costume gets a link automatically. Existing `?animation=<id>` links continue to work. Draft, archived, and
 unknown IDs leave the base game available without triggering a costume.

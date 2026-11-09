@@ -33,9 +33,16 @@ function readPlaytestConfig() {
   return null;
 }
 const playtestConfig = readPlaytestConfig();
+function readLinkedAnimationId(search) {
+  const params = new URLSearchParams(search);
+  const explicit = params.get('animation');
+  if (explicit !== null) return explicit.trim().toLowerCase();
+  const match = /^\?([a-z0-9]+(?:-[a-z0-9]+)*)$/i.exec(search);
+  return match?.[1].toLowerCase() || '';
+}
 const linkedAnimationId = playtestConfig || typeof location === 'undefined'
   ? ''
-  : new URLSearchParams(location.search).get('animation')?.trim().toLowerCase() || '';
+  : readLinkedAnimationId(location.search);
 let playtestCursor = { index: -1, lastPlayedId: null, lastId: null };
 
 /** @type {{ id: string, anim: object, prepared?: object } | null} */
