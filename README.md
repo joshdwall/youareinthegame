@@ -33,3 +33,25 @@ Deploy and promote follow knowledge-hub `plans/site-hub/YouAreInTheGame-CF-Nativ
 - Verify after a deploy: `bash scripts/verify-site.sh https://youareinthegame.com` (needs `npm run build` locally for the asset list and `npx playwright install chromium` for the click gate).
 - Rollback: in the Cloudflare dashboard, open Pages → youareinthegame-web → Deployments → Rollback (or the API `POST .../deployments/<id>/rollback`).
 - Bindings live on the Pages project and in `wrangler.toml` (KV id, rate vars). `YAITG_SESSION_SECRET` is a Pages secret whose source of truth is Infisical `/sites/youareinthegame`.
+
+### Cambio admin releases
+
+The permanent editor URL is [Cambio](https://app.youareinthegame.com/cambio/).
+The apex and www redirect legacy Cambio links and keep the costume query.
+Public costume URLs, including short links such as `/?chef`, stay on the apex.
+
+The public Pages project `youareinthegame-web` builds main. The separate
+`youareinthegame-admin` project takes approved main commits only when an
+operator dispatches **Promote Cambio admin**. Both use the production
+costume KV and asset bucket so a saved costume can become available
+without a code release. Access remains on the admin hostname.
+
+For the initial cutover, record the current deployment and DNS target.
+Run the admin promotion and verify its deployment alias returns 404.
+Move only the app custom domain to the new project with the existing
+Access policy in place. Verify unauthenticated requests reach Access,
+then sign in and check the costume list, assets, and playtest. Roll
+back by restoring the app domain to the former Pages project if this
+initial verification fails. After cutover, use the admin project's
+deployment history for admin rollbacks and the public project's
+deployment history for public rollbacks.
