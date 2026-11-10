@@ -386,10 +386,15 @@ registerAction('textProjectile', ({ root, el, action, sporeIndex = 0 }) => {
   const timers = new Set();
   let stopped = false;
   const pattern = action.pattern || 'once';
+  const variants = action.textVariants;
+  const text = variants?.length
+    ? variants[sporeIndex] ?? variants[Math.floor(Math.random() * variants.length)]
+    : action.text;
+  const shot = { ...action, text };
 
   const shoot = () => {
     if (stopped || !root?.isConnected) return;
-    textProjectileOnce({ root, el, action });
+    textProjectileOnce({ root, el, action: shot });
   };
 
   // Stagger first shot slightly so a burst of ghosts doesn't sync
