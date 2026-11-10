@@ -1,3 +1,4 @@
+import { costumeIdForSlug } from '../costumes/publicSlug.js';
 /**
  * Public apex: pick upcoming animation at cycle START (page load + after each
  * activation reset). Character clicks before threshold use that animation's
@@ -342,7 +343,10 @@ export async function pickUpcoming({ forceRefresh = false, creature = null, open
     const direct = [...(config?.animations || []), ...(config?.directAnimations || [])].find(entry =>
       !entry.archived && (entry.id === linkedAnimationId || entry.id.replaceAll('-', '') === linkedAnimationId)
     );
-    const linked = anim || direct || linkedOnlyAnimations.get(linkedAnimationId);
+    const preferred = costumeIdForSlug(linkedAnimationId);
+    const alias = [...(config?.animations || []), ...(config?.directAnimations || [])]
+      .find(entry => preferred !== linkedAnimationId && entry.id === preferred && !entry.archived);
+    const linked = alias || anim || direct || linkedOnlyAnimations.get(linkedAnimationId);
     upcoming = linked ? { id: linked.id, anim: linked } : null;
   } else if (forced) {
     upcoming = forced;
