@@ -20,6 +20,9 @@ export async function onRequest(context) {
   });
   const url = new URL(context.request.url);
   const host = url.hostname;
+  if (context.env?.YAITG_ADMIN_DEPLOYMENT === '1' && host !== 'app.youareinthegame.com') {
+    return new Response('Not Found', { status: 404, headers: { 'cache-control': 'no-store' } });
+  }
   const publicHost = host === 'youareinthegame.com' || host === 'www.youareinthegame.com';
   if (publicHost && (url.pathname === '/cambio' || url.pathname.startsWith('/cambio/'))) {
     const target = new URL('https://app.youareinthegame.com/cambio/');

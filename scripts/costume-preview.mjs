@@ -99,7 +99,7 @@ async function main(){
  if(process.argv.includes('--usage-audit')){const {auditWorldmapUsage}=await import('./worldmap-usage-audit.mjs');await auditWorldmapUsage({account,token:cfToken,save});return;}
  if(process.argv.includes('--history-audit')){const {auditCloudflareHistory}=await import('./cloudflare-history.mjs');await auditCloudflareHistory({account,save,tokens:[{name:'shared',value:common.CHATGPT_CLOUDFLARE_API_TOKEN},{name:'agents',value:common['agents-write']},{name:'site',value:site['site.youareinthegame.cloudflare.api_token']}]});return;}
  const envivo=await secrets('/envivo'),actionToken=envivo['connector.envivo.data.cli_token'];if(!actionToken)throw Error('Shared action-handler credential missing');
- const {createWorldmapActions,actionStore}=await import('./worldmap-actions.mjs');const actionStage=process.argv.includes('--shared-actions-rollout')?'shared-rollout':process.argv.includes('--browser-only')?'preview-browser':process.argv.includes('--production-only')?'production-check':process.argv.includes('--history-sync')?'history-sync':'preview-deploy';
+ const {createWorldmapActions,actionStore}=await import('./worldmap-actions.mjs');const actionStage=process.argv.includes('--admin-production')?'admin-production':process.argv.includes('--shared-actions-rollout')?'shared-rollout':process.argv.includes('--browser-only')?'preview-browser':process.argv.includes('--production-only')?'production-check':process.argv.includes('--history-sync')?'history-sync':'preview-deploy';
  actions=createWorldmapActions({baseUrl:'https://envivo-data.joshdwall.workers.dev/enVivo/api/data',token:actionToken,repo:process.env.GITHUB_REPOSITORY||'joshdwall/youareinthegame',runId:process.env.GITHUB_RUN_ID,attempt:process.env.GITHUB_RUN_ATTEMPT||'1',stage:actionStage});
  usageProject=await cf(apiBase());const production=process.env.GITHUB_REF_NAME==='main';let actionNamespace;if(production)actionNamespace=usageProject.deployment_configs?.production?.kv_namespaces?.YAITG_SESSION_KV?.namespace_id;else actionNamespace=(await cf('/accounts/{account}/storage/kv/namespaces?per_page=1000')).find(n=>n.title===cfg.previewNamespace)?.id;
  if(!actionNamespace)throw Error('Tracking outbox namespace missing');actionsStore=actionStore(cf,actionNamespace);await actions.registerJob(actionsStore);actions.record('unrouted-actions','worldmap.'+actionStage+'.started',1,'month');
@@ -109,9 +109,55 @@ async function main(){
   let namespace;if(branch==='main'){const project=await cf(apiBase());namespace=project.deployment_configs?.production?.kv_namespaces?.YAITG_SESSION_KV?.namespace_id;}else{const spaces=await cf('/accounts/{account}/storage/kv/namespaces?per_page=1000');namespace=spaces.find(x=>x.title===cfg.previewNamespace)?.id;}
   if(!namespace)throw Error('History namespace missing');const {syncHistory}=await import('./cloudflare-history.mjs');await actions.run('worldmap.history.refresh',()=>syncHistory({token:common.CHATGPT_CLOUDFLARE_API_TOKEN,account,cf,namespace,save,tracker:actions}));return;
  }
+
+ if (process.argv.includes('--admin-production')) {
+  if (process.env.GITHUB_REF_NAME !== 'main') throw Error('Admin releases require an approved main commit');
+  const projectName = 'youareinthegame-admin';
+  const projects = await cf('/accounts/{account}/pages/projects');
+  const existing = projects.find(project => project.name === projectName);
+  if (existing?.source || (existing && existing.production_branch !== 'main')) {
+   throw Error('Unexpected admin project configuration');
+  }
+  if (!existing) {
+   await cf('/accounts/{account}/pages/projects', 'POST', { name: projectName, production_branch: 'main' });
+  }
+  await actions.run('cambio.admin.production', async () => {
+   run('npm', ['run', 'build']);
+   usage.builds++;
+   const configFile = 'wrangler.toml';
+   const originalConfig = fs.readFileSync(configFile, 'utf8');
+   const routesFile = 'dist/_routes.json';
+   fs.writeFileSync(routesFile, JSON.stringify({ version: 1, include: ['/*'], exclude: [] }));
+   try {
+    fs.writeFileSync(configFile, originalConfig
+     .replace('name = "youareinthegame-web"', 'name = "youareinthegame-admin"')
+     .replace('[vars]', '[vars]\nYAITG_ADMIN_DEPLOYMENT = "1"'));
+    wrangler(['pages', 'deploy', 'dist', '--project-name', projectName, '--branch', 'main', '--commit-hash', process.env.GITHUB_SHA]);
+    usage.deploys++;
+   } finally {
+    fs.writeFileSync(configFile, originalConfig);
+   }
+   const project = await cf('/accounts/{account}/pages/projects/' + projectName);
+   const deploy = project.canonical_deployment;
+   if (deploy?.deployment_trigger?.metadata?.commit_hash !== process.env.GITHUB_SHA || deploy.latest_stage?.status !== 'success') {
+    throw Error('Admin deployment did not reach production');
+   }
+   const blocked = await fetch(deploy.url + '/cambio/', { redirect: 'manual' });
+   if (blocked.status !== 404) throw Error('Admin deployment alias is not blocked');
+   save('admin-production.json', { deployment: deploy.id, commit: process.env.GITHUB_SHA, url: 'https://app.youareinthegame.com/cambio/' });
+  });
+  return;
+ }
  if(process.argv.includes('--production-only')){
   if(process.env.GITHUB_REF_NAME!=='main')throw Error('Production verification must run on main');
   let ready=false;for(let i=0;i<40;i++){const p=await cf(apiBase());const d=p.canonical_deployment;if(d?.deployment_trigger?.metadata?.commit_hash===process.env.GITHUB_SHA&&d.latest_stage?.status==='success'){ready=true;break;}await new Promise(r=>setTimeout(r,10000));}if(!ready)throw Error('Approved production commit has not finished deploying');
+  const cambioTarget = 'https://app.youareinthegame.com/cambio/?animation=chef';
+  for (const host of ['youareinthegame.com', 'www.youareinthegame.com']) {
+   const redirect = await fetch('https://' + host + '/cambio/?animation=chef', { redirect: 'manual' });
+   if (redirect.status !== 308 || redirect.headers.get('location') !== cambioTarget) throw Error('Incorrect Cambio redirect on ' + host);
+  }
+  const adminApi = await fetch('https://youareinthegame.com/api/cambio/runtime-config', { redirect: 'manual' });
+  if (adminApi.status !== 404) throw Error('Public host serves the Cambio API');
   const url='https://youareinthegame.com';for(const path of ['/','/api/animations']){const r=await fetch(url+path,{headers:{'user-agent':'YAITG automated monitor'}});if(r.status!==200)throw Error('Production HTTP check failed: '+path);}
   const {chromium}=await import('playwright'),b=await chromium.launch();try{const page=await b.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));const {verifyResetBoundary}=await import('../tests/helpers/reset-boundary.mjs');const results=await verifyResetBoundary(page,url);if(errors.length)throw Error(errors.join('; '));save('production.json',{url,commit:process.env.GITHUB_SHA,resetCycles:results,browserErrors:errors});await page.screenshot({path:path.join(evidence,'production.png')});console.log('Production reset verification passed:',url);}finally{await b.close();}return;
  }
