@@ -1000,3 +1000,26 @@ body.cambio-body #siteStage.container {
 
 #editItemListHost { min-width: 0; max-width: 100%; }
 #editItemListHost .ev-desk-list__scroll { touch-action: pan-x pan-y; }
+
+/* Keep the list toolbar outside the viewport that scrolls in both directions. */
+#editItemListHost {
+  flex: 0 0 auto;
+  max-height: none;
+  overflow: visible;
+}
+#cambioRoot #editItemListHost :is(.table-responsive, .ev-desk-list__scroll) {
+  max-height: min(40vh, 22rem);
+  overflow: scroll !important;
+  touch-action: pan-x pan-y;
+}
+#editItemListHost table.table { min-width: max-content; }
+#selectedControls .ie-view {
+  display: grid;
+  grid-template-columns: minmax(5rem, 1fr) minmax(0, 1.5fr) auto;
+  align-items: center;
+  gap: .5rem;
+}
+#selectedControls .ie-row { padding: .45rem .25rem; }
+#selectedControls .ie-value { word-break: normal; overflow-wrap: anywhere; }
+#selectedControls .ie-edit { margin-top: .4rem; }
+#selectedControls .oa-type-fields { border-top: 1px solid rgba(255,255,255,.18); margin-top: .5rem; }
