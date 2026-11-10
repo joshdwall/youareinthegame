@@ -471,7 +471,7 @@ function migratePlacements(data) {
 }
 
 /** Isolated OA field modes (textProjectile generic editor). */
-const OA_FIELD_MODES = new Set(['oaText', 'oaDuration', 'oaDistance', 'oaFontFamily', 'oaFontSize']);
+const OA_FIELD_MODES = new Set(['oaText', 'oaDuration', 'oaDistance', 'oaFontFamily', 'oaFontSize', 'oaColor']);
 
 /**
  * Merge KV live placements over seed: keep live values, fill missing anims/elements/OAs from seed.
@@ -509,6 +509,7 @@ function mergePlacementsPreferLive(seedPlacements, livePlacements) {
 function primaryObjectAction(st) {
   const list = Array.isArray(st?.objectActions) ? st.objectActions : [];
   return (
+    list.find((a) => a?.type === state.selectedActionType) ||
     list.find((a) => a?.type === 'textProjectile') ||
     list.find((a) => a?.type === 'fire') ||
     list[0] ||
@@ -600,7 +601,8 @@ function syncOaFieldViews() {
     'btnEditOaDuration',
     'btnEditOaDistance',
     'btnEditOaFontFamily',
-    'btnEditOaFontSize'
+    'btnEditOaFontSize',
+    'btnEditOaColor'
   ];
   for (const pid of pencilIds) {
     const btn = $(pid);
@@ -618,7 +620,8 @@ function syncOaFieldViews() {
         btnEditOaDuration: 'Edit duration',
         btnEditOaDistance: 'Edit distance',
         btnEditOaFontFamily: 'Edit font',
-        btnEditOaFontSize: 'Edit font size'
+        btnEditOaFontSize: 'Edit font size',
+        btnEditOaColor: 'Edit text color'
       };
       btn.title = defaults[pid] || 'Edit';
     }
@@ -628,6 +631,8 @@ function syncOaFieldViews() {
   const distV = $('oaDistanceView');
   const ffV = $('oaFontFamilyView');
   const fsV = $('oaFontSizeView');
+  const colorView = $('oaColorView');
+  if (colorView) colorView.textContent = isTp ? (act.color || '#000000') : '—';
   if (!isTp || !act) {
     if (tv) tv.textContent = '—';
     if (dv) dv.textContent = '—';
@@ -648,6 +653,7 @@ function syncOaFieldViews() {
 
 function snapshotOaField(mode, act) {
   if (!act) return {};
+  if (mode === 'oaColor') return { color: act.color || '#000000' };
   if (mode === 'oaText') return { text: act.text != null ? String(act.text) : 'BOO' };
   if (mode === 'oaDuration') {
     return { durationMs: Number.isFinite(+act.durationMs) ? +act.durationMs : 1200 };
@@ -677,7 +683,10 @@ function snapshotOaField(mode, act) {
 }
 
 function fillOaFieldInputs(mode, snapOrAct) {
-  if (mode === 'oaText') {
+  if (mode === 'oaColor') {
+    const color = snapOrAct?.color;
+    $('oaColorInput').value = /^#[0-9a-f]{6}$/i.test(color || '') ? color : '#000000';
+  } else if (mode === 'oaText') {
     const input = $('oaTextInput');
     if (input) {
       input.value =
@@ -748,7 +757,10 @@ function applyOaFieldCommit(mode) {
   if (!st) return;
   const act = ensurePrimaryActionOfType(st, 'textProjectile');
   if (!act) return;
-  if (mode === 'oaText') {
+  if (mode === 'oaColor') {
+    const color = $('oaColorInput').value;
+    if (/^#[0-9a-f]{6}$/i.test(color)) act.color = color;
+  } else if (mode === 'oaText') {
     const v = ($('oaTextInput')?.value ?? 'BOO').trim() || 'BOO';
     act.text = v.slice(0, 32);
   } else if (mode === 'oaDuration') {
@@ -923,6 +935,9 @@ async function boot() {
   $('btnEditOaFontFamily')?.addEventListener('click', () => enterMode('oaFontFamily'));
   $('btnSaveOaFontFamily')?.addEventListener('click', () => commitMode());
   $('btnCancelOaFontFamily')?.addEventListener('click', () => cancelMode());
+  $('btnEditOaColor').addEventListener('click', () => enterMode('oaColor'));
+  $('btnSaveOaColor').addEventListener('click', () => commitMode());
+  $('btnCancelOaColor').addEventListener('click', () => cancelMode());
   $('btnEditOaFontSize')?.addEventListener('click', () => enterMode('oaFontSize'));
   $('btnSaveOaFontSize')?.addEventListener('click', () => commitMode());
   $('btnCancelOaFontSize')?.addEventListener('click', () => cancelMode());
@@ -2502,7 +2517,8 @@ function selectEditItem(item) {
   if (state.activeMode) cancelMode();
   if (item.kind === 'element' || item.kind === 'action') {
     state.selectedElementId = item.elementId;
-    highlightElementRow(item.elementId);
+    state.selectedActionType = item.kind === 'action' ? item.actionType : null;
+    if (editItemList?.getSelectedId?.() !== item.id) editItemList?.select(item.id);
     refreshViews();
     mountProps(state.selectedAnim.id, { interactive: true });
     if (item.kind === 'action') {
@@ -2704,7 +2720,8 @@ function refreshEditItemList(animId) {
   const items = buildEditItems(anim);
   editItemList?.setItems?.(items);
   if (state.selectedElementId && editItemList?.select) {
-    try { editItemList.select(`element:${state.selectedElementId}`); } catch { /* ignore */ }
+    const row = items.find(item => item.elementId === state.selectedElementId && item.actionType === state.selectedActionType);
+    try { editItemList.select(row?.id || `element:${state.selectedElementId}`); } catch { /* ignore */ }
   }
   wireEditItemListActions();
 }
@@ -2759,6 +2776,7 @@ function enterEdit(animId) {
 }
 
 function highlightElementRow(id) {
+  state.selectedActionType = null;
   if (editItemList?.select) {
     const key = id ? `element:${id}` : null;
     try { editItemList.select(key); } catch { /* ignore */ }
