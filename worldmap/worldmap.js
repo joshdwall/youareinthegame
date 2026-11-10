@@ -3,7 +3,26 @@ const $=id=>document.getElementById(id),number=new Intl.NumberFormat(),countries
 const DEFAULT_VIEW=Object.freeze({lat:38.5,lng:-98,altitude:2.3});
 let lastRead=0;
 let globe,points=[],rotating=!reduced,visitorRequest;const country=code=>{try{return countries.of(code)||code;}catch{return code;}};
-function select(point){$('areaSelection').textContent=`${point.region?point.region+', ':''}${country(point.country)} · ${number.format(point.count)} ${(point.count===1?'visitor':'visitors')+' in this approximate area'}.`;globe?.pointOfView({lat:point.lat,lng:point.lng,altitude:1.6},reduced?0:700);if(globe){rotating=false;rotation();}}
+let maxPegCount = 1;
+const pegColors = [[123, 213, 255], [255, 221, 111], [245, 119, 177]];
+function pegColor(count) {
+ const fraction = maxPegCount === 1 ? 0 : Math.log(Math.max(1, count)) / Math.log(maxPegCount);
+ const step = Math.max(0, Math.min(2, fraction * 2));
+ const start = Math.min(1, Math.floor(step));
+ const blend = step - start;
+ return 'rgb(' + pegColors[start].map((channel, index) =>
+  Math.round(channel + (pegColors[start + 1][index] - channel) * blend)).join(',') + ')';
+}
+function describePoint(point) {
+ return [point.city, point.region, country(point.country)].filter(Boolean).join(', ') +
+  ' · ' + number.format(point.count) + (point.count === 1 ? ' visitor' : ' visitors') + ' in this approximate area.';
+}
+function select(point) {
+ $('pegSelection').textContent = describePoint(point);
+ $('areaSelection').textContent = describePoint(point);
+ rotating = false;
+ rotation();
+}
 function rotation(){if(globe)globe.controls().autoRotate=rotating;$('rotateGlobe').textContent=rotating?'Pause rotation':'Start rotation';$('rotateGlobe').setAttribute('aria-pressed',String(rotating));}
 function searchKey(text) {
  return text.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase();
@@ -24,6 +43,14 @@ $('countrySearch').addEventListener('input', () => {
 });
 function render(data) {
  points = data.points;
+ maxPegCount = points.reduce((max, point) => Math.max(max, point.count), 1);
+ $('pegLegend').hidden = points.length === 0;
+ $('pegLegendMax').textContent = number.format(maxPegCount);
+ $('pegLegendMid').textContent = number.format(Math.round(Math.sqrt(maxPegCount)));
+ $('pegLegendMid').hidden = maxPegCount < 4;
+ $('pegLegendMax').hidden = maxPegCount === 1;
+ $('pegLegendScale').style.background = maxPegCount === 1
+  ? pegColor(1) : 'linear-gradient(90deg, ' + [pegColor(1), pegColor(Math.sqrt(maxPegCount)), pegColor(maxPegCount)].join(',') + ')';
  $('visitorTotal').textContent = number.format(data.totals.visitors);
  $('countryTotal').textContent = number.format(data.totals.countries);
  $('mapStatus').textContent = data.preview ? 'Preview globe' : '';
@@ -56,6 +83,8 @@ function render(data) {
   button.append(name, total);
   button.addEventListener('click', () => {
    select(focus);
+   const view = globe?.pointOfView();
+   if (view) globe.pointOfView({ ...view, lat: focus.lat, lng: focus.lng }, reduced ? 0 : 700);
    $('areaSelection').textContent = name.textContent + ' · ' + total.textContent + (count === 1 ? ' unique browser' : ' unique browsers');
   });
   row.appendChild(button);
@@ -83,11 +112,11 @@ async function refresh() {
 async function startGlobe(){try{
  if(document.readyState!=='complete')await new Promise(resolve=>window.addEventListener('load',resolve,{once:true}));
  const land=await(await fetch('/assets/worldmap/countries.geojson')).json();if(typeof window.Globe!=='function')throw Error('Globe component unavailable');
- const host=$('globe');globe=new window.Globe(host,{rendererConfig:{antialias:true,alpha:true}}).backgroundColor('#00000000').showAtmosphere(true).atmosphereColor('#75abc1').atmosphereAltitude(.14).showGraticules(true).polygonsData(land.features).polygonCapColor(()=> '#7ab5a0').polygonSideColor(()=> '#567c6c').polygonStrokeColor(()=> '#c6d5bb').polygonCapCurvatureResolution(1).polygonAltitude(.012).polygonsTransitionDuration(0).pointLat('lat').pointLng('lng').pointColor(()=> '#69bce5').pointAltitude(d=>Math.min(.17,.035+Math.log2(d.count+1)*.012)).pointRadius(d=>Math.min(1.3,.3+Math.sqrt(d.count)*.1)).pointsTransitionDuration(reduced?0:500).pointLabel(d=>{const node=document.createElement('div');node.className='globe-tooltip';node.textContent=`${d.region?d.region+', ':''}${country(d.country)} · ${number.format(d.count)} ${d.count===1?'visitor':'visitors'}`;return node;}).onPointClick(select).labelLat('lat').labelLng('lng').labelText(d=>String(d.count)).labelColor(()=> '#ffe5bc').labelAltitude(d=>Math.min(.19,.05+Math.log2(d.count+1)*.012)).labelSize(1.5).labelDotRadius(.15).labelResolution(2);
- globe.globeMaterial().color.set('#15374a');globe.globeMaterial().shininess=8;globe.renderer().setPixelRatio(Math.min(devicePixelRatio,1.5));globe.controls().enablePan=false;globe.controls().autoRotateSpeed=.35;globe.controls().minDistance=150;globe.controls().maxDistance=600;globe.pointOfView({...DEFAULT_VIEW},0);host.dataset.initialView=JSON.stringify(globe.pointOfView());
+ const host=$('globe');host.addEventListener('pointerdown',()=>{rotating=false;rotation();});globe=new window.Globe(host,{rendererConfig:{antialias:true,alpha:true}}).backgroundColor('#00000000').showAtmosphere(true).atmosphereColor('#75abc1').atmosphereAltitude(.14).showGraticules(true).polygonsData(land.features).polygonCapColor(()=> '#7ab5a0').polygonSideColor(()=> '#567c6c').polygonStrokeColor(()=> '#c6d5bb').polygonCapCurvatureResolution(1).polygonAltitude(.012).polygonsTransitionDuration(0).pointLat('lat').pointLng('lng').pointColor(d=>pegColor(d.count)).pointAltitude(d=>Math.min(.17,.035+Math.log2(d.count+1)*.012)).pointRadius(d=>Math.min(1.55,.52+Math.sqrt(d.count)*.1)).pointsTransitionDuration(reduced?0:500).pointLabel(d=>{const node=document.createElement('div');node.className='globe-tooltip';node.textContent=`${d.region?d.region+', ':''}${country(d.country)} · ${number.format(d.count)} ${d.count===1?'visitor':'visitors'}`;return node;}).onPointClick(select).onLabelClick(select).labelLat('lat').labelLng('lng').labelText(d=>String(d.count)).labelColor(()=> '#ffe5bc').labelAltitude(d=>Math.min(.19,.05+Math.log2(d.count+1)*.012)).labelSize(1.5).labelDotRadius(.15).labelResolution(2);
+ globe.globeMaterial().color.set('#15374a');globe.globeMaterial().shininess=8;globe.renderer().setPixelRatio(Math.min(devicePixelRatio,1.5));globe.controls().enablePan=false;globe.controls().autoRotateSpeed=.35;globe.controls().minDistance=115;globe.controls().maxDistance=600;globe.pointOfView({...DEFAULT_VIEW},0);host.dataset.initialView=JSON.stringify(globe.pointOfView());
  const resize=()=>{globe.width(host.clientWidth).height(host.clientHeight);};new ResizeObserver(resize).observe(host);resize();rotation();globe.pointsData(points).labelsData(points.slice(0,100));host.dataset.ready='true';
  }catch{globe?.pauseAnimation();$('globe').hidden=true;$('globeFallback').hidden=false;document.querySelector('.globe-controls').hidden=true;document.querySelector('.globe-hint').hidden=true;}}
-function zoom(delta){if(!globe)return;const view=globe.pointOfView();globe.pointOfView({...view,altitude:Math.max(.6,Math.min(4,view.altitude+delta))},reduced?0:250);}
+function zoom(delta){if(!globe)return;const view=globe.pointOfView();globe.pointOfView({...view,altitude:Math.max(.15,Math.min(4,view.altitude+delta))},reduced?0:250);}
 $('zoomIn').onclick=()=>zoom(-.4);$('zoomOut').onclick=()=>zoom(.4);$('rotateGlobe').onclick=()=>{rotating=!rotating;rotation();};$('resetGlobe').onclick=()=>globe?.pointOfView({...DEFAULT_VIEW},reduced?0:600);
 $('globe').addEventListener('keydown',event=>{if(!globe)return;const view=globe.pointOfView(),keys={ArrowLeft:[0,-12],ArrowRight:[0,12],ArrowUp:[8,0],ArrowDown:[-8,0]};if(keys[event.key]){event.preventDefault();rotating=false;rotation();globe.pointOfView({...view,lat:Math.max(-85,Math.min(85,view.lat+keys[event.key][0])),lng:view.lng+keys[event.key][1]},reduced?0:120);}else if(['+','=','-'].includes(event.key)){event.preventDefault();zoom(event.key==='-'?.4:-.4);}});
 document.addEventListener('pointerdown',event=>{if(event.pointerType==='mouse'&&!event.target.closest('a,button,input,textarea,select,summary,#globe'))event.preventDefault();});

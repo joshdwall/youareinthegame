@@ -134,3 +134,10 @@ textarea.contact-field { min-height: 3.4rem; resize: vertical; }
   .contact-form button { width: 100%; }
 }
 
+
+/* Keep touch drag and pinch on the globe, with page scroll outside it. */
+#globe, #globe canvas { touch-action: none; }
+.peg-selection { min-height: 2.8rem; margin: 0 auto .5rem; text-align: center; font-size: .875rem; line-height: 1.4; }
+.peg-legend { width: min(12rem, 100%); margin: 0 auto .65rem; font-size: .75rem; text-align: center; }
+.peg-legend-scale { height: .55rem; margin: .25rem 0; border: 1px solid var(--ink); border-radius: 999px; }
+.peg-legend-labels { display: flex; justify-content: space-between; }
