@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="/cambio/vendor/scoped/envivo-tokens.scoped.css?v=edit-sb3" />
   <link rel="stylesheet" href="/cambio/vendor/scoped/ev-scroll-list.scoped.css?v=edit-sb3" data-ev-skin="ev-scroll-list" />
   <link rel="stylesheet" href="/cambio/vendor/scoped/sidebar-shell.scoped.css?v=edit-sb3" />
-  <link rel="stylesheet" href="/cambio/cambio.css?v=placement-save2" />
+  <link rel="stylesheet" href="/cambio/cambio.css?v=compact-inspector1" />
   <link rel="stylesheet" href="/effects/spore/ghost/effect.css" />
   <link rel="stylesheet" href="/effects/spore/finale.css" />
   <link rel="stylesheet" href="/effects/activation/activation.css?v=ev1" />
@@ -252,10 +252,23 @@
     <div id="editItemDetailHost" class="cambio-anim-detail d-none"></div>
     <div id="editItemListHost" class="cambio-edit-item-list-host"></div>
 
+    <div id="selectedEffectControls" class="selected-controls card hidden">
+      <div class="card-header py-2 px-3"><h3 id="selectedEffectLabel" class="mb-0 small"></h3></div>
+      <div class="card-body cambio-inspector-body">
+        <dl class="cambio-inspector-group cambio-effect-settings">
+          <div><dt>Type</dt><dd id="selectedEffectType"></dd></div>
+          <div><dt>Count</dt><dd id="selectedEffectCount"></dd></div>
+          <div><dt>Scale</dt><dd id="selectedEffectScale"></dd></div>
+          <div><dt>Image</dt><dd id="selectedEffectImage"></dd></div>
+        </dl>
+      </div>
+    </div>
+
     <div id="selectedControls" class="selected-controls card hidden">
       <div class="card-header py-2 px-3"><h3 id="selectedLabel" class="mb-0 small text-uppercase">Object</h3></div>
       <div class="card-body py-2 px-3 cambio-settings-compact">
 
+      <div class="cambio-inspector-group cambio-placement-fields">
       <!-- Connector -->
       <div class="ie-row" data-mode="connector">
         <div class="ie-view">
@@ -350,8 +363,11 @@
         </div>
       </div>
 
+      </div>
+
       <!-- textProjectile fields (generic per-type OA editor; shown when primary OA is textProjectile) -->
       <div id="oaTextProjectileFields" class="oa-type-fields" data-oa-type="textProjectile">
+        <div class="cambio-inspector-group cambio-text-fields">
         <div class="ie-row" data-mode="oaText">
           <div class="ie-view">
             <span class="ie-label">Text</span>
@@ -369,6 +385,77 @@
           </div>
         </div>
 
+        <div class="ie-row" data-mode="oaColor">
+          <div class="ie-view">
+            <span class="ie-label">Text color</span>
+            <span class="ie-value" id="oaColorView">—</span>
+            <button type="button" class="ie-btn" id="btnEditOaColor" title="Edit text color" aria-label="Edit text color">✎</button>
+          </div>
+          <div class="ie-edit hidden">
+            <label class="cambio-field">Color <input type="color" id="oaColorInput"></label>
+            <div class="ie-actions">
+              <button type="button" class="ie-btn ie-save" id="btnSaveOaColor" title="Save color">✓</button>
+              <button type="button" class="ie-btn ie-cancel" id="btnCancelOaColor" title="Cancel color edit">✕</button>
+            </div>
+          </div>
+        </div>
+        <div class="ie-row" data-mode="oaFontFamily">
+          <div class="ie-view">
+            <span class="ie-label">Font</span>
+            <span class="ie-value" id="oaFontFamilyView">—</span>
+            <button type="button" class="ie-btn" id="btnEditOaFontFamily" title="Edit font" aria-label="Edit font">✎</button>
+          </div>
+          <div class="ie-edit hidden">
+            <label class="cambio-field">Family
+              <select id="oaFontFamilySelect">
+                <option value="">Default (current look)</option>
+                <option value="system-ui, sans-serif">system-ui</option>
+                <option value="Arial, Helvetica, sans-serif">Arial</option>
+                <option value="Helvetica, Arial, sans-serif">Helvetica</option>
+                <option value="Verdana, Geneva, sans-serif">Verdana</option>
+                <option value="Georgia, serif">Georgia</option>
+                <option value="'Times New Roman', Times, serif">Times New Roman</option>
+                <option value="'Courier New', Courier, monospace">Courier New</option>
+                <option value="Impact, Haettenschweiler, sans-serif">Impact</option>
+                <option value="cursive">cursive</option>
+                <option value="fantasy">fantasy</option>
+                <option value="__custom__">Custom…</option>
+              </select>
+            </label>
+            <label class="cambio-field" id="oaFontFamilyCustomWrap" hidden>Custom
+              <input type="text" id="oaFontFamilyCustom" maxlength="120" placeholder="e.g. 'Comic Sans MS', cursive" autocomplete="off" />
+            </label>
+            <div class="ie-actions">
+              <button type="button" class="ie-btn ie-save" id="btnSaveOaFontFamily" title="Save">✓</button>
+              <button type="button" class="ie-btn ie-cancel" id="btnCancelOaFontFamily" title="Cancel">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="ie-row" data-mode="oaFontSize">
+          <div class="ie-view">
+            <span class="ie-label">Font size</span>
+            <span class="ie-value" id="oaFontSizeView">—</span>
+            <button type="button" class="ie-btn" id="btnEditOaFontSize" title="Edit font size" aria-label="Edit font size">✎</button>
+          </div>
+          <div class="ie-edit hidden">
+            <label class="cambio-field">Unit
+              <select id="oaFontSizeUnit">
+                <option value="ratio">× element width</option>
+                <option value="px">px</option>
+              </select>
+            </label>
+            <label class="cambio-field">Value
+              <input type="number" id="oaFontSizeInput" min="0.05" max="400" step="0.01" />
+            </label>
+            <div class="ie-actions">
+              <button type="button" class="ie-btn ie-save" id="btnSaveOaFontSize" title="Save">✓</button>
+              <button type="button" class="ie-btn ie-cancel" id="btnCancelOaFontSize" title="Cancel">✕</button>
+            </div>
+          </div>
+        </div>
+        </div>
+        <div class="cambio-inspector-group cambio-timing-fields">
         <div class="ie-row" data-mode="oaDuration">
           <div class="ie-view">
             <span class="ie-label">Duration until fade</span>
@@ -409,74 +496,6 @@
           </div>
         </div>
 
-        <div class="ie-row" data-mode="oaFontFamily">
-          <div class="ie-view">
-            <span class="ie-label">Font</span>
-            <span class="ie-value" id="oaFontFamilyView">—</span>
-            <button type="button" class="ie-btn" id="btnEditOaFontFamily" title="Edit font" aria-label="Edit font">✎</button>
-          </div>
-          <div class="ie-edit hidden">
-            <label class="cambio-field">Family
-              <select id="oaFontFamilySelect">
-                <option value="">Default (current look)</option>
-                <option value="system-ui, sans-serif">system-ui</option>
-                <option value="Arial, Helvetica, sans-serif">Arial</option>
-                <option value="Helvetica, Arial, sans-serif">Helvetica</option>
-                <option value="Verdana, Geneva, sans-serif">Verdana</option>
-                <option value="Georgia, serif">Georgia</option>
-                <option value="'Times New Roman', Times, serif">Times New Roman</option>
-                <option value="'Courier New', Courier, monospace">Courier New</option>
-                <option value="Impact, Haettenschweiler, sans-serif">Impact</option>
-                <option value="cursive">cursive</option>
-                <option value="fantasy">fantasy</option>
-                <option value="__custom__">Custom…</option>
-              </select>
-            </label>
-            <label class="cambio-field" id="oaFontFamilyCustomWrap" hidden>Custom
-              <input type="text" id="oaFontFamilyCustom" maxlength="120" placeholder="e.g. 'Comic Sans MS', cursive" autocomplete="off" />
-            </label>
-            <div class="ie-actions">
-              <button type="button" class="ie-btn ie-save" id="btnSaveOaFontFamily" title="Save">✓</button>
-              <button type="button" class="ie-btn ie-cancel" id="btnCancelOaFontFamily" title="Cancel">✕</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="ie-row" data-mode="oaColor">
-          <div class="ie-view">
-            <span class="ie-label">Text color</span>
-            <span class="ie-value" id="oaColorView">—</span>
-            <button type="button" class="ie-btn" id="btnEditOaColor" title="Edit text color" aria-label="Edit text color">✎</button>
-          </div>
-          <div class="ie-edit hidden">
-            <label class="cambio-field">Color <input type="color" id="oaColorInput"></label>
-            <div class="ie-actions">
-              <button type="button" class="ie-btn ie-save" id="btnSaveOaColor" title="Save color">✓</button>
-              <button type="button" class="ie-btn ie-cancel" id="btnCancelOaColor" title="Cancel color edit">✕</button>
-            </div>
-          </div>
-        </div>
-        <div class="ie-row" data-mode="oaFontSize">
-          <div class="ie-view">
-            <span class="ie-label">Font size</span>
-            <span class="ie-value" id="oaFontSizeView">—</span>
-            <button type="button" class="ie-btn" id="btnEditOaFontSize" title="Edit font size" aria-label="Edit font size">✎</button>
-          </div>
-          <div class="ie-edit hidden">
-            <label class="cambio-field">Unit
-              <select id="oaFontSizeUnit">
-                <option value="ratio">× element width</option>
-                <option value="px">px</option>
-              </select>
-            </label>
-            <label class="cambio-field">Value
-              <input type="number" id="oaFontSizeInput" min="0.05" max="400" step="0.01" />
-            </label>
-            <div class="ie-actions">
-              <button type="button" class="ie-btn ie-save" id="btnSaveOaFontSize" title="Save">✓</button>
-              <button type="button" class="ie-btn ie-cancel" id="btnCancelOaFontSize" title="Cancel">✕</button>
-            </div>
-          </div>
         </div>
       </div>
       </div><!-- /.card-body -->
@@ -494,6 +513,6 @@
   </div>
   </div><!-- /#cambioRoot -->
 
-  <script type="module" src="/cambio/cambio.js?v=placement-save2"></script>
+  <script type="module" src="/cambio/cambio.js?v=compact-inspector1"></script>
 </body>
 </html>

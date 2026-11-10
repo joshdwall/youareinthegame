@@ -1,3 +1,4 @@
+import { resolveClickEffect } from '/effects/activation/clickEffect.js';
 import { costumeSlug } from '/runtime/costumes/publicSlug.js';
 import { runActivation, previewClick, activate } from '/effects/activation/ActivationEngine.js';
 import { applyElementPlacement, measureCreatureBoxInHost } from '/effects/activation/placementMath.js';
@@ -586,9 +587,9 @@ function syncOaFieldViews() {
   const wrap = $('oaTextProjectileFields');
   const schema = schemaForActionType(act?.type);
   const isTp = act?.type === 'textProjectile' && schema.length > 0;
-  // Always show the same textProjectile field cards; disable pencils when N/A
+  // Only text projectiles use these controls.
   if (wrap) {
-    wrap.hidden = false;
+    wrap.hidden = !isTp;
     wrap.classList.toggle('oa-fields-na', !isTp);
   }
   const reason = !act
@@ -1406,6 +1407,19 @@ function refreshViews() {
     }
   syncClickThresholdView();
     transitionSelect.value = place.transitionId || 'lightning';
+  }
+  const effectCard = $('selectedEffectControls');
+  const effectSelected = state.selectedClickEffect && state.selectedAnim?.clickEffect;
+  effectCard.classList.toggle('hidden', !effectSelected);
+  if (effectSelected) {
+    const effect = resolveClickEffect(state.selectedAnim);
+    $('selectedEffectLabel').textContent = state.selectedClickEffect.name;
+    $('selectedEffectType').textContent = effect.type;
+    $('selectedEffectCount').textContent = effect.count;
+    $('selectedEffectScale').textContent = effect.type === 'composite-spores' ? (effect.scale * 100) + '%' : '—';
+    $('selectedEffectImage').textContent = effect.sporeImage || 'Default';
+    selectedControls.classList.add('hidden');
+    return;
   }
   const st = currentElement();
   if (!st) {
@@ -2296,15 +2310,19 @@ function bindPropPointer(img, animId, elementId) {
     e.stopPropagation();
 
     // Keep the hit element mounted so the same press can select and drag.
-    if (state.selectedElementId !== elementId) {
+    if (state.selectedClickEffect || state.selectedElementId !== elementId) {
       if (state.activeMode) {
         cancelMode();
+        state.selectedClickEffect = null;
+
         state.selectedElementId = elementId;
         highlightElementRow(elementId);
         refreshViews();
         mountProps(animId, { interactive: true });
         return;
       }
+      state.selectedClickEffect = null;
+
       state.selectedElementId = elementId;
       for (const prop of creatureRig.querySelectorAll('.cambio-prop.selected')) prop.classList.remove('selected');
       img.classList.add('selected');
@@ -2516,6 +2534,8 @@ function selectEditItem(item) {
   if (!item || !state.selectedAnim) return;
   if (state.activeMode) cancelMode();
   if (item.kind === 'element' || item.kind === 'action') {
+    state.selectedClickEffect = null;
+
     state.selectedElementId = item.elementId;
     state.selectedActionType = item.kind === 'action' ? item.actionType : null;
     if (editItemList?.getSelectedId?.() !== item.id) editItemList?.select(item.id);
@@ -2526,7 +2546,8 @@ function selectEditItem(item) {
       selectedControls?.classList.remove('hidden');
     }
   } else if (item.kind === 'effect') {
-    // Effect rows do not select a stage overlay; keep current element selection
+    state.selectedClickEffect = item;
+    if (editItemList?.getSelectedId?.() !== item.id) editItemList?.select(item.id);
     refreshViews();
   }
 }
@@ -2719,7 +2740,9 @@ function refreshEditItemList(animId) {
   ensureEditItemList();
   const items = buildEditItems(anim);
   editItemList?.setItems?.(items);
-  if (state.selectedElementId && editItemList?.select) {
+  if (state.selectedClickEffect) {
+    editItemList?.select?.(state.selectedClickEffect.id);
+  } else if (state.selectedElementId && editItemList?.select) {
     const row = items.find(item => item.elementId === state.selectedElementId && item.actionType === state.selectedActionType);
     try { editItemList.select(row?.id || `element:${state.selectedElementId}`); } catch { /* ignore */ }
   }
@@ -2738,6 +2761,8 @@ function enterEdit(animId) {
   if (state.activeMode) cancelMode();
   state.selectedAnim = anim;
   state.editMode = true;
+  state.selectedClickEffect = null;
+
   state.selectedElementId = anim.elements[0]?.id || null;
   state.connectorPick = null;
   document.body.classList.remove('picking-character', 'picking-object');
@@ -2793,7 +2818,10 @@ function exitEdit() {
   if (savingPlacements) return;
   if (state.activeMode) cancelMode();
   state.editMode = false;
+  state.selectedClickEffect = null;
+
   state.selectedElementId = null;
+  $('selectedEffectControls').classList.add('hidden');
   state.connectorPick = null;
   document.body.classList.remove('picking-character', 'picking-object', 'cambio-editing');
   const root = $('cambioRoot');
@@ -3024,6 +3052,8 @@ window.__cambioTest = {
   selectElement(id) {
     if (!state.selectedAnim) return;
     if (state.activeMode) cancelMode();
+    state.selectedClickEffect = null;
+
     state.selectedElementId = id;
     highlightElementRow(id);
     refreshViews();
