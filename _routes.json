@@ -6,8 +6,7 @@
     "/worldmap/",
     "/api/*",
     "/cambio",
-    "/cambio/*",
-    "/api/cambio"
+    "/cambio/*"
   ],
   "exclude": [
     "/assets/*",
