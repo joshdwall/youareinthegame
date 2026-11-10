@@ -1,0 +1,12 @@
+name = "youareinthegame-contact"
+main = "workers/youareinthegame-contact.js"
+compatibility_date = "2024-09-23"
+workers_dev = true
+preview_urls = false
+
+[[send_email]]
+name = "SEND_EMAIL"
+destination_address = "joshdwall@gmail.com"
+
+[[send_email]]
+name = "SEND_VISITOR"

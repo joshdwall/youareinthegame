@@ -69,9 +69,23 @@ export async function receive(message, env, ctx) {
   } catch {
     console.error("Communications inbound archive failed");
   }
+  const forwardTargets = [...new Set([settings.forwardTo, "josh@joshdwall.com"].filter(Boolean))];
   try {
     events.push(["unrouted-actions", "communications.inbound.forward"]);
-    await message.forward(settings.forwardTo);
+    let forwarded = false;
+    for (const dest of forwardTargets) {
+      try {
+        await message.forward(dest);
+        forwarded = true;
+        if (dest !== settings.forwardTo) {
+          console.error("Inbound forward fell back from", settings.forwardTo, "to", dest);
+        }
+        break;
+      } catch (error) {
+        console.error("Inbound forward failed for", dest, String(error?.message || error));
+      }
+    }
+    if (!forwarded) console.error("Inbound forward skipped — no destination accepted");
   } finally {
     report(ctx, env, events);
   }

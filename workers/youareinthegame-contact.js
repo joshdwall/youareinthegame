@@ -65,15 +65,24 @@ export default {
     const owner = settings.forwardTo || OWNER;
 
     // Assigned owner mailbox (Communications Config → Forward to).
+    // Soft-fail: bad/unverified forwardTo must not drop archive or visitor receipt.
     events.push(["unrouted-actions", "communications.admin.send"]);
-    try {
-      if (env.SEND_VISITOR) {
-        await env.SEND_VISITOR.send(new EmailMessage(cfFrom, owner, withTo(lead, owner)));
+    if (env.SEND_VISITOR) {
+      const destinations = [...new Set([owner, OWNER].filter(Boolean))];
+      let notified = false;
+      for (const dest of destinations) {
+        try {
+          await env.SEND_VISITOR.send(new EmailMessage(cfFrom, dest, withTo(lead, dest)));
+          notified = true;
+          if (dest !== owner) {
+            console.error("Owner notify fell back from", owner, "to", dest);
+          }
+          break;
+        } catch (error) {
+          console.error("Owner notify failed for", dest, String(error?.message || error));
+        }
       }
-    } catch (error) {
-      console.error("Owner notify failed", String(error?.message || error));
-      report(ctx, env, events);
-      throw error;
+      if (!notified) console.error("Owner notify skipped — no verified destination accepted send");
     }
 
     // Keep gmail binding path as a second owner copy (SEND_EMAIL is destination-locked).
