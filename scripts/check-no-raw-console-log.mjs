@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-const SCAN_ROOTS = ['script.js', 'js', 'effects', 'runtime', 'cambio/cambio.js', 'functions'];
+const SCAN_ROOTS = ['script.js', 'js', 'effects', 'runtime', 'functions'];
 const SKIP_DIR_PARTS = new Set(['vendor', 'node_modules', 'dist']);
 
 /** Line substrings that may keep raw console.log (curious / art). */
