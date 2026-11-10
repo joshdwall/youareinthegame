@@ -36,22 +36,9 @@ Deploy and promote follow knowledge-hub `plans/site-hub/YouAreInTheGame-CF-Nativ
 
 ### Cambio admin releases
 
-The permanent editor URL is [Cambio](https://app.youareinthegame.com/cambio/).
-The apex and www redirect legacy Cambio links and keep the costume query.
-Public costume URLs, including short links such as `/?chef`, stay on the apex.
-
-The public Pages project `youareinthegame-web` builds main. The separate
-`youareinthegame-admin` project takes approved main commits only when an
-operator dispatches **Promote Cambio admin**. Both use the production
-costume KV and asset bucket so a saved costume can become available
-without a code release. Access remains on the admin hostname.
-
-For the initial cutover, record the current deployment and DNS target.
-Run the admin promotion and verify its deployment alias returns 404.
-Move only the app custom domain to the new project with the existing
-Access policy in place. Verify unauthenticated requests reach Access,
-then sign in and check the costume list, assets, and playtest. Roll
-back by restoring the app domain to the former Pages project if this
-initial verification fails. After cutover, use the admin project's
-deployment history for admin rollbacks and the public project's
-deployment history for public rollbacks.
+The Access-protected editor is https://app.youareinthegame.com/cambio/.
+Legacy Cambio links on the public domains redirect there and keep the
+costume query. Editor changes and admin promotion are owned by
+[joshdwall/youareinthegame-cambio](https://github.com/joshdwall/youareinthegame-cambio).
+The public game deploys through this repository to youareinthegame-web.
+Both sites use the same production costume store.
