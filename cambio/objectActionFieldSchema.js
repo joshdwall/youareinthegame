@@ -27,7 +27,8 @@ export const TEXT_PROJECTILE_FIELD_MODES = [
   { mode: 'oaDuration', label: 'Duration until fade (ms)' },
   { mode: 'oaDistance', label: 'Distance from origin' },
   { mode: 'oaFontFamily', label: 'Font' },
-  { mode: 'oaFontSize', label: 'Font size' }
+  { mode: 'oaFontSize', label: 'Font size' },
+  { mode: 'oaColor', label: 'Text color' }
 ];
 
 /** @type {Record<string, Array<{ mode: string, label: string }>>} */
