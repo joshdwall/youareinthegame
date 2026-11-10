@@ -997,3 +997,6 @@ body.cambio-body #siteStage.container {
   font-size: 0.9rem !important;
   padding: 0 0.75rem !important;
 }
+
+#editItemListHost { min-width: 0; max-width: 100%; }
+#editItemListHost .ev-desk-list__scroll { touch-action: pan-x pan-y; }

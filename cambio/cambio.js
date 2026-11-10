@@ -1540,7 +1540,7 @@ function wireSidebarToggle() {
 }
 
 function visibilityControl(anim, field) {
-  const label = field === 'live' ? 'Live' : 'Direct link';
+  const label = field === 'shown' ? 'Show' : field === 'live' ? 'Live' : 'Direct link';
   const checked = anim[field] && !anim.archived ? ' checked' : '';
   const attrs = `data-id="${escapeHtml(anim.id)}" data-visibility-field="${field}"`;
   return `<span class="cambio-visibility" data-visibility>
@@ -2130,6 +2130,7 @@ function mountProps(animId, { interactive = false, visible = true } = {}) {
       st = place.elements[el.id] = migrateElement(st);
     }
 
+    if (st.shown === false) continue;
     const img = document.createElement('img');
     img.src = '/' + el.src.replace(/^\//, '');
     img.alt = el.id;
@@ -2576,6 +2577,12 @@ function ensureEditItemList() {
       render: (row) => `<span class="text-body-secondary">${escapeHtml(row.meta || '—')}</span>`
     },
     {
+      key: 'shown', label: 'Show', fit: 'content', sortType: 'none',
+      render: row => row.kind === 'element'
+        ? visibilityControl({id: row.elementId, shown: ensureAnimPlacement(state.selectedAnim.id).elements[row.elementId]?.shown !== false}, 'shown')
+        : ''
+    },
+    {
       key: 'actions',
       label: 'Actions',
       fit: 'content',
@@ -2593,7 +2600,7 @@ function ensureEditItemList() {
     columns,
     minRows: 6,
     maxHeightCss: 'min(40vh, 22rem)',
-    emptyHtml: `<tr><td colspan="4" class="ev-hint">No items</td></tr>`,
+    emptyHtml: `<tr><td colspan="5" class="ev-hint">No items</td></tr>`,
     rowKey: (item) => String(item.id),
     detailHost,
     selectedId: state.selectedElementId ? `element:${state.selectedElementId}` : null,
@@ -2611,7 +2618,33 @@ function ensureEditItemList() {
   });
   enableCambioListHScroll(host);
 
+  host.addEventListener('change', event => {
+    const control = event.target.closest('[data-visibility]');
+    const id = control?.querySelector('[data-visibility-field="shown"]')?.dataset.id;
+    if (!id || !state.selectedAnim) return;
+    ensureAnimPlacement(state.selectedAnim.id).elements[id].shown = event.target.checked;
+    mountProps(state.selectedAnim.id, { interactive: true });
+  });
   host.addEventListener('click', (ev) => {
+    const visibility = ev.target.closest('[data-visibility-field="shown"]');
+    if (visibility && state.selectedAnim) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const control = visibility.closest('[data-visibility]');
+      const checkbox = control.querySelector('input');
+      const action = visibility.dataset.act;
+      if (action === 'visibility-save') {
+        state.dirty = true;
+        void savePlacements();
+      } else {
+        void handleVisibilityAction(visibility, action, visibility.dataset.id);
+        if (action === 'visibility-cancel') {
+          ensureAnimPlacement(state.selectedAnim.id).elements[visibility.dataset.id].shown = checkbox.checked;
+          mountProps(state.selectedAnim.id, { interactive: true });
+        }
+      }
+      return;
+    }
     const btn = ev.target?.closest?.('[data-edit-act]');
     if (!btn || !host.contains(btn)) return;
     ev.preventDefault();
@@ -2772,7 +2805,7 @@ function compositeElementsFor(animId) {
   const anim = state.manifest.animations.find((a) => a.id === animId);
   if (!anim?.elements?.length) return [];
   const place = ensureAnimPlacement(animId);
-  return anim.elements.map((el) => {
+  return anim.elements.filter(el => place.elements[el.id]?.shown !== false).map((el) => {
     let st = place.elements[el.id];
     if (!st) st = defaultElementState(anim, el);
     else st = migrateElement(st);
@@ -2935,6 +2968,7 @@ async function savePlacements() {
     state.placements.byAnimation[id] = saved;
     placementSnapshots.set(id, deepClone(saved));
     state.dirty = false;
+    refreshEditItemList(id);
     saveStatus.textContent = 'Placements saved.';
   } catch (err) {
     saveStatus.textContent = 'Save failed: ' + err.message;
