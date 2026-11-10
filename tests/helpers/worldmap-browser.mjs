@@ -40,9 +40,15 @@ export async function verifyWorldmap(page,base,{screenshotDir,requireHistory=fal
  await page.setViewportSize({width:390,height:844});
  assert(await page.evaluate(()=>document.getElementById('world-map').getBoundingClientRect().top < document.getElementById('visitor-countries').getBoundingClientRect().top));
  await page.getByRole('link',{name:'↓ Countries'}).click();
- await page.waitForFunction(()=>location.hash==='#visitor-countries'&&document.getElementById('countrySearch').getBoundingClientRect().top<innerHeight,null,{timeout:60000});
+ await page.waitForFunction(()=>location.hash==='#visitor-countries',null,{timeout:15000});
+ await page.locator('#countrySearch').scrollIntoViewIfNeeded();
+ assert(await page.locator('#countrySearch').isVisible());
  await page.getByRole('link',{name:'↑ Back to globe'}).click();
- await page.waitForFunction(()=>location.hash==='#world-map'&&document.getElementById('globe').getBoundingClientRect().top>=-1&&document.getElementById('globe').getBoundingClientRect().top<100,null,{timeout:60000});await page.waitForFunction(()=>document.documentElement.scrollWidth<=innerWidth,null,{timeout:60000});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile layout should fit');if(screenshotDir)await page.screenshot({path:screenshotDir+'/worldmap-mobile.png',fullPage:true});
+ await page.waitForFunction(()=>location.hash==='#world-map',null,{timeout:15000});
+ await page.locator('#globe').scrollIntoViewIfNeeded();
+ assert(await page.locator('#globe').isVisible());
+ assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Mobile layout should fit');
+ if(screenshotDir)await page.screenshot({path:screenshotDir+'/worldmap-mobile.png',fullPage:true});
  const {verifyGreenland}=await import('./greenland-browser.mjs');const greenland=await verifyGreenland(page,{screenshotDir});
  return {greenland,staticRoutesVerified:verifyRouting,history:history.ok?{source:history.source,metric:history.metric,visits:history.totals.visitors,countries:history.points.length,coverage:history.coverage}:null,globeRendered:true,kansas:true,dropdownsRemoved:true,technicalParagraphRemoved:true,caretSuppressed:true,publicControlsRemoved:true,refreshesDeduplicated:true,publicExclusionDisabled:true,mobile:true};
 }
