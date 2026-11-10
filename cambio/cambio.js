@@ -1592,13 +1592,6 @@ function ensureAnimDeskList() {
       render: (anim) => animListActionButtons(anim)
     },
     {
-      key: 'label',
-      label: 'Name',
-      fit: 'content',
-      className: 'cambio-col-name ev-sl-col--tight',
-      render: (anim) => `<span class="label">${escapeHtml(anim.label)}</span>`
-    },
-    {
       key: 'id',
       label: 'Animation ID',
       fit: 'content',
