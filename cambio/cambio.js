@@ -1,3 +1,4 @@
+import { costumeSlug } from '/runtime/costumes/publicSlug.js';
 import { runActivation, previewClick, activate } from '/effects/activation/ActivationEngine.js';
 import { applyElementPlacement, measureCreatureBoxInHost } from '/effects/activation/placementMath.js';
 import { buildCharacterComposite } from '/effects/activation/CharacterComposite.js';
@@ -241,7 +242,7 @@ function animListActionButtons(anim, playtest = false) {
 }
 
 function costumeUrl(id) {
-  return 'https://youareinthegame.com/?' + encodeURIComponent(id.replaceAll('-', ''));
+  return 'https://youareinthegame.com/?' + encodeURIComponent(costumeSlug(id));
 }
 
 async function copyCostumeUrl(id) {
