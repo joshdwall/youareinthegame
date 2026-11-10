@@ -223,7 +223,7 @@ async function loadPlacementsFallback(animId) {
 }
 
 function buildCompositeElements(anim, placementsById) {
-  return (anim.elements || []).map((el) => {
+  return (anim.elements || []).filter(el => (placementsById[el.id] || el.placement)?.shown !== false).map((el) => {
     const src = el.src
       ? (el.src.startsWith('/') || el.src.startsWith('http')
           ? el.src
@@ -296,7 +296,7 @@ export async function prepareUpcoming(creature) {
   placementsById = resolvePlacementsForAnimation(placementsById, animId);
 
   const compositeElements = buildCompositeElements(animForBuild, placementsById);
-  const elements = (animForBuild.elements || []).map((el) => ({
+  const elements = (animForBuild.elements || []).filter(el => (placementsById[el.id] || el.placement)?.shown !== false).map((el) => ({
     ...el,
     placement: placementsById[el.id] || el.placement
   }));
