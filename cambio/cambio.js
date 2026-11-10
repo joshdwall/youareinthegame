@@ -1584,18 +1584,18 @@ function ensureAnimDeskList() {
 
   const columns = [
     {
+      key: 'id',
+      label: 'Animation ID',
+      fit: 'content',
+      render: (anim) => `<code>${escapeHtml(anim.id)}</code>`
+    },
+    {
       key: 'actions',
       label: 'Actions',
       fit: 'content',
       sortType: 'none',
       className: 'cambio-col-actions ev-sl-col--tight text-end',
       render: (anim) => animListActionButtons(anim)
-    },
-    {
-      key: 'id',
-      label: 'Animation ID',
-      fit: 'content',
-      render: (anim) => `<code>${escapeHtml(anim.id)}</code>`
     },
     {
       key: 'live', label: 'Live', fit: 'content', sortType: 'none',
