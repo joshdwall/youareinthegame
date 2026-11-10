@@ -1585,7 +1585,7 @@ function ensureAnimDeskList() {
   const columns = [
     {
       key: 'id',
-      label: 'Animation ID',
+      label: 'Costume',
       fit: 'content',
       render: (anim) => `<code>${escapeHtml(anim.id)}</code>`
     },
@@ -1594,7 +1594,7 @@ function ensureAnimDeskList() {
       label: 'Actions',
       fit: 'content',
       sortType: 'none',
-      className: 'cambio-col-actions ev-sl-col--tight text-end',
+      className: 'cambio-col-actions ev-sl-col--tight text-start',
       render: (anim) => animListActionButtons(anim)
     },
     {
