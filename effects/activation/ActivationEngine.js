@@ -181,7 +181,8 @@ export async function runActivation(opts) {
       if(spec.durationMs!==null){fw.MIN_LIFESPAN=spec.durationMs/1000;fw.MAX_LIFESPAN=spec.durationMs/1000;}
       if(spec.spreadPx!==null){const seconds=(spec.durationMs||4000)/1000;fw.MIN_INITIAL_SPEED=spec.spreadPx*.7/seconds;fw.MAX_INITIAL_SPEED=spec.spreadPx/seconds;}
       if(reduced){fw.MIN_INITIAL_SPEED=0;fw.MAX_INITIAL_SPEED=0;fw.MIN_LIFESPAN=.2;fw.MAX_LIFESPAN=.2;fw.GRAVITY=0;fw.MIN_SWIRL_AMPLITUDE=0;fw.MAX_SWIRL_AMPLITUDE=0;}
-      fw.createSporeElement=(spore,dims)=>makeSpore(dims||{width:fw.BASE_WIDTH,height:fw.BASE_HEIGHT},spore?.id||0);
+      let sporeIndex = 0;
+      fw.createSporeElement=(_spore,dims)=>makeSpore(dims||{width:fw.BASE_WIDTH,height:fw.BASE_HEIGHT},sporeIndex++);
       const finished=new Promise(resolve=>{if(count===0){resolve();return;}manager=new FireworkManager(fw);manager.launch(window.innerWidth/2+fw.LAUNCH_OFFSET_X,window.innerHeight/2+fw.LAUNCH_OFFSET_Y,sporeHost,resolve);});
       // Preserve every spore's natural lifecycle. Only explicit cancellation may
       // interrupt the finale; the lighting reset begins after the manager finishes.
