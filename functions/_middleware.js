@@ -18,7 +18,17 @@ export async function onRequest(context) {
     module: 'worldmap',
     surface: 'pages-function'
   });
-  const host = new URL(context.request.url).hostname.toLowerCase();
+  const url = new URL(context.request.url);
+  const host = url.hostname;
+  const publicHost = host === 'youareinthegame.com' || host === 'www.youareinthegame.com';
+  if (publicHost && (url.pathname === '/cambio' || url.pathname.startsWith('/cambio/'))) {
+    const target = new URL('https://app.youareinthegame.com/cambio/');
+    target.search = url.search;
+    return Response.redirect(target, 308);
+  }
+  if (publicHost && (url.pathname === '/api/cambio' || url.pathname.startsWith('/api/cambio/'))) {
+    return new Response('Not Found', { status: 404, headers: { 'cache-control': 'no-store' } });
+  }
   if (host === 'youareinthegame-web.pages.dev') {
     return new Response('Not Found', {
       status: 404,
