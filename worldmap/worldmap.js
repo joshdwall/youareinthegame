@@ -4,7 +4,9 @@ const DEFAULT_VIEW=Object.freeze({lat:38.5,lng:-98,altitude:2.3});
 let lastRead=0;
 let globe,points=[],rotating=!reduced,visitorRequest;const country=code=>{try{return countries.of(code)||code;}catch{return code;}};
 let maxPegCount = 1;
-const pegColors = [[123, 213, 255], [255, 221, 111], [245, 119, 177]];
+// Warm high-chroma pegs so they read on sage land (#7ab5a0) and teal ocean (#15374a).
+// Avoid cool blues/greens that blend into the globe.
+const pegColors = [[255, 214, 102], [232, 120, 32], [230, 45, 90]];
 function pegColor(count) {
  const fraction = maxPegCount === 1 ? 0 : Math.log(Math.max(1, count)) / Math.log(maxPegCount);
  const step = Math.max(0, Math.min(2, fraction * 2));
