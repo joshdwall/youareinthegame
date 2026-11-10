@@ -13,6 +13,7 @@ import {
   resolveClickEffect,
   preloadActivationAssets
 } from '../../effects/activation/ActivationEngine.js';
+import { createDefaultSporeExplosion } from '../../effects/spore/defaultSpore.js';
 import { mountOverlayProps } from '../../effects/activation/mountOverlayProps.js';
 import { GHOST_CONFIG } from '../../effects/spore/ghost/config.js';
 import { resolvePlacementsForAnimation } from '../../effects/activation/defaultPlacements.js';
@@ -202,7 +203,7 @@ function resolveForcePick(config) {
 }
 
 function isGhostPick(pick) {
-  return !pick || pick.id === 'ghost' || pick.anim?.playMode === 'legacy-ghost';
+  return pick?.id === 'ghost' || pick?.anim?.playMode === 'legacy-ghost';
 }
 
 function placementsFor(config, animId) {
@@ -262,9 +263,10 @@ function assetUrls(anim, compositeElements, creature) {
 export async function prepareUpcoming(creature) {
   prepared = null;
   const config = cachedConfig;
-  const animId = upcoming?.id || 'ghost';
-  const ghost = !upcoming || isGhostPick(upcoming);
-  const anim = upcoming?.anim || { id: 'ghost', playMode: 'legacy-ghost', elements: [] };
+  const pick = upcoming;
+  if (!pick) return null;
+  const { id: animId, anim } = pick;
+  const ghost = isGhostPick(pick);
 
   // Ensure ghost has sporeBody element definition even if runtime-config omitted it
   // (seed/defaults still supply placements.objectActions).
@@ -310,6 +312,7 @@ export async function prepareUpcoming(creature) {
 
   await preloadActivationAssets([...new Set(urls)], ghost ? 'ghost' : (animId || 'composite'));
 
+  if (upcoming !== pick) return null;
   prepared = {
     transitionId:config?.placementsByAnimation?.[animId]?.transitionId||anim.animationPreset?.transition||'lightning',
     kind: ghost ? 'ghost' : 'composite',
@@ -345,7 +348,7 @@ export async function pickUpcoming({ forceRefresh = false, creature = null, open
     upcoming = forced;
     // Do not record forced as played — only activation complete advances the cursor.
   } else if (!config) {
-    upcoming = { id: 'ghost', anim: { id: 'ghost', playMode: 'legacy-ghost' } };
+    upcoming = null;
   } else {
     const cursor = readSelectionCursor();
     // Advance past last *played* id (memory wins over storage within a session).
@@ -358,7 +361,7 @@ export async function pickUpcoming({ forceRefresh = false, creature = null, open
     const featured = opening && config.animations?.find((anim) =>
       anim.id === opening && anim.live && !anim.archived
     );
-    upcoming = (featured ? { id: featured.id, anim: featured } : pick) || { id: 'ghost', anim: { id: 'ghost', playMode: 'legacy-ghost' } };
+    upcoming = (featured ? { id: featured.id, anim: featured } : pick) || null;
     // Intentionally do NOT write upcoming.id into the cursor — that skipped the
     // queued animation on reload (cowboy never played → stuck on ghost).
   }
@@ -369,7 +372,7 @@ export async function pickUpcoming({ forceRefresh = false, creature = null, open
     }
   } catch (_) {}
   const cre = creature || (typeof document !== 'undefined' ? document.getElementById('mainCreature') : null);
-  if (upcoming || !linkedAnimationId) await prepareUpcoming(cre);
+  if (upcoming) await prepareUpcoming(cre);
   else prepared = null;
   return upcoming;
 }
@@ -428,54 +431,33 @@ export function installThresholdLootHook(effect) {
   hookedEffect = effect;
   applyClickThresholdFromConfig(effect, cachedConfig);
 
-  const origTrigger = effect.triggerLightningReset.bind(effect);
-  const origEnd = effect.endLightningSequence.bind(effect);
-  const origCreate = effect.createSporeExplosion.bind(effect);
-
   effect.createSporeExplosion = function patchedCreate(x, y, opts) {
-    // During activation flash / running anim / reset fade: always default spores only
-    // (no composite preview overlays). onSporeClick already passes decor opacity.
+    const fallback = (xx, yy) => createDefaultSporeExplosion(xx, yy, this.container, opts);
     if (opts?.decorOnly || this.isActivationInteractionBusy?.()) {
       const opacity = Number.isFinite(Number(opts?.opacity))
         ? Number(opts.opacity)
-        : (typeof this.getInteractionDecorOpacity === 'function'
-            ? this.getInteractionDecorOpacity()
-            : 0.8);
-      return origCreate(x, y, { opacity, decorOnly: true });
+        : this.getInteractionDecorOpacity?.() ?? 0.8;
+      return createDefaultSporeExplosion(x, y, this.container, { opacity });
     }
     const up = upcoming;
-    if (!up?.anim) return origCreate(x, y, opts);
+    if (!up?.anim) return fallback(x, y);
     const fx = resolveClickEffect(up.anim);
-    if (fx.type === 'ghost-spores' || fx.type === 'image-spores') {
-      // Default: unchanged image burst. When previewObjectActions, route through
-      // previewClick so ghost textProjectile (BOO) runs on click-preview spores.
-      if (up.anim?.previewObjectActions === true) {
-        const placementsById = prepared?.placementsById || placementsFor(cachedConfig, up.id);
-        const elements = prepared?.compositeElements || buildCompositeElements(up.anim, placementsById);
-        return previewClick({
-          container: this.container,
-          creature: this.creature,
-          animation: up.anim,
-          compositeElements: elements,
-          x,
-          y,
-          sporeHost: this.container,
-          fallback: (xx, yy) => origCreate(xx, yy, opts)
-        });
-      }
-      return origCreate(x, y, opts);
-    }
-    const placementsById = prepared?.placementsById || placementsFor(cachedConfig, up.id);
-    const elements = prepared?.compositeElements || buildCompositeElements(up.anim, placementsById);
+    const ghost = isGhostPick(up);
+    if (!ghost && fx.type === 'image-spores' && !fx.sporeImage) return fallback(x, y);
+    const animation = !ghost && fx.type === 'ghost-spores'
+      ? { ...up.anim, clickEffect: { type: 'composite-spores' } }
+      : up.anim;
+    const prep = prepared?.id === up.id ? prepared : null;
+    const placementsById = prep?.placementsById || placementsFor(cachedConfig, up.id);
     return previewClick({
       container: this.container,
       creature: this.creature,
-      animation: up.anim,
-      compositeElements: elements,
+      animation,
+      compositeElements: prep?.compositeElements || buildCompositeElements(animation, placementsById),
       x,
       y,
       sporeHost: this.container,
-      fallback: (xx, yy) => origCreate(xx, yy, opts)
+      fallback: null
     });
   };
 
@@ -486,14 +468,15 @@ export function installThresholdLootHook(effect) {
   effect.triggerLightningReset = async function patchedTrigger() {
     if (this.lightningSequenceActive || this.finaleInProgress) return;
 
-    if (linkedAnimationId && !upcoming) {
+    const pick = linkedAnimationId ? upcoming : resolveForcePick(cachedConfig) || upcoming;
+    if (!pick) {
       this.stormLevel = 0;
       this.clickCount = 0;
       this.resetVisuals();
       this.calculateResetThreshold();
+      void pickUpcoming({ forceRefresh: true, creature: this.creature }).catch(err => error('Costume refresh failed', err));
       return;
     }
-    const pick = linkedAnimationId ? upcoming : resolveForcePick(cachedConfig) || upcoming;
     const ghost = isGhostPick(pick);
 
     this.clearAllTimers?.();
@@ -503,19 +486,8 @@ export function installThresholdLootHook(effect) {
 
     const creature = this.creature;
     const container = this.container;
-    const CONFIG = this.getConfig();
     const { rig, overlay } = ensurePublicOverlayDom(creature);
 
-    if (ghost) {
-      if (!prepared?.ready || prepared.kind !== 'ghost') {
-        upcoming = pick || { id: 'ghost', anim: { id: 'ghost', playMode: 'legacy-ghost' } };
-        await prepareUpcoming(creature);
-      }
-    } else if (!prepared?.ready || prepared.id !== pick.id || prepared.kind !== 'composite') {
-      upcoming = pick;
-      await prepareUpcoming(creature);
-    }
-    const prep = prepared;
     let nextRound;
     const prepareNextRound=()=>{
       if(nextRound)return nextRound;
@@ -525,14 +497,17 @@ export function installThresholdLootHook(effect) {
       return nextRound;
     };
 
-    if (!ghost) {
-      const placementsById = prep.placementsById || {};
-      const elements = prep.elements || [];
-      mountOverlayProps(overlay, { creature, creatureRig: rig, elements, placementsById });
-    }
-    overlay.style.opacity = '0';
-
     try {
+      if (!prepared?.ready || prepared.id !== pick.id) {
+        upcoming = pick;
+        await prepareUpcoming(creature);
+      }
+      const prep = prepared;
+      if (!prep) throw new Error('Costume preparation unavailable');
+      if (!ghost) {
+        mountOverlayProps(overlay, { creature, creatureRig: rig, elements: prep.elements, placementsById: prep.placementsById });
+      }
+      overlay.style.opacity = '0';
       if (ghost) {
         await activate({
           animation:pick?.anim||{},
@@ -570,13 +545,9 @@ export function installThresholdLootHook(effect) {
         });
       }
     } catch (err) {
-      error(ghost ? 'ghost activation failed' : 'composite activation failed; falling back to legacy ghost', err);
-      overlay.innerHTML = '';
-      overlay.style.opacity = '0';
-      this.lightningSequenceActive = false;
-      this.finaleInProgress = false;
-      if (!ghost) return origTrigger();
-      return;
+      error('Costume activation failed', err);
+      this.stormLevel = 0;
+      this.resetVisuals();
     }
 
     // Reset host: keep opacity 0 (never '') so a cleared host cannot flash opaque.
@@ -608,7 +579,7 @@ export function installThresholdLootHook(effect) {
   };
 
   // Legacy SporeBaseEffect climax path is unused when activate() owns every profile.
-  // Keep hooks as no-ops so a stray origTrigger completion cannot double-pick.
+  // Keep legacy completion hooks from advancing the costume twice.
   effect.endLightningSequence = function patchedEnd() {
     // Composite + ghost both finish inside activate(); ignore leftover calls.
   };
