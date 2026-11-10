@@ -1588,7 +1588,7 @@ function ensureAnimDeskList() {
       key: 'id',
       label: 'Costume',
       fit: 'content',
-      render: (anim) => `<code>${escapeHtml(anim.id)}</code>`
+      render: (anim) => `<code>${escapeHtml(costumeSlug(anim.id))}</code>`
     },
     {
       key: 'actions',
