@@ -142,8 +142,18 @@ async function main(){
    if (deploy?.deployment_trigger?.metadata?.commit_hash !== process.env.GITHUB_SHA || deploy.latest_stage?.status !== 'success') {
     throw Error('Admin deployment did not reach production');
    }
-   const blocked = await fetch(deploy.url + '/cambio/', { redirect: 'manual' });
-   if (blocked.status !== 404) throw Error('Admin deployment alias is not blocked');
+   const alias = 'https://' + projectName + '.pages.dev/cambio/';
+   let blocked = false;
+   for (let attempt = 0; attempt < 12; attempt++) {
+    const response = await fetch(alias, { redirect: 'manual', signal: AbortSignal.timeout(8000) }).catch(() => null);
+    if (response?.status === 404) {
+     blocked = true;
+     break;
+    }
+    if (response?.ok) throw Error('Admin deployment alias serves editor content');
+    await new Promise(resolve => setTimeout(resolve, 5000));
+   }
+   if (!blocked) throw Error('Could not verify the blocked admin deployment alias');
    save('admin-production.json', { deployment: deploy.id, commit: process.env.GITHUB_SHA, url: 'https://app.youareinthegame.com/cambio/' });
   });
   return;
