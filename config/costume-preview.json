@@ -5,7 +5,7 @@
   "previewNamespace": "youareinthegame-costume-preview",
   "previewBucket": "youareinthegame-costume-preview-assets",
   "wranglerVersion": "4.45.0",
-  "maxMonthlyPreviewRuns": 40,
+  "maxMonthlyPreviewRuns": 50,
   "maxAssets": 200,
   "maxImportedAssetBytes": 8000000,
   "checkpoint": "checkpoint-2026-11-03-before-visitor-worldmap-final-reset",

@@ -17,6 +17,8 @@ export const R2_FREE = {
 /** Built-in seed (mirrors content/runtime-config.json). Used when KV empty and fetch of static fails. */
 export const BUILTIN_SEED = {
   schemaVersion: 1,
+  // Stable seed timestamp so public ETags do not churn on every cold read.
+  updatedAt: '2026-10-01T00:00:00.000Z',
   tiers: {
     common: { label: 'Common', weight: 100 },
     uncommon: { label: 'Uncommon', weight: 40 },
@@ -135,7 +137,7 @@ export function normalizeConfig(raw) {
 
   return {
     schemaVersion: base.schemaVersion || 1,
-    updatedAt: base.updatedAt || new Date().toISOString(),
+    updatedAt: base.updatedAt || seed.updatedAt || '2026-10-01T00:00:00.000Z',
     tiers: base.tiers || seed.tiers,
     flags: { noRepeatTwice: false, ...(base.flags || {}) },
     settings: {

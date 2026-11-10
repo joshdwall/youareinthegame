@@ -21,6 +21,8 @@ import { resolvePlacementsForAnimation } from '../../effects/activation/defaultP
 
 let cachedConfig = null;
 let cacheAt = 0;
+/** @type {string | null} */
+let cachedConfigEtag = null;
 /** @type {object | null} */
 let hookedEffect = null;
 const CACHE_MS = 15_000;
@@ -144,10 +146,17 @@ export async function fetchAnimationConfig(force = false) {
   const now = Date.now();
   if (!force && cachedConfig && now - cacheAt < CACHE_MS) return cachedConfig;
   try {
-    const r = await fetch('/api/animations', { credentials: 'same-origin' });
+    const headers = {};
+    if (!force && cachedConfigEtag) headers['If-None-Match'] = cachedConfigEtag;
+    const r = await fetch('/api/animations', { credentials: 'same-origin', headers });
+    if (r.status === 304 && cachedConfig) {
+      cacheAt = now;
+      return cachedConfig;
+    }
     const data = await r.json();
     if (r.ok && data.ok) {
       cachedConfig = data;
+      cachedConfigEtag = r.headers.get('etag');
       cacheAt = now;
       return data;
     }

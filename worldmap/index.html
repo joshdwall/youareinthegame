@@ -42,6 +42,16 @@
  </main>
  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
  <script>
+  (function () {
+    try {
+      if ((location.hostname || '').indexOf('app.') === 0) return;
+      var url = '/api/worldmap?visit=1';
+      if (navigator.sendBeacon) navigator.sendBeacon(url);
+      else fetch(url, { method: 'POST', credentials: 'same-origin', keepalive: true });
+    } catch (_) { /* visitor counting is optional */ }
+  })();
+ </script>
+ <script>
   const contactForm = document.querySelector("form[action='/api/contact']");
   if (contactForm) {
    contactForm.addEventListener("submit", async (event) => {

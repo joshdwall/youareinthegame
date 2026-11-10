@@ -146,6 +146,16 @@
     </svg>
     <span>visitors</span>
   </a>
+  <script>
+    (function () {
+      try {
+        if ((location.hostname || '').indexOf('app.') === 0) return;
+        var url = '/api/worldmap?visit=1';
+        if (navigator.sendBeacon) navigator.sendBeacon(url);
+        else fetch(url, { method: 'POST', credentials: 'same-origin', keepalive: true });
+      } catch (_) { /* visitor counting is optional */ }
+    })();
+  </script>
   <script type="module" src="script.js?v=ii-3"></script>
   <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "a0a8c066c7c7450f8d4ccde07d01bfcf"}'></script>
 </body>

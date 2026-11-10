@@ -24,7 +24,11 @@
       <div id="overlayLayer" class="cambio-overlay" aria-hidden="true"></div>
       <div id="markerLayer" class="cambio-markers" aria-hidden="true"></div>
     </div>
-    <img id="sporeSticker" class="spore-sticker" src="/img/Now%20With%20Spores%20Large%20Image%20Circular%20Blue%20Orange.png" alt="" draggable="false" />
+    <picture class="spore-sticker-picture">
+      <source type="image/avif" srcset="/img/now-with-spores.avif">
+      <source type="image/webp" srcset="/img/now-with-spores.webp">
+      <img id="sporeSticker" class="spore-sticker" src="/img/now-with-spores.png" alt="" draggable="false" width="192" height="192" />
+    </picture>
     <div id="lightningFlash" class="lightning-flash" hidden></div>
   </div>
   <button type="button" id="stopPlaytest" hidden>Stop playtest</button>
