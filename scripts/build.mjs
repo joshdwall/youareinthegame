@@ -15,7 +15,6 @@ const DIRS = [
   'effects',
   'img',
   'content',
-  'cambio',
   'assets',
   'runtime',
   'js'
