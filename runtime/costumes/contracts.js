@@ -26,6 +26,7 @@ export function validateActions(actions=[]){
   if(a.amplitude!==undefined)requireOk(finite(a.amplitude,0,50),'Action amplitude exceeds limits');
   if(a.count!==undefined)requireOk(Number.isInteger(a.count)&&finite(a.count,1,12),'Particle count exceeds limits');
   if(a.type==='textProjectile')requireOk(typeof a.text==='string'&&a.text.length>0&&a.text.length<=64,'Text action requires 1-64 characters');
+  if(a.textVariants!==undefined)requireOk(a.type==='textProjectile'&&Array.isArray(a.textVariants)&&a.textVariants.length===2&&a.textVariants.every(text=>typeof text==='string'&&text.length>0&&text.length<=64),'Text variants require two phrases of 1–64 characters');
   if(a.sprite!==undefined)requireOk(a.type==='fire'&&safeAssetSource(a.sprite),'Projectile sprite must be a site asset on a fire action');
   if(a.spriteWidthPx!==undefined)requireOk(a.sprite!==undefined&&finite(a.spriteWidthPx,8,64),'Projectile sprite width must be 8–64 px');
   if(a.spriteRotationDeg!==undefined)requireOk(a.sprite!==undefined&&finite(a.spriteRotationDeg,-360,360),'Projectile sprite rotation must be within 360°');
