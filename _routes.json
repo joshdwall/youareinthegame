@@ -6,7 +6,8 @@
     "/worldmap/",
     "/api/*",
     "/cambio",
-    "/cambio/*"
+    "/cambio/*",
+    "/api/cambio"
   ],
   "exclude": [
     "/assets/*",
@@ -21,8 +22,6 @@
     "/script.js",
     "/mainConfig.js",
     "/favicon*",
-    "/apple-touch-icon.png",
-    "/cambio/*.js",
-    "/cambio/*.css"
+    "/apple-touch-icon.png"
   ]
 }
