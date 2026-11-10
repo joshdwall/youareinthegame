@@ -22,14 +22,11 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
-# Unhashed module URLs under effects/runtime/cambio — never immutable (stale POPs broke BOO).
+# Unhashed module URLs under effects/runtime — never immutable (stale POPs broke BOO).
 /effects/*
   Cache-Control: public, max-age=60, must-revalidate
 
 /runtime/*
-  Cache-Control: public, max-age=60, must-revalidate
-
-/cambio/*
   Cache-Control: public, max-age=60, must-revalidate
 
 /content/*
