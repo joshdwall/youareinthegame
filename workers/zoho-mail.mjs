@@ -1,6 +1,7 @@
 /**
  * Zoho Mail send helper for visitor receipts (arbitrary To: addresses).
- * From: ZOHO_FROM_ADDRESS (josh@…). Reply-To: desk replyTo when Zoho accepts it.
+ * From: ZOHO_FROM_ADDRESS (josh@…). Reply-To header only when desk replyTo
+ * matches the Zoho-verified Send Mail As address; otherwise body "Reply to:" line.
  */
 
 const HOWDY = "howdy@youareinthegame.com";
@@ -12,6 +13,24 @@ function headerValue(raw, name) {
 function bodyText(raw) {
   const sep = String(raw || "").search(/\r?\n\r?\n/);
   return (sep >= 0 ? raw.slice(sep).replace(/^\r?\n\r?\n/, "") : "").trim();
+}
+
+function normEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+/** Address Zoho has already accepted under Send Mail As (secret + fallback howdy@). */
+export function verifiedReplyToAddress(env) {
+  return normEmail(env.ZOHO_REPLY_TO || HOWDY) || HOWDY;
+}
+
+/**
+ * Only put Reply-To on the Zoho API payload when the operator marked verification
+ * and the desk/config address still matches that verified mailbox.
+ */
+export function shouldSetZohoReplyToHeader(env, replyTo) {
+  if (env.ZOHO_REPLY_TO_VERIFIED !== "1") return false;
+  return normEmail(replyTo) === verifiedReplyToAddress(env);
 }
 
 export function parseReceiptMime(raw, replyTo = HOWDY) {
@@ -47,6 +66,29 @@ export async function refreshZohoAccessToken(env) {
   return json.access_token;
 }
 
+async function postZohoMessage(env, accessToken, payload) {
+  const url = `https://mail.zoho.com/api/accounts/${env.ZOHO_ACCOUNT_ID}/messages`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: "Zoho-oauthtoken " + accessToken,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(20000),
+  });
+  const json = await response.json().catch(() => ({}));
+  const code = json?.status?.code;
+  const ok = response.ok && (code === 200 || code == null);
+  return {
+    ok,
+    response,
+    json,
+    detail: json?.status?.description || json?.data?.moreInfo || String(response.status),
+  };
+}
+
 /**
  * Send visitor receipt via Zoho Mail API.
  * @returns {{ ok: boolean, via: string, detail?: string }}
@@ -78,10 +120,7 @@ export async function sendZohoReceipt(env, {
 
   const fromEmail = env.ZOHO_FROM_ADDRESS || "josh@joshdwall.com";
   const fromName = (env.ZOHO_FROM_DISPLAY_NAME || "You are in the game").replace(/[\r\n"]/g, "").slice(0, 80);
-  // Zoho uses mailbox display name unless fromAddress includes a quoted name.
   const fromAddress = `"${fromName}" <${fromEmail}>`;
-  // Zoho rejects Reply-To unless that address is verified under Send Mail As.
-  // Set ZOHO_REPLY_TO_VERIFIED=1 only after workplace.zoho.com Send Mail As confirms the address.
   const accessToken = await refreshZohoAccessToken(env);
 
   const payload = {
@@ -92,24 +131,23 @@ export async function sendZohoReceipt(env, {
     mailFormat: "plaintext",
     encoding: "UTF-8",
   };
-  if (env.ZOHO_REPLY_TO_VERIFIED === "1") payload.replyTo = replyTo;
 
-  const url = `https://mail.zoho.com/api/accounts/${env.ZOHO_ACCOUNT_ID}/messages`;
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: "Zoho-oauthtoken " + accessToken,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(20000),
-  });
-  const json = await response.json().catch(() => ({}));
+  const useHeader = shouldSetZohoReplyToHeader(env, replyTo);
+  if (useHeader) payload.replyTo = replyTo;
 
-  const code = json?.status?.code;
-  if (response.ok && (code === 200 || code == null)) {
+  let result = await postZohoMessage(env, accessToken, payload);
+  // If Zoho rejects Reply-To (stale verified flag / new address), retry without the header.
+  if (!result.ok && payload.replyTo) {
+    console.error("Zoho Reply-To rejected; retrying without header", result.detail);
+    delete payload.replyTo;
+    result = await postZohoMessage(env, accessToken, payload);
+    if (result.ok) {
+      return { ok: true, via: "zoho", detail: "body_reply_line_after_replyTo_reject" };
+    }
+  }
+
+  if (result.ok) {
     return { ok: true, via: "zoho", detail: payload.replyTo ? "replyTo:" + replyTo : "body_reply_line" };
   }
-  throw new Error("Zoho send failed: " + (json?.status?.description || json?.data?.moreInfo || response.status));
+  throw new Error("Zoho send failed: " + result.detail);
 }
