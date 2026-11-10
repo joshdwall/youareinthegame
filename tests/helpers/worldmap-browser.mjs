@@ -4,13 +4,14 @@ export async function verifyWorldmap(page,base,{screenshotDir,requireHistory=fal
  await page.setExtraHTTPHeaders({'user-agent':'Worldmap verification browser'});let historyRequests=0;page.on('request',r=>{if(r.url().includes('/api/worldmap?source=cloudflare'))historyRequests++;});
  await page.goto(base+'/worldmap/',{waitUntil:'networkidle'});
  // Visit counting is a same-origin beacon (not HTML middleware). Ensure one recorded visit for cold preview D1.
- const visit=await page.request.post(base+'/api/worldmap?visit=1',{headers:{origin:new URL(base).origin,'user-agent':'Worldmap verification browser'}});
+ // Do not use a UA containing "monitor"/bot tokens — recordWorldmapVisit rejects those.
+ const visit=await page.request.post(base+'/api/worldmap?visit=1',{headers:{origin:new URL(base).origin,'user-agent':'Mozilla/5.0 (YAITG worldmap verify)'}});
  assert.equal(visit.status(),200);
  assert.equal((await visit.json()).ok,true);
  await page.waitForSelector('#globe[data-ready="true"]',{timeout:60000});
  await page.waitForFunction(()=>document.querySelector('#visitorTotal').textContent!=='—',null,{timeout:60000});
  assert.equal(await page.locator('select').count(),0,'Source and period dropdowns must be removed');assert.equal(await page.locator('#historyDetails').count(),0,'Technical history paragraph must be removed');assert.equal(await page.locator('[contenteditable="true"]').count(),0);assert.equal(await page.evaluate(()=>getComputedStyle(document.body).caretColor),'rgba(0, 0, 0, 0)');
- if(verifyRouting){const html=await page.request.get(base+'/worldmap/');assert.equal(html.headers()['x-yaitg-function'],'1');assert.match(html.headers()['cache-control']||'','/public|max-age/');for(const asset of ['/assets/worldmap/countries.geojson','/worldmap/worldmap.js','/img/mushroom-platypus.webp']){const response=await page.request.get(base+asset);assert.equal(response.status(),200);assert.equal(response.headers()['x-yaitg-function'],undefined,'Static asset must bypass Functions: '+asset);}}
+ if(verifyRouting){const html=await page.request.get(base+'/worldmap/');assert.equal(html.headers()['x-yaitg-function'],'1');assert.match(html.headers()['cache-control']||'',/public|max-age/);for(const asset of ['/assets/worldmap/countries.geojson','/worldmap/worldmap.js','/img/mushroom-platypus.webp']){const response=await page.request.get(base+asset);assert.equal(response.status(),200);assert.equal(response.headers()['x-yaitg-function'],undefined,'Static asset must bypass Functions: '+asset);}}
  await page.evaluate(()=>window.addEventListener('pointerdown',event=>{window.__plainClickPrevented=event.defaultPrevented;},{once:true}));await page.locator('#map-title').click();assert.equal(await page.evaluate(()=>window.__plainClickPrevented),true,'Plain background/text clicks should not place a caret');
  const history=await(await page.request.get(base+'/api/worldmap?source=cloudflare&range=all')).json();if(requireHistory){assert.equal(history.metric,'visits');assert(history.totals.visitors>0);}
  const view=JSON.parse(await page.locator('#globe').getAttribute('data-initial-view'));assert(Math.abs(view.lat-38.5)<.01&&Math.abs(view.lng+98)<.01,'Globe should initially face Kansas');
