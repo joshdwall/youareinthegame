@@ -2,7 +2,7 @@
  * GET /api/assets/<key> — public stream from R2.
  * Content-hash object keys are long-cache immutable; Cache API hits skip Class B quota.
  */
-import { readR2Quota, writeR2Quota, r2Allowed } from '../../_shared/runtime-config.js';
+import { readR2Quota, writeR2QuotaCoalesced, r2Allowed } from '../../_shared/runtime-config.js';
 
 const HASH_OBJECT = /(?:^|\/)[a-f0-9]{32,}\.(?:png|webp|jpe?g|gif)$/i;
 
@@ -45,7 +45,7 @@ export async function onRequestGet(context) {
   if (!obj) return new Response('not_found', { status: 404 });
 
   quota.classB += 1;
-  await writeR2Quota(env, quota);
+  await writeR2QuotaCoalesced(env, quota, cache);
 
   const headers = new Headers();
   obj.writeHttpMetadata(headers);

@@ -224,6 +224,16 @@ export async function writeR2Quota(env, row) {
   await env.YAITG_SESSION_KV.put(R2_QUOTA_KV_KEY, JSON.stringify(row));
 }
 
+/** Asset GET misses share one KV write per minute. Cache hits never call this. */
+export async function writeR2QuotaCoalesced(env, row, cache) {
+  const marker = new Request('https://yaitg.internal/r2-quota-flush');
+  if (cache && await cache.match(marker)) return { wrote: false };
+  await writeR2Quota(env, row);
+  const put = cache?.put(marker, new Response('', { headers: { 'cache-control': 'max-age=60' } }));
+  if (put) await put;
+  return { wrote: true };
+}
+
 /**
  * @param {'classA'|'classB'} kind
  * @param {number} [bytesDelta] storage change for puts/deletes
