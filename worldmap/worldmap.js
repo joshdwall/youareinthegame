@@ -44,13 +44,6 @@ $('countrySearch').addEventListener('input', () => {
 function render(data) {
  points = data.points;
  maxPegCount = points.reduce((max, point) => Math.max(max, point.count), 1);
- $('pegLegend').hidden = points.length === 0;
- $('pegLegendMax').textContent = number.format(maxPegCount);
- $('pegLegendMid').textContent = number.format(Math.round(Math.sqrt(maxPegCount)));
- $('pegLegendMid').hidden = maxPegCount < 4;
- $('pegLegendMax').hidden = maxPegCount === 1;
- $('pegLegendScale').style.background = maxPegCount === 1
-  ? pegColor(1) : 'linear-gradient(90deg, ' + [pegColor(1), pegColor(Math.sqrt(maxPegCount)), pegColor(maxPegCount)].join(',') + ')';
  $('visitorTotal').textContent = number.format(data.totals.visitors);
  $('countryTotal').textContent = number.format(data.totals.countries);
  $('mapStatus').textContent = data.preview ? 'Preview globe' : '';
