@@ -27,13 +27,14 @@ export async function onRequestGet(context) {
   const library = await readCostumeLibrary(env);
   placementsByAnimation = { ...(placementsByAnimation || {}), ...library.placements };
   for (const key of ['animations', 'directAnimations']) {
-    view[key] = view[key].map(({ secondaryCostume, ...animation }) => {
+    view[key] = view[key].map(({ secondaryCostume: storedSecondary, ...animation }) => {
+      const secondaryCostume = library.secondaryCostumes?.[animation.id] ?? storedSecondary;
       const bundle = library.costumes[secondaryCostume?.costumeRef];
       if (!secondaryCostume?.enabled || !bundle?.costume?.elements?.length) return animation;
       const compiled = compileBundle(bundle, library);
       const layout = secondaryCostume.layout?.elements ?? compiled.placements.elements;
       const primaryLayout = placementsByAnimation[animation.id]?.elements;
-      const primary = new Map(animation.elements.map(item => [item.id, item]));
+      const primary = new Map((animation.elements ?? []).map(item => [item.id, item]));
       const elements = compiled.animation.elements.map(item => ({
         ...item,
         placement: {

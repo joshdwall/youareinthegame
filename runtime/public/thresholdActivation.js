@@ -149,7 +149,7 @@ export async function fetchAnimationConfig(force = false) {
   try {
     const headers = {};
     if (!force && cachedConfigEtag) headers['If-None-Match'] = cachedConfigEtag;
-    const r = await fetch('/api/animations', { credentials: 'same-origin', headers });
+    const r = await fetch('/api/animations', { credentials: 'same-origin', headers, cache: force ? 'no-cache' : 'default' });
     if (r.status === 304 && cachedConfig) {
       cacheAt = now;
       return cachedConfig;
