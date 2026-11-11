@@ -166,21 +166,18 @@ export async function fetchAnimationConfig(force = false) {
     if (r.ok && data.ok) {
       const badge = globalThis.document?.getElementById('tapSporeBadge');
       const visitors = globalThis.document?.getElementById('visitorsLink');
-      const label = globalThis.document?.getElementById('visitorsLabel');
       if (badge) badge.disabled = data.settings?.tapSporeBadgeEnabled === false;
-      if (visitors) visitors.hidden = data.settings?.visitorsEnabled === false;
-      const visitorLabel = data.settings?.visitorsLabel || 'Visitors';
       if (visitors) {
-        visitors.setAttribute('aria-label', visitorLabel);
+        visitors.hidden = data.settings?.visitorsEnabled === false;
         const image = visitors.querySelector('img');
         if (image) {
-          const source = data.settings?.visitorsImage || '/img/visitors-earth-v2.webp';
+          const labeled = !data.settings?.visitorsImage && data.settings?.visitorsLabelEnabled !== false;
+          const source = data.settings?.visitorsImage || (labeled
+            ? '/img/visitors-earth-labeled.webp' : '/img/visitors-earth-v2.webp');
+          image.width = labeled ? 54 : 36;
+          image.height = labeled ? 39 : 36;
           if (image.getAttribute('src') !== source) image.src = source;
         }
-      }
-      if (label) {
-        label.textContent = visitorLabel;
-        label.hidden = data.settings?.visitorsLabelEnabled === false;
       }
       cachedConfig = data;
       cachedConfigEtag = r.headers.get('etag');
