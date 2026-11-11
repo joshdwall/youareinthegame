@@ -444,9 +444,13 @@ export function installThresholdLootHook(effect) {
   hookedEffect = effect;
   applyClickThresholdFromConfig(effect, cachedConfig);
 
+  let previewDuringBurst = null;
+  const setBurstPreview = preview => { previewDuringBurst = preview; };
+
   effect.createSporeExplosion = function patchedCreate(x, y, opts) {
     const fallback = (xx, yy) => createDefaultSporeExplosion(xx, yy, this.container, opts);
     if (opts?.decorOnly || this.isActivationInteractionBusy?.()) {
+      if (previewDuringBurst) return previewDuringBurst(x, y);
       const opacity = Number.isFinite(Number(opts?.opacity))
         ? Number(opts.opacity)
         : this.getInteractionDecorOpacity?.() ?? 0.8;
@@ -535,6 +539,7 @@ export function installThresholdLootHook(effect) {
             elements: prep?.compositeElements || []
           },
           assetsPreloaded: true,
+          onSporePhase: setBurstPreview,
           onResetStart:prepareNextRound
         });
       } else {
@@ -554,6 +559,7 @@ export function installThresholdLootHook(effect) {
           },
           spore: { count: 8, scale: 0.32, durationMs: 1800, distancePx: 140 },
           assetsPreloaded: true,
+          onSporePhase: setBurstPreview,
           onResetStart:prepareNextRound
         });
       }
