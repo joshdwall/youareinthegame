@@ -16,6 +16,12 @@
 /mainConfig.js
   Cache-Control: public, max-age=300, must-revalidate
 
+# Shared badge (Cambio loads this cross-origin). Short cache so a replace
+# on the public host updates both sites without a year-long immutable hold.
+/img/tap-for-spores.png
+  Cache-Control: public, max-age=60, must-revalidate
+  Access-Control-Allow-Origin: *
+
 /img/*
   Cache-Control: public, max-age=31536000, immutable
 
