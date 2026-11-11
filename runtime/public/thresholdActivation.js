@@ -20,6 +20,7 @@ import { GHOST_CONFIG } from '../../effects/spore/ghost/config.js';
 import { resolvePlacementsForAnimation } from '../../effects/activation/defaultPlacements.js';
 
 let cachedConfig = null;
+const nextSecondaryByCharacter = new Set();
 let cacheAt = 0;
 /** @type {string | null} */
 let cachedConfigEtag = null;
@@ -304,6 +305,13 @@ export async function prepareUpcoming(creature) {
     placementsById = { ...fb, ...placementsById };
   }
   placementsById = resolvePlacementsForAnimation(placementsById, animId);
+  const secondaryElements = anim.secondaryCostume?.elements;
+  const usesSecondary = !!secondaryElements?.length && nextSecondaryByCharacter.has(animId);
+  if (!secondaryElements?.length) nextSecondaryByCharacter.delete(animId);
+  if (usesSecondary) {
+    animForBuild = { ...animForBuild, elements: secondaryElements };
+    placementsById = Object.fromEntries(secondaryElements.map(item => [item.id, item.placement]));
+  }
 
   const compositeElements = buildCompositeElements(animForBuild, placementsById);
   const elements = (animForBuild.elements || []).filter(el => (placementsById[el.id] || el.placement)?.shown !== false).map((el) => ({
@@ -327,6 +335,7 @@ export async function prepareUpcoming(creature) {
     transitionId:config?.placementsByAnimation?.[animId]?.transitionId||anim.animationPreset?.transition||'lightning',
     kind: ghost ? 'ghost' : 'composite',
     ready: true,
+    usesSecondary,
     id: animId,
     anim: animForBuild,
     placementsById,
@@ -504,6 +513,11 @@ export function installThresholdLootHook(effect) {
     let nextRound;
     const prepareNextRound=()=>{
       if(nextRound)return nextRound;
+      if (prepared?.anim?.secondaryCostume?.elements?.length && !prepared.usesSecondary) {
+        nextSecondaryByCharacter.add(pick.id);
+      } else {
+        nextSecondaryByCharacter.delete(pick.id);
+      }
       if (!linkedAnimationId) recordPlayed(ghost?'ghost':pick?.id,Number.isFinite(pick?.index)?pick.index:(ghost?0:-1));
       upcoming=null;prepared=null;
       nextRound=pickUpcoming({forceRefresh:true,creature}).catch(err=>error('Next costume preparation failed',err));
