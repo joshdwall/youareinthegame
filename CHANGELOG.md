@@ -11,6 +11,15 @@ SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.co
 - **Fix:** the rig is in `index.html` from first paint, and `float` runs only on `.creature-rig`. Glow stays a `filter` / `--creature-shadow` on the character (no transform change). If a wrap is still needed, the float clock is copied via `currentTime` before the old animation is cleared. Storm-level rules no longer re-apply `float` on a rig child.
 - Checkpoint `checkpoint-2026-11-11-pre-glow-jump`. Cache-bust `glow-jump-1`.
 
+## 2026-11-11 (America/Chicago) — Spore-timing preview only (not production)
+
+- **Preview only.** Built for a Cloudflare Pages branch alias `spore-timing-test`. **Not pushed to `main`.** Production stays on the glow-jump commit and must not receive this commit yet.
+- Rebased onto the glow-jump fix so the friend's preview includes both. Cache-bust `?v=spore-timing2`.
+- One clock in `FireworkManager` (`effects/spore/finale.js`): rAF uses only the rAF timestamp (first frame dt=0); the setTimeout fallback uses only `performance.now()`. 0.1s dt clamp kept. No other mixed clocks in spore/activation physics.
+- iPhone/iPad "Request Desktop Website" (Mac-like UA/platform + `maxTouchPoints > 1`) is treated as mobile via `js/isMobileClient.js`.
+- Reduce Motion is config-driven (`settings.reducedMotion`, defaults `timeScale: 1` so timing matches Reduce Motion off). Live `matchMedia` listener. No KV write; code defaults apply when the key is absent.
+- Checkpoint `checkpoint-2026-11-11-pre-spore-timing`.
+
 
 ## 2026-11-11 (America/Chicago) — Interrobang while the next costume preview loads
 

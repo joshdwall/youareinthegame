@@ -117,7 +117,7 @@ export const GHOST_CONFIG = {
 
     // Stylesheet Paths
     STYLESHEETS: {
-        EFFECT: '/effects/spore/ghost/effect.css?v=glow-jump-1',
+        EFFECT: '/effects/spore/ghost/effect.css?v=spore-timing2',
         FINALE: '/effects/spore/finale.css'
     },
 

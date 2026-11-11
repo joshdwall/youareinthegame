@@ -48,6 +48,46 @@ function copyDir(rel) {
   fs.cpSync(src, dest, { recursive: true });
 }
 
+
+const MODULE_CACHE_BUST = 'spore-timing2';
+
+function bustImportUrl(spec) {
+  if (!spec || /^(https?:|data:|blob:)/i.test(spec)) return spec;
+  if (!/\.js(?:\?|$)/.test(spec)) return spec;
+  if (/[?&]v=/.test(spec)) return spec;
+  return `${spec}${spec.includes('?') ? '&' : '?'}v=${MODULE_CACHE_BUST}`;
+}
+
+function bustStagedModuleImports(root) {
+  const skip = new Set(['.git']);
+  const walk = (dir, out = []) => {
+    for (const name of fs.readdirSync(dir)) {
+      if (skip.has(name)) continue;
+      const abs = path.join(dir, name);
+      const st = fs.statSync(abs);
+      if (st.isDirectory()) walk(abs, out);
+      else if (name.endsWith('.js')) out.push(abs);
+    }
+    return out;
+  };
+  const reFrom = /(\bfrom\s+)(['"`])([^'"`]+?)\2/g;
+  const reImport = /(\bimport\s*\(\s*)(['"`])([^'"`]+?)\2(\s*\))/g;
+  let files = 0;
+  for (const file of walk(root)) {
+    const rel = path.relative(root, file).replace(/\\/g, '/');
+    if (rel.startsWith('assets/') || rel.startsWith('node_modules/')) continue;
+    const src = fs.readFileSync(file, 'utf8');
+    const next = src
+      .replace(reFrom, (m, pre, q, spec) => `${pre}${q}${bustImportUrl(spec)}${q}`)
+      .replace(reImport, (m, pre, q, spec, post) => `${pre}${q}${bustImportUrl(spec)}${q}${post}`);
+    if (next !== src) {
+      fs.writeFileSync(file, next);
+      files += 1;
+    }
+  }
+  return MODULE_CACHE_BUST;
+}
+
 function main() {
   rmrf(OUT_DIR);
   fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -61,7 +101,8 @@ function main() {
     count += 1;
   }
 
-  console.log(`[stage-pages] youareinthegame → dist (${count} roots)`);
+  const cacheBust = bustStagedModuleImports(OUT_DIR);
+  console.log(`[stage-pages] youareinthegame → dist (${count} roots, module ?v=${cacheBust})`);
 }
 
 main();

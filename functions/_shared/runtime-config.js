@@ -1,5 +1,6 @@
 import {readCostumeLibrary,writeCostumeLibrary,verifyCostumeAssets} from './costume-library.js';
 import {validateAnimationDraft,compileBundle,stable} from '../../runtime/costumes/contracts.js';
+import {normalizeReducedMotion,DEFAULT_REDUCED_MOTION} from '../../runtime/public/reducedMotion.js';
 export const RUNTIME_KV_KEY = 'cambio:runtime-config';
 export const PLACEMENTS_KV_KEY = 'cambio:placements';
 export const R2_QUOTA_KV_KEY = 'cambio:r2-quota';
@@ -35,7 +36,8 @@ export const BUILTIN_SEED = {
     // alternate = round-robin by order; weighted = loot table. Live-editable in Cambio.
     selectionMode: 'alternate',
     // Default click-spore opacity (0..1) while activation/fade is running.
-    interactionOpacityDuringAnimation: 0.8
+    interactionOpacityDuringAnimation: 0.8,
+    reducedMotion: { ...DEFAULT_REDUCED_MOTION }
   },
   seasons: [],
   animations: [
@@ -74,7 +76,8 @@ export function normalizeConfig(raw) {
     clickThresholdMax: 5,
     stormResetDurationMs: 1500,
     selectionMode: 'alternate',
-    interactionOpacityDuringAnimation: 0.8
+    interactionOpacityDuringAnimation: 0.8,
+    reducedMotion: { ...DEFAULT_REDUCED_MOTION }
   };
   const rawSettings = base.settings && typeof base.settings === 'object' ? base.settings : {};
   let clickThresholdMin = Number(rawSettings.clickThresholdMin ?? seedSettings.clickThresholdMin);
@@ -113,6 +116,10 @@ export function normalizeConfig(raw) {
     Math.max(0, interactionOpacityDuringAnimation)
   );
 
+  const reducedMotion = normalizeReducedMotion(
+    rawSettings.reducedMotion ?? seedSettings.reducedMotion ?? DEFAULT_REDUCED_MOTION
+  );
+
   const seedAnims = seed.animations || [];
   let animations =
     Array.isArray(base.animations) && base.animations.length
@@ -149,6 +156,7 @@ export function normalizeConfig(raw) {
         && /^[a-z][a-z0-9-]{0,63}$/.test(rawSettings.openingAnimationId)
         ? rawSettings.openingAnimationId : null,
       interactionOpacityDuringAnimation,
+      reducedMotion,
       tapSporeBadgeEnabled: rawSettings.tapSporeBadgeEnabled !== false,
       visitorsEnabled: rawSettings.visitorsEnabled !== false,
       visitorsLabelEnabled: rawSettings.visitorsLabelEnabled !== false,
@@ -205,7 +213,8 @@ export function publicView(config) {
       clickThresholdMax: 5,
       stormResetDurationMs: 1500,
       selectionMode: 'alternate',
-      interactionOpacityDuringAnimation: 0.8
+      interactionOpacityDuringAnimation: 0.8,
+      reducedMotion: { ...DEFAULT_REDUCED_MOTION }
     },
     seasons: config.seasons,
     directAnimations: (config.animations || []).filter(a => a.directLink === true && !a.live && !a.archived),

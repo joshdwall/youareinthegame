@@ -6,6 +6,9 @@
 import { CONFIG } from './mainConfig.js';
 import { createDefaultSporeExplosion } from './effects/spore/defaultSpore.js';
 import { log, info, debug, warn, error } from './js/log.js';
+import { initReducedMotionWatch } from './runtime/public/reducedMotion.js';
+import { withCacheBust } from './js/cacheBust.js';
+initReducedMotionWatch();
 
 class MushroomPlatypusApp {
     constructor() {
@@ -77,8 +80,8 @@ class MushroomPlatypusApp {
     }
 
     async initializeEffects() {
-        const { default: effectLoader } = await import('./effects/EffectLoader.js?v=glow-jump-1');
-        const { installThresholdLootHook } = await import('./runtime/public/thresholdActivation.js?v=glow-jump-1');
+        const { default: effectLoader } = await import(withCacheBust('./effects/EffectLoader.js'));
+        const { installThresholdLootHook } = await import(withCacheBust('./runtime/public/thresholdActivation.js'));
         this.effectLoader = effectLoader;
         if (typeof window !== 'undefined') {
             window.effectLoader = effectLoader;

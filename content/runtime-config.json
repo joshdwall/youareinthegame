@@ -83,6 +83,21 @@
     "clickThresholdMin": 3,
     "clickThresholdMax": 5,
     "stormResetDurationMs": 1500,
-    "selectionMode": "alternate"
+    "selectionMode": "alternate",
+    "reducedMotion": {
+      "timeScale": 1,
+      "sporeCount": null,
+      "equipMs": null,
+      "activationMs": null,
+      "exitMs": null,
+      "fadeMs": null,
+      "explodeMs": null,
+      "fireworkLifespanSec": null,
+      "fireworkSpeedScale": 1,
+      "skipLightning": false,
+      "skipBehaviors": false,
+      "skipMainCharacterLaunch": false,
+      "freezeBurst": false
+    }
   }
 }

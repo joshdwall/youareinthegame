@@ -5,6 +5,7 @@
  */
 
 import { FireworkManager } from './finale.js';
+import { setLiveReducedMotionConfig } from '../../runtime/public/reducedMotion.js';
 import { fadeStormResetToLight } from '../activation/fadeStormReset.js';
 import { computeClampedBurstDelta } from './sporeBurstMath.js';
 import { log, info, debug, warn, error } from '../../js/log.js';
@@ -605,6 +606,7 @@ class SporeBaseEffect {
         let opac = Number(settings.interactionOpacityDuringAnimation);
         if (!Number.isFinite(opac)) opac = 0.8;
         this.__liveInteractionOpacity = Math.min(1, Math.max(0, opac));
+        setLiveReducedMotionConfig(settings.reducedMotion);
     }
 
     /**
