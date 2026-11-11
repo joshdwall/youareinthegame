@@ -5,6 +5,7 @@
 import { readRuntimeConfig, publicView, PLACEMENTS_KV_KEY } from '../_shared/runtime-config.js';
 import { livePercents } from '../_shared/loot-table.js';
 import { readCostumeLibrary } from '../_shared/costume-library.js';
+import { compileBundle } from '../../runtime/costumes/contracts.js';
 
 async function weakEtag(payload) {
   const bytes = new TextEncoder().encode(JSON.stringify(payload));
@@ -25,6 +26,25 @@ export async function onRequestGet(context) {
   } catch (_) {}
   const library = await readCostumeLibrary(env);
   placementsByAnimation = { ...(placementsByAnimation || {}), ...library.placements };
+  for (const key of ['animations', 'directAnimations']) {
+    view[key] = view[key].map(({ secondaryCostume: storedSecondary, ...animation }) => {
+      const secondaryCostume = library.secondaryCostumes?.[animation.id] ?? storedSecondary;
+      const bundle = library.costumes[secondaryCostume?.costumeRef];
+      if (!secondaryCostume?.enabled || !bundle?.costume?.elements?.length) return animation;
+      const compiled = compileBundle(bundle, library);
+      const layout = secondaryCostume.layout?.elements ?? compiled.placements.elements;
+      const primaryLayout = placementsByAnimation[animation.id]?.elements;
+      const primary = new Map((animation.elements ?? []).map(item => [item.id, item]));
+      const elements = compiled.animation.elements.map(item => ({
+        ...item,
+        placement: {
+          ...(layout[item.id] ?? item.placement),
+          objectActions: (primaryLayout?.[item.id] ?? primary.get(item.id)?.placement)?.objectActions ?? []
+        }
+      }));
+      return { ...animation, secondaryCostume: { elements } };
+    });
+  }
   const body = {
     ok: true,
     source,
@@ -43,7 +63,7 @@ export async function onRequestGet(context) {
   });
   const headers = {
     'content-type': 'application/json; charset=utf-8',
-    'cache-control': 'public, max-age=15, stale-while-revalidate=30',
+    'cache-control': 'no-cache',
     'access-control-allow-origin': '*',
     etag,
     vary: 'Accept-Encoding'
