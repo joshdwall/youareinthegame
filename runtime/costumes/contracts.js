@@ -30,6 +30,7 @@ export function validateActions(actions=[]){
   if(a.sprite!==undefined)requireOk(a.type==='fire'&&safeAssetSource(a.sprite),'Projectile sprite must be a site asset on a fire action');
   if(a.spriteWidthPx!==undefined)requireOk(a.sprite!==undefined&&finite(a.spriteWidthPx,8,64),'Projectile sprite width must be 8–64 px');
   if(a.spriteRotationDeg!==undefined)requireOk(a.sprite!==undefined&&finite(a.spriteRotationDeg,-360,360),'Projectile sprite rotation must be within 360°');
+  if(a.exitViewport!==undefined)requireOk(a.sprite!==undefined&&typeof a.exitViewport==='boolean','Off-screen flight requires a projectile sprite');
  }
  return actions;
 }

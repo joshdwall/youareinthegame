@@ -346,6 +346,30 @@ export function textProjectileOnce({ root, el, action }) {
   tip.style.cssText = cssParts.join(';');
   root.appendChild(tip);
 
+  if (action.sprite && action.exitViewport === true) {
+    const box = tip.getBoundingClientRect();
+    const x = box.left + box.width / 2;
+    const y = box.top + box.height / 2;
+    const margin = Math.max(box.width, box.height, Number(action.spriteWidthPx) || 28) * 2;
+    const dx = Math.cos(rad);
+    const dy = Math.sin(rad);
+    const crossX = Math.abs(dx) < 0.0001 ? Infinity
+      : ((dx > 0 ? innerWidth + margin : -margin) - x) / dx;
+    const crossY = Math.abs(dy) < 0.0001 ? Infinity
+      : ((dy > 0 ? innerHeight + margin : -margin) - y) / dy;
+    const travel = Math.min(...[crossX, crossY].filter(value => value > 0));
+    if (!Number.isFinite(travel)) { tip.remove(); return; }
+    tip.dataset.exitViewport = 'true';
+    Object.assign(tip.style, { position: 'fixed', left: `${x}px`, top: `${y}px`, zIndex: '101' });
+    document.body.appendChild(tip);
+    const flight = tip.animate([
+      { transform: 'translate(-50%, -50%)' },
+      { transform: `translate(-50%, -50%) translate(${dx * travel}px, ${dy * travel}px)` }
+    ], { duration: Math.max(80, Math.min(12000, travel * durationMs / Math.max(14, dist))), easing: 'linear' });
+    flight.finished.then(() => tip.remove(), () => tip.remove());
+    return;
+  }
+
   const midX = endX * holdRatio;
   const midY = endY * holdRatio;
   const midScale = scaleFrom + (scaleTo - scaleFrom) * holdRatio;
