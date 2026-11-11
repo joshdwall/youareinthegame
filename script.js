@@ -193,7 +193,7 @@ class MushroomPlatypusApp {
     pulseCreature() {
         this.creature.style.filter = CONFIG.VISUALS.CREATURE_PULSE_FILTER;
         setTimeout(() => {
-            this.creature.style.filter = CONFIG.VISUALS.CREATURE_INITIAL_FILTER;
+            this.creature.style.removeProperty('filter');
         }, CONFIG.ANIMATIONS.CREATURE_PULSE_DURATION);
     }
 
