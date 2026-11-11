@@ -13,7 +13,7 @@ import { FireworkManager } from '../spore/finale.js';
 import { GHOST_CONFIG } from '../spore/ghost/config.js';
 import { fadeStormResetToLight } from './fadeStormReset.js';
 import { buildCharacterComposite, measureCreatureBox } from './CharacterComposite.js';
-import { runObjectActions } from './objectActions.js';
+import { launchMainCharacterItem, runObjectActions } from './objectActions.js';
 import { resolveClickEffect } from './clickEffect.js';
 import { computeClampedBurstDelta } from '../spore/sporeBurstMath.js';
 import { OVERLAY_PROFILES } from './overlayProfiles.js';
@@ -93,6 +93,7 @@ export async function runActivation(opts) {
   const originalVisibility = creature.style.visibility;
   const timers=new Set(),nodes=new Set(),controls=new Set();
   let player=null,manager=null,abortResolve;
+  const mainFlights = [];
   const abortPromise=new Promise(resolve=>{abortResolve=resolve;});
   const onAbort=()=>abortResolve();signal?.addEventListener('abort',onAbort,{once:true});
   const aborted=()=>signal?.aborted;
@@ -205,6 +206,13 @@ export async function runActivation(opts) {
     if(aborted())return {ok:false,aborted:true};
     opts.onSporePhase?.(null);
     if (showCostume) {
+      if (!reduced) for (const item of elements) {
+        const action = item.placement?.mainCharacterAction;
+        if (!action) continue;
+        const image = roots.map(root => root.querySelector(`[data-element-id="${item.id}"]`)).find(Boolean);
+        const flight = launchMainCharacterItem(image, action, signal);
+        if (flight) mainFlights.push(flight);
+      }
       if (replaceCreature) creature.style.visibility = originalVisibility;
       player.hide(fadeMs);
     }
@@ -216,13 +224,14 @@ export async function runActivation(opts) {
       n.style.transition = 'opacity ' + resetMs + 'ms ease-out';
       requestAnimationFrame(() => { n.style.opacity = '0'; });
     }
-    await Promise.all([resetToLight(), showCostume && fadeMs ? delay(fadeMs) : null]);
+    await Promise.all([resetToLight(), showCostume && fadeMs ? delay(fadeMs) : null, ...mainFlights.map(flight => flight.finished)]);
     return {ok:true};
   }finally{
     opts.onSporePhase?.(null);
     if (replaceCreature) creature.style.visibility = originalVisibility;
     signal?.removeEventListener('abort',onAbort);timers.forEach(id=>{clearTimeout(id);clearInterval(id);});timers.clear();
     [...controls].reverse().forEach(stopControl);manager?.cleanup?.();manager?.destroy?.();player?.cleanup();
+    mainFlights.forEach(flight => flight.restore());
     nodes.forEach(n=>{n.__actionStop?.();n.remove();});
     sporeHost?.querySelectorAll('.activation-spore,.firework-spore,.activation-click-spore').forEach(n=>{n.__actionStop?.();n.remove();});
     clearOwnedFlashLayers(flashParent,container);

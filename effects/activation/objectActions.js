@@ -23,6 +23,42 @@ export function getAction(type) {
   return registry.get(type) || null;
 }
 
+/** Run the configured exit action on a mounted main-character accessory. */
+export function launchMainCharacterItem(img, action, signal) {
+  if (action?.type !== 'launchOffScreen' || !img?.isConnected ||
+      getComputedStyle(img).visibility === 'hidden' || signal?.aborted) return null;
+  const box = img.getBoundingClientRect();
+  if (!box.width || !box.height) return null;
+  const sprite = document.createElement('img');
+  sprite.src = img.currentSrc || img.src;
+  sprite.alt = '';
+  sprite.setAttribute('aria-hidden', 'true');
+  sprite.dataset.mainCharacterAction = action.type;
+  sprite.dataset.elementId = img.dataset.elementId;
+  Object.assign(sprite.style, {
+    position: 'fixed', left: `${box.left}px`, top: `${box.top}px`,
+    width: `${box.width}px`, height: `${box.height}px`,
+    objectFit: 'contain', pointerEvents: 'none', zIndex: '101'
+  });
+  const oldVisibility = img.style.visibility;
+  img.style.visibility = 'hidden';
+  document.body.appendChild(sprite);
+  const distance = Math.max(0, box.bottom) + 16;
+  const flight = sprite.animate([
+    { transform: 'translateY(0)' },
+    { transform: `translateY(-${distance}px)` }
+  ], { duration: Math.max(80, distance / 1.6), easing: 'linear', fill: 'forwards' });
+  const cancel = () => flight.cancel();
+  signal?.addEventListener('abort', cancel, { once: true });
+  return {
+    finished: flight.finished.catch(() => {}).finally(() => {
+      sprite.remove();
+      signal?.removeEventListener('abort', cancel);
+    }),
+    restore() { img.style.visibility = oldVisibility; }
+  };
+}
+
 export function listActionTypes() {
   return [...registry.keys()];
 }
