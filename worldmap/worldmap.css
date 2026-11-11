@@ -125,7 +125,17 @@ textarea.contact-field { min-height: 3.4rem; resize: vertical; }
 .contact-form button { min-height: 34px; min-width: 4.5rem; padding: 4px 12px; font-size: 13px; }
 #discoveryControls, #contactMessageForm { display: grid; gap: .5rem; }
 #discoveryQuestion { font: 600 1rem/1.3 system-ui, sans-serif; }
-.discovery-choices { display: flex; flex-wrap: wrap; gap: .3rem; }
+.discovery-choices { display: flex; flex-wrap: nowrap; align-items: stretch; gap: .25rem; width: 100%; min-width: 0; }
+.discovery-choices button {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+  min-height: 36px;
+  padding: 6px 7px;
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
 .discovery-choices button[aria-pressed="true"] { background: #e5f2e8; opacity: 1; }
 .discovery-choices button:disabled { cursor: default; }
 #openContactForm { justify-self: start; }
@@ -139,6 +149,10 @@ textarea.contact-field { min-height: 3.4rem; resize: vertical; }
   .contact-actions { align-items: stretch; }
   .contact-form button { width: 100%; }
   .discovery-choices button { width: auto; }
+}
+@media (max-width: 430px) {
+  .discovery-choices { gap: 2px; }
+  .discovery-choices button { min-height: 36px; padding: 6px 4px; font-size: 9px; }
 }
 
 
