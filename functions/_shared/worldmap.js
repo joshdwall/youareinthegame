@@ -9,7 +9,15 @@ export function areaFromCloudflare(cf){
  if(!cf||cf.latitude===undefined||cf.longitude===undefined||cf.latitude===null||cf.longitude===null||cf.latitude===''||cf.longitude==='')return null;
  const lat=Number(cf.latitude),lng=Number(cf.longitude),country=cf.country;
  if(!Number.isFinite(lat)||!Number.isFinite(lng)||lat< -90||lat>90||lng< -180||lng>180||!/^[A-Z]{2}$/.test(country||'')||['XX','T1'].includes(country))return null;
- const y=Math.min(179,Math.floor(lat+90)),x=Math.min(359,Math.floor(lng+180));return {key:`${country}:${y}:${x}`,lat:y-89.5,lng:x-179.5,country,region:Array.from(String(cf.region||'')).filter(ch=>ch.charCodeAt(0)>=32).join('').slice(0,60)};
+ const clean=value=>String(value||'').replace(/[\p{Cc}\p{Cf}]/gu,'').trim().slice(0,60);
+ const city=clean(cf.city),region=clean(cf.region);
+ if(city){
+  // Keep one approximate center per named locality without retaining raw coordinates.
+  const locality=JSON.stringify([region,city]);
+  return {key:`city:${country}:${locality.toLowerCase()}`,lat:Math.round(lat*10)/10,lng:Math.round(lng*10)/10,country,region,city};
+ }
+ const y=Math.min(179,Math.floor(lat+90)),x=Math.min(359,Math.floor(lng+180));
+ return {key:`${country}:${y}:${x}`,lat:y-89.5,lng:x-179.5,country,region};
 }
 export async function recordWorldmapVisit(request,env){
  if(!env.YAITG_WORLDMAP_DB||!env.YAITG_SESSION_SECRET||cookies(request)[EXCLUDE]==='1')return null;
@@ -17,9 +25,10 @@ export async function recordWorldmapVisit(request,env){
  if(await identity(request,env))return null;
  const area=areaFromCloudflare(request.cf);if(!area)return null;
  const id=crypto.randomUUID(),hash=await hmac(env.YAITG_SESSION_SECRET,'worldmap-visitor:'+id),day=new Date().toISOString().slice(0,10),db=env.YAITG_WORLDMAP_DB;
+ // Versioned city keys store the display-name pair in the existing region column.
  const result=await db.batch([
   db.prepare('INSERT INTO worldmap_daily(day) VALUES(?) ON CONFLICT(day) DO NOTHING').bind(day),
-  db.prepare('INSERT INTO worldmap_areas(area_key,lat,lng,country,region) SELECT ?,?,?,?,? WHERE (SELECT visitors FROM worldmap_daily WHERE day=?)<10000 ON CONFLICT(area_key) DO NOTHING').bind(area.key,area.lat,area.lng,area.country,area.region,day),
+  db.prepare('INSERT INTO worldmap_areas(area_key,lat,lng,country,region) SELECT ?,?,?,?,? WHERE (SELECT visitors FROM worldmap_daily WHERE day=?)<10000 ON CONFLICT(area_key) DO NOTHING').bind(area.key,area.lat,area.lng,area.country,area.city?JSON.stringify([area.region,area.city]):area.region,day),
   db.prepare('INSERT INTO worldmap_visitors(visitor_hash,area_key,first_day) SELECT ?,?,? WHERE (SELECT visitors FROM worldmap_daily WHERE day=?)<10000 ON CONFLICT(visitor_hash) DO NOTHING').bind(hash,area.key,day,day)
  ]);
  if(!result[2]?.meta?.changes)return null;
@@ -27,23 +36,28 @@ export async function recordWorldmapVisit(request,env){
 }
 export async function worldmapData({request,env}){
  if(!env.YAITG_WORLDMAP_DB)return json({ok:false,error:'The visitor globe is not connected yet.'},503);
- const key=new Request(new URL('/api/worldmap?public=1',request.url));const cache=globalThis.caches?.default;const cached=await cache?.match(key);if(cached)return cached;
+ const key=new Request(new URL('/api/worldmap?public=2',request.url));const cache=globalThis.caches?.default;const cached=await cache?.match(key);if(cached)return cached;
  const db=env.YAITG_WORLDMAP_DB,totalSql='SELECT COALESCE(SUM(visitors),0) AS visitors,COUNT(*) AS areas,COUNT(DISTINCT country) AS countries FROM worldmap_areas WHERE visitors>0';
  let [points,total]=await db.batch([db.prepare('SELECT area_key AS id,lat,lng,country,region,visitors AS count FROM worldmap_areas WHERE visitors>0 ORDER BY visitors DESC,area_key LIMIT 2001'),db.prepare(totalSql)]),gridDegrees=1;
  // Coarsen crowded views instead of silently dropping less-visited origins.
  for(const step of [2,5,10,20,45,180]){
   if(points.results.length<=2000)break;gridDegrees=step;
   const y=`CAST((lat+90)/${step} AS INTEGER)`,x=`CAST((lng+180)/${step} AS INTEGER)`;
-  const sql=`SELECT country||':${step}:'||${y}||':'||${x} AS id,${y}*${step}-90+${step}/2.0 AS lat,${x}*${step}-180+${step}/2.0 AS lng,country,CASE WHEN MIN(region)=MAX(region) THEN MIN(region) ELSE '' END AS region,SUM(visitors) AS count FROM worldmap_areas WHERE visitors>0 GROUP BY country,${y},${x} ORDER BY count DESC LIMIT 2001`;
+  const sql=`SELECT country||':${step}:'||${y}||':'||${x} AS id,${y}*${step}-90+${step}/2.0 AS lat,${x}*${step}-180+${step}/2.0 AS lng,country,CASE WHEN MIN(region)=MAX(region) AND MIN(area_key NOT LIKE 'city:%')=1 THEN MIN(region) ELSE '' END AS region,SUM(visitors) AS count FROM worldmap_areas WHERE visitors>0 GROUP BY country,${y},${x} ORDER BY count DESC LIMIT 2001`;
   [points,total]=await db.batch([db.prepare(sql),db.prepare(totalSql)]);
  }
- const response=json({ok:true,points:points.results,totals:total.results[0],approximate:true,uniqueBy:'browser',preview:env.YAITG_WORLDMAP_PREVIEW==='1',updatedAt:new Date().toISOString(),displayLimit:2000,gridDegrees},200,{'cache-control':'public, max-age='+WORLDMAP_SETTINGS.visitorCacheSeconds});await cache?.put(key,response.clone());return response;
+ const origins=points.results.map(point=>{
+  if(!point.id.startsWith('city:'))return point;
+  const [region,city]=JSON.parse(point.region);
+  return {...point,region,city};
+ });
+ const response=json({ok:true,points:origins,totals:total.results[0],approximate:true,uniqueBy:'browser',preview:env.YAITG_WORLDMAP_PREVIEW==='1',updatedAt:new Date().toISOString(),displayLimit:2000,gridDegrees},200,{'cache-control':'public, max-age='+WORLDMAP_SETTINGS.visitorCacheSeconds});await cache?.put(key,response.clone());return response;
 }
 export async function excludeWorldmapBrowser({request,env}){
  const url=new URL(request.url);if(request.headers.get('origin')!==url.origin)return json({ok:false,error:'Same-origin request required'},403);
  if(!env.YAITG_WORLDMAP_DB)return json({ok:false,error:'Visitor counting is unavailable'},503);
  let body;try{body=await request.json();}catch{return json({ok:false,error:'Invalid request'},400);}if(typeof body.excluded!=='boolean')return json({ok:false,error:'Choose whether to exclude this browser'},400);
  const who=await identity(request,env);if(who)await env.YAITG_WORLDMAP_DB.prepare('UPDATE worldmap_visitors SET excluded=? WHERE visitor_hash=? AND excluded!=?').bind(body.excluded?1:0,who.hash,body.excluded?1:0).run();
- await globalThis.caches?.default?.delete(new Request(new URL('/api/worldmap?public=1',url)));
+ await globalThis.caches?.default?.delete(new Request(new URL('/api/worldmap?public=2',url)));
  return json({ok:true,excluded:body.excluded},200,{'set-cookie':cookie(EXCLUDE,body.excluded?'1':'0',url,false)});
 }
