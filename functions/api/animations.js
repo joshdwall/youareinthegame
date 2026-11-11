@@ -39,7 +39,8 @@ export async function onRequestGet(context) {
         ...item,
         placement: {
           ...(layout[item.id] ?? item.placement),
-          objectActions: (primaryLayout?.[item.id] ?? primary.get(item.id)?.placement)?.objectActions ?? []
+          objectActions: (primaryLayout?.[item.id] ?? primary.get(item.id)?.placement)?.objectActions ?? [],
+          mainCharacterAction: (primaryLayout?.[item.id] ?? primary.get(item.id)?.placement)?.mainCharacterAction
         }
       }));
       return { ...animation, secondaryCostume: { elements } };
