@@ -28,12 +28,20 @@ let cachedConfigEtag = null;
 let hookedEffect = null;
 const CACHE_MS = 15_000;
 // Cambio embeds this same entry point with a private, in-memory test pool.
-function readPlaytestConfig() {
+function isCambioEditorFrame() {
   try {
     const frame = window.frameElement;
-    if (frame?.id === 'cambioPlaytestFrame' && /^\/cambio\/?$/.test(window.parent.location.pathname)) {
-      return frame.cambioPlaytestConfig || null;
-    }
+    if (!frame) return false;
+    if (!/^\/cambio\/?$/.test(window.parent.location.pathname)) return false;
+    return frame.id === 'cambioPlaytestFrame' || frame.id === 'cambioLiveFrame';
+  } catch {
+    return false;
+  }
+}
+function readPlaytestConfig() {
+  try {
+    if (!isCambioEditorFrame()) return null;
+    return window.frameElement.cambioPlaytestConfig || null;
   } catch { /* Ordinary public page or cross-origin embed. */ }
   return null;
 }
@@ -437,6 +445,32 @@ export function ensurePublicOverlayDom(creature) {
   rig.appendChild(overlay);
   return { rig, overlay, creature };
 }
+
+export function ensureMarkerLayer() {
+  let rig = document.getElementById('creatureRig');
+  if (!rig) {
+    const creature = document.getElementById('mainCreature');
+    if (creature) ensurePublicOverlayDom(creature);
+    rig = document.getElementById('creatureRig');
+  }
+  if (!rig) return null;
+  let markers = document.getElementById('markerLayer');
+  if (markers) return markers;
+  markers = document.createElement('div');
+  markers.id = 'markerLayer';
+  markers.className = 'cambio-markers';
+  markers.setAttribute('aria-hidden', 'true');
+  rig.appendChild(markers);
+  return markers;
+}
+
+function exposeCambioStage() {
+  if (!isCambioEditorFrame()) return;
+  try {
+    window.__yaitgCambioStage = { ensurePublicOverlayDom, ensureMarkerLayer };
+  } catch (_) {}
+}
+exposeCambioStage();
 
 /**
  * Hook SporeBaseEffect:
