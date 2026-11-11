@@ -45,5 +45,11 @@ export async function onRequest(context) {
   const original = await context.next();
   const response = new Response(original.body, original);
   response.headers.set('x-yaitg-function', '1');
+  // Shared badge: Pages _headers was merging this file's max-age=60 with /img/*
+  // immutable. Overwrite so Cambio and the public site share one short-cached URL.
+  if (url.pathname === '/img/tap-for-spores.png') {
+    response.headers.set('Cache-Control', 'public, max-age=60, must-revalidate');
+    response.headers.set('Access-Control-Allow-Origin', '*');
+  }
   return response;
 }

@@ -11,7 +11,7 @@ SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.co
 
 ## 2026-11-11 (America/Chicago) — Shared Tap For Spores cache for Cambio (pt69u)
 
-- `/img/tap-for-spores.png` cache `max-age=60, must-revalidate` + `Access-Control-Allow-Origin: *` so Cambio at `app.youareinthegame.com` can load the live site's badge as the single source and pick up replacements quickly. Other `/img/*` stay immutable. Markup and image bytes unchanged.
+- `/img/tap-for-spores.png` cache `max-age=60, must-revalidate` + `Access-Control-Allow-Origin: *` so Cambio at `app.youareinthegame.com` can load the live site's badge as the single source and pick up replacements quickly. Other `/img/*` stay immutable. Markup and image bytes unchanged. Follow-up: Pages `_headers` was appending the `/img/*` immutable policy onto this file; a targeted Function overwrite now sets a single `max-age=60` Cache-Control.
 - Checkpoint `checkpoint-2026-11-11-pre-shared-tap-badge` @ `a905bd2`.
 
 ## 2026-11-01 (America/Chicago) — LIVE KV only: restore ghost BOO direction 90→-90

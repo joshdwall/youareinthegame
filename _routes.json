@@ -6,11 +6,11 @@
     "/worldmap/",
     "/api/*",
     "/cambio",
-    "/cambio/*"
+    "/cambio/*",
+    "/img/tap-for-spores.png"
   ],
   "exclude": [
     "/assets/*",
-    "/img/*",
     "/effects/*",
     "/runtime/*",
     "/js/*",
