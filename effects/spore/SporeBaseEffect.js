@@ -562,7 +562,7 @@ class SporeBaseEffect {
         const CONFIG = this.getConfig();
         this.creature.style.filter = CONFIG.VISUALS.CREATURE_PULSE_FILTER;
         const timeout = setTimeout(() => {
-            this.creature.style.filter = CONFIG.VISUALS.CREATURE_INITIAL_FILTER;
+            this.creature.style.removeProperty('filter');
         }, CONFIG.ANIMATIONS.CREATURE_PULSE_DURATION);
         this.trackTimeout(timeout);
     }
@@ -621,7 +621,7 @@ class SporeBaseEffect {
         if (this.creature) {
             this.creature.className = this.creature.className.replace(/storm-level-\d+/g, '');
             this.creature.classList.add('creature');
-            this.creature.style.filter = CONFIG.VISUALS.CREATURE_INITIAL_FILTER;
+            this.creature.style.removeProperty('filter');
         }
 
         if (this.effectOverlay) {
