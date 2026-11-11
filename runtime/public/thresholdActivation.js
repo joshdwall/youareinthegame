@@ -4,8 +4,15 @@ import { costumeIdForSlug } from '../costumes/publicSlug.js';
  * activation reset). Character clicks before threshold use that animation's
  * clickEffect. Threshold fires activate(upcoming) IMMEDIATELY — no blank
  * ghost pre-flash, no await fetch/decode at threshold time.
+ *
+ * Click semantics while the next costume's preview is still decoding:
+ * every character click still counts once toward the threshold and paints an
+ * interrobang (U+203D) immediately. Those clicks do not advance the costume
+ * cursor and do not start extra prepares — one in-flight selection is the
+ * latest intent, and visible interrobangs swap to that costume when it is ready.
+ * The following costume's images are decoded in the background so the mark is rare.
  */
-import { pickAnimation } from '../loot/LootTable.js';
+import { eligibleOrdered, pickAnimation } from '../loot/LootTable.js';
 import { linkedOnlyAnimations } from './linkedOnlyAnimations.js';
 import { log, info, debug, warn, error } from '../../js/log.js';
 import {
@@ -14,6 +21,7 @@ import {
   resolveClickEffect,
   preloadActivationAssets
 } from '../../effects/activation/ActivationEngine.js';
+import { spawnInterrobangPreview, upgradePendingCostumePreviews } from '../../effects/activation/pendingCostumePreview.js';
 import { createDefaultSporeExplosion } from '../../effects/spore/defaultSpore.js';
 import { mountOverlayProps } from '../../effects/activation/mountOverlayProps.js';
 import { GHOST_CONFIG } from '../../effects/spore/ghost/config.js';
@@ -240,6 +248,127 @@ function isGhostPick(pick) {
   return pick?.id === 'ghost' || pick?.anim?.playMode === 'legacy-ghost';
 }
 
+/** Identity of the preview a click should show. Revision bumps force a quiet rebuild. */
+function previewKeyFor(pick) {
+  if (!pick?.id) return '';
+  const rev = cachedConfig?.costumeLibraryRevision ?? '';
+  const updated = cachedConfig?.updatedAt ?? '';
+  const secondary = nextSecondaryByCharacter.has(pick.id) ? 's' : 'p';
+  return `${pick.id}:${secondary}:${rev}:${updated}`;
+}
+
+/**
+ * True when the upcoming costume already has decoded preview art.
+ * A same-costume refresh keeps the current art up so clicks never go blank.
+ */
+function costumePreviewReady(pick = upcoming) {
+  if (!pick?.id || !prepared?.ready || prepared.id !== pick.id) return false;
+  return prepared.usesSecondary === nextSecondaryByCharacter.has(pick.id);
+}
+
+function previewAnimationFor(pick) {
+  if (!pick?.anim) return null;
+  const fx = resolveClickEffect(pick.anim);
+  if (!isGhostPick(pick) && fx.type === 'ghost-spores') {
+    return { ...pick.anim, clickEffect: { type: 'composite-spores' } };
+  }
+  return pick.anim;
+}
+
+function selectPick(config, { openingRound = false } = {}) {
+  const forced = resolveForcePick(config);
+  if (linkedAnimationId) {
+    const anim = config?.animations?.find((entry) =>
+      entry.id === linkedAnimationId && entry.live && !entry.archived
+    );
+    const direct = [...(config?.animations || []), ...(config?.directAnimations || [])].find(entry =>
+      !entry.archived && (entry.id === linkedAnimationId || entry.id.replaceAll('-', '') === linkedAnimationId)
+    );
+    const preferred = costumeIdForSlug(linkedAnimationId);
+    const alias = [...(config?.animations || []), ...(config?.directAnimations || [])]
+      .find(entry => preferred !== linkedAnimationId && entry.id === preferred && !entry.archived);
+    const linked = alias || anim || direct || linkedOnlyAnimations.get(linkedAnimationId);
+    return linked ? { id: linked.id, anim: linked } : null;
+  }
+  if (forced) return forced;
+  if (!config) return null;
+  const cursor = readSelectionCursor();
+  const lastId = lastPlayedId || cursor.lastPlayedId || cursor.lastId;
+  const pick = pickAnimation(config, { lastId, cursorIndex: cursor.index });
+  const opening = openingRound && config.settings?.openingAnimationId;
+  const featured = opening && config.animations?.find((anim) =>
+    anim.id === opening && anim.live && !anim.archived
+  );
+  return (featured ? { id: featured.id, anim: featured } : pick) || null;
+}
+
+let prepareFlight = null;
+let prepareFlightKey = '';
+const warmedCostumeKeys = new Set();
+let warmChain = Promise.resolve();
+
+function revealPendingCostume() {
+  if (!costumePreviewReady(upcoming)) return;
+  const creature = typeof document !== 'undefined' ? document.getElementById('mainCreature') : null;
+  const baseSrc = prepared.kind === 'ghost' || prepared.anim?.replacesCreature
+    ? null
+    : (creature?.getAttribute?.('src') || '/img/mushroom-platypus.png');
+  upgradePendingCostumePreviews({
+    animation: previewAnimationFor(upcoming),
+    compositeElements: prepared.compositeElements || [],
+    baseSrc
+  });
+}
+
+function collectAnimUrls(anim, creature) {
+  if (!anim) return [];
+  if (isGhostPick({ id: anim.id, anim })) {
+    return [
+      GHOST_CONFIG.ASSETS.OVERLAY_IMAGE,
+      GHOST_CONFIG.ASSETS.SPORE_IMAGE,
+      creature?.getAttribute?.('src') || '/img/mushroom-platypus.png'
+    ].filter(Boolean);
+  }
+  const placementsById = resolvePlacementsForAnimation(placementsFor(cachedConfig, anim.id), anim.id);
+  const groups = [anim.elements || []];
+  if (anim.secondaryCostume?.elements?.length) groups.push(anim.secondaryCostume.elements);
+  const urls = [];
+  for (const elements of groups) {
+    const animForBuild = { ...anim, elements };
+    urls.push(...assetUrls(animForBuild, buildCompositeElements(animForBuild, placementsById), creature));
+  }
+  return [...new Set(urls.filter(Boolean))];
+}
+
+function enqueueWarm(anim, creature) {
+  if (!anim?.id) return;
+  const token = `${anim.id}:${cachedConfig?.costumeLibraryRevision ?? ''}:${cachedConfig?.updatedAt ?? ''}`;
+  if (warmedCostumeKeys.has(token)) return;
+  warmedCostumeKeys.add(token);
+  const urls = collectAnimUrls(anim, creature);
+  const profile = isGhostPick({ id: anim.id, anim }) ? 'ghost' : (anim.id || 'composite');
+  warmChain = warmChain.then(() => preloadActivationAssets(urls, profile)).catch(() => {
+    warmedCostumeKeys.delete(token);
+  });
+}
+
+/** Decode the following costume (and a small live pool) so the handoff rarely needs ‽. */
+function scheduleLookahead(creature) {
+  const config = cachedConfig;
+  if (upcoming?.anim) enqueueWarm(upcoming.anim, creature);
+  if (!config || linkedAnimationId) return;
+  const cursor = readSelectionCursor();
+  const next = pickAnimation(config, {
+    lastId: upcoming?.id || lastPlayedId,
+    cursorIndex: cursor.index
+  });
+  if (next?.anim) enqueueWarm(next.anim, creature);
+  const pool = eligibleOrdered(config);
+  if (config.settings?.selectionMode === 'weighted' || pool.length <= 6) {
+    for (const anim of pool.slice(0, 8)) enqueueWarm(anim, creature);
+  }
+}
+
 function placementsFor(config, animId) {
   return config?.placementsByAnimation?.[animId]?.elements || {};
 }
@@ -295,10 +424,30 @@ function assetUrls(anim, compositeElements, creature) {
  * Must finish before threshold so activate() is synchronous-start.
  */
 export async function prepareUpcoming(creature) {
-  prepared = null;
-  const config = cachedConfig;
   const pick = upcoming;
   if (!pick) return null;
+  const key = previewKeyFor(pick);
+  if (
+    prepared?.ready &&
+    prepared.previewKey === key &&
+    prepared.id === pick.id &&
+    prepared.usesSecondary === nextSecondaryByCharacter.has(pick.id)
+  ) {
+    revealPendingCostume();
+    return prepared;
+  }
+  if (prepareFlight && prepareFlightKey === key) return prepareFlight;
+  prepareFlightKey = key;
+  const run = prepareUpcomingBody(creature, pick);
+  prepareFlight = run.finally(() => {
+    if (prepareFlightKey === key) prepareFlight = null;
+  });
+  return prepareFlight;
+}
+
+async function prepareUpcomingBody(creature, pick) {
+  const config = cachedConfig;
+  if (!pick || (upcoming && upcoming.id !== pick.id)) return null;
   const { id: animId, anim } = pick;
   const ghost = isGhostPick(pick);
 
@@ -353,12 +502,13 @@ export async function prepareUpcoming(creature) {
 
   await preloadActivationAssets([...new Set(urls)], ghost ? 'ghost' : (animId || 'composite'));
 
-  if (upcoming !== pick) return null;
+  if (!upcoming || upcoming.id !== pick.id) return null;
   prepared = {
     transitionId:config?.placementsByAnimation?.[animId]?.transitionId||anim.animationPreset?.transition||'lightning',
     kind: ghost ? 'ghost' : 'composite',
     ready: true,
     usesSecondary,
+    previewKey: previewKeyFor(upcoming),
     id: animId,
     anim: animForBuild,
     placementsById,
@@ -367,6 +517,8 @@ export async function prepareUpcoming(creature) {
     urls
   };
   exposeUpcoming();
+  revealPendingCostume();
+  scheduleLookahead(creature);
   return prepared;
 }
 
@@ -376,39 +528,19 @@ export async function prepareUpcoming(creature) {
 export async function pickUpcoming({ forceRefresh = false, creature = null, openingRound = false } = {}) {
   const config = await fetchAnimationConfig(forceRefresh);
   applyClickThresholdFromConfig(hookedEffect || (typeof window !== 'undefined' ? window.__yaitgEffect : null), config);
-  const forced = resolveForcePick(config);
-  if (linkedAnimationId) {
-    const anim = config?.animations?.find((entry) =>
-      entry.id === linkedAnimationId && entry.live && !entry.archived
-    );
-    const direct = [...(config?.animations || []), ...(config?.directAnimations || [])].find(entry =>
-      !entry.archived && (entry.id === linkedAnimationId || entry.id.replaceAll('-', '') === linkedAnimationId)
-    );
-    const preferred = costumeIdForSlug(linkedAnimationId);
-    const alias = [...(config?.animations || []), ...(config?.directAnimations || [])]
-      .find(entry => preferred !== linkedAnimationId && entry.id === preferred && !entry.archived);
-    const linked = alias || anim || direct || linkedOnlyAnimations.get(linkedAnimationId);
-    upcoming = linked ? { id: linked.id, anim: linked } : null;
-  } else if (forced) {
-    upcoming = forced;
-    // Do not record forced as played — only activation complete advances the cursor.
-  } else if (!config) {
+  const pick = selectPick(config, { openingRound });
+  // Do not record a pick as played — only activation complete advances the cursor.
+  // Do not write upcoming.id into the cursor — that skipped the queued animation on reload.
+  if (!pick) {
     upcoming = null;
+    prepared = null;
+  } else if (!costumePreviewReady(pick)) {
+    upcoming = pick;
+    if (prepared && (prepared.id !== pick.id || prepared.usesSecondary !== nextSecondaryByCharacter.has(pick.id))) {
+      prepared = null;
+    }
   } else {
-    const cursor = readSelectionCursor();
-    // Advance past last *played* id (memory wins over storage within a session).
-    const lastId = lastPlayedId || cursor.lastPlayedId || cursor.lastId;
-    const pick = pickAnimation(config, {
-      lastId,
-      cursorIndex: cursor.index
-    });
-    const opening = openingRound && config.settings?.openingAnimationId;
-    const featured = opening && config.animations?.find((anim) =>
-      anim.id === opening && anim.live && !anim.archived
-    );
-    upcoming = (featured ? { id: featured.id, anim: featured } : pick) || null;
-    // Intentionally do NOT write upcoming.id into the cursor — that skipped the
-    // queued animation on reload (cowboy never played → stuck on ghost).
+    upcoming = pick;
   }
   exposeUpcoming();
   try {
@@ -420,6 +552,39 @@ export async function pickUpcoming({ forceRefresh = false, creature = null, open
   if (upcoming) await prepareUpcoming(cre);
   else prepared = null;
   return upcoming;
+}
+
+/**
+ * One config refresh after activation. Same single /api/animations read the
+ * handoff used to block on. If the published pool changed, the latest pick
+ * replaces the optimistic one; clicks do not each run this.
+ */
+async function settleNextCostume(creature) {
+  try {
+    const config = await fetchAnimationConfig(true);
+    applyClickThresholdFromConfig(hookedEffect, config);
+    const next = selectPick(config, { openingRound: false });
+    if (!next) {
+      upcoming = null;
+      prepared = null;
+      exposeUpcoming();
+    } else {
+      const sameReady = prepared?.ready
+        && prepared.id === next.id
+        && prepared.usesSecondary === nextSecondaryByCharacter.has(next.id);
+      upcoming = next;
+      if (!sameReady && prepared && (prepared.id !== next.id || prepared.usesSecondary !== nextSecondaryByCharacter.has(next.id))) {
+        prepared = null;
+      }
+      exposeUpcoming();
+    }
+    if (upcoming) await prepareUpcoming(creature);
+    else prepared = null;
+    return upcoming;
+  } catch (err) {
+    error('Next costume preparation failed', err);
+    return upcoming;
+  }
 }
 
 function exposeUpcoming() {
@@ -515,20 +680,29 @@ export function installThresholdLootHook(effect) {
       return createDefaultSporeExplosion(x, y, this.container, { opacity });
     }
     const up = upcoming;
-    if (!up?.anim) return fallback(x, y);
-    const fx = resolveClickEffect(up.anim);
+    const fx = up?.anim ? resolveClickEffect(up.anim) : null;
     const ghost = isGhostPick(up);
-    if (!ghost && fx.type === 'image-spores' && !fx.sporeImage) return fallback(x, y);
-    const animation = !ghost && fx.type === 'ghost-spores'
-      ? { ...up.anim, clickEffect: { type: 'composite-spores' } }
-      : up.anim;
-    const prep = prepared?.id === up.id ? prepared : null;
-    const placementsById = prep?.placementsById || placementsFor(cachedConfig, up.id);
+    if (up?.anim && !ghost && fx?.type === 'image-spores' && !fx.sporeImage) return fallback(x, y);
+    // Clicks never advance the costume and never start another prepare.
+    // One in-flight selection serves every click. If its art is not decoded,
+    // paint ‽ now and swap those same nodes when it is.
+    if (!costumePreviewReady(up)) {
+      return spawnInterrobangPreview({
+        host: this.container,
+        container: this.container,
+        creature: this.creature,
+        x,
+        y,
+        animation: previewAnimationFor(up)
+      });
+    }
+    const animation = previewAnimationFor(up);
+    const prep = prepared;
     return previewClick({
       container: this.container,
       creature: this.creature,
       animation,
-      compositeElements: prep?.compositeElements || buildCompositeElements(animation, placementsById),
+      compositeElements: prep.compositeElements || buildCompositeElements(animation, prep.placementsById || {}),
       x,
       y,
       sporeHost: this.container,
@@ -572,8 +746,28 @@ export function installThresholdLootHook(effect) {
         nextSecondaryByCharacter.delete(pick.id);
       }
       if (!linkedAnimationId) recordPlayed(ghost?'ghost':pick?.id,Number.isFinite(pick?.index)?pick.index:(ghost?0:-1));
-      upcoming=null;prepared=null;
-      nextRound=pickUpcoming({forceRefresh:true,creature}).catch(err=>error('Next costume preparation failed',err));
+      // Choose the next costume from the config already in memory so the
+      // handoff does not wait on /api/animations. Art that was warmed during
+      // this round is decoded immediately; otherwise clicks show ‽.
+      const optimistic = selectPick(cachedConfig, { openingRound: false });
+      if (!optimistic) {
+        upcoming = null;
+        prepared = null;
+        exposeUpcoming();
+      } else if (
+        prepared?.ready &&
+        prepared.id === optimistic.id &&
+        prepared.usesSecondary === nextSecondaryByCharacter.has(optimistic.id)
+      ) {
+        upcoming = optimistic;
+        exposeUpcoming();
+      } else {
+        upcoming = optimistic;
+        prepared = null;
+        exposeUpcoming();
+        void prepareUpcoming(creature).catch(err => error('Next costume preparation failed', err));
+      }
+      nextRound = settleNextCostume(creature);
       return nextRound;
     };
 

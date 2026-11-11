@@ -5,6 +5,12 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
+## 2026-11-11 (America/Chicago) — Interrobang while the next costume preview loads
+
+- **Root cause:** character clicks were not dropped. After a costume handoff (and on the first decode), `prepareUpcoming` cleared the ready preview and waited on image fetch/decode before anything could paint. The click still built a costume burst from those undecoded images, so the burst had no pixels. A casual second click in that gap looked like it did nothing.
+- **Click semantics:** each character click still counts once toward the activation threshold. It does not advance the costume cursor and does not start another prepare. One in-flight selection is the latest intent. If that costume's preview is not decoded yet, the click paints U+203D (‽) immediately; still-visible marks swap to that costume when decode finishes. A newer published pick replaces the target before the swap. The 50ms duplicate-event guard in `script.js` is unchanged.
+- **Preload:** the following costume (and a small live pool) is decoded in the background during the current round, and the handoff picks from the config already in memory instead of waiting on `/api/animations`. That read still happens once per activation, after the optimistic pick. No new KV operations.
+- Checkpoint `checkpoint/pre-interrobang-2026-11-11` @ `11a66de`.
 
 - **Public site image protect:** Creature, sticker, overlays, spore images: `draggable=false`, `contextmenu` preventDefault, CSS `-webkit-touch-callout:none`, `-webkit-user-drag:none`, `user-select:none`. No hit-shield / no `pointer-events:none` on creature (would steal threshold clicks). Clicks/taps, spore bursts, overlays unchanged.
 - YAITG `2e77f99` → CF Pages deploy **`313f4f53-b262-4817-9371-b77afc4c1c08`** (production aliases: apex, www, app). Local + prod image-protect PASS; uniform-actions Playwright PASS.
