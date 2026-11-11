@@ -91,6 +91,7 @@ export function runObjectActions({ root, elements = [], target = 'spore', sporeI
  */
 function runAlternatingFire({ root, slots, sporeIndex }) {
   const timers = new Set();
+  const startedAt = performance.now();
   let idx = sporeIndex % Math.max(1, slots.length);
   let stopped = false;
 
@@ -106,7 +107,9 @@ function runAlternatingFire({ root, slots, sporeIndex }) {
     const jitter = Math.max(0, +action.jitter || 0.4);
     const baseMs = 1000 / rate;
     const delay = baseMs * (1 + (Math.random() * 2 - 1) * jitter);
-    fireOnce({ root, el: slot.el, action });
+    if (!Number.isFinite(action.launchWindowMs) || performance.now() - startedAt <= action.launchWindowMs) {
+      fireOnce({ root, el: slot.el, action });
+    }
     const id = setTimeout(scheduleNext, Math.max(80, delay));
     timers.add(id);
   };
