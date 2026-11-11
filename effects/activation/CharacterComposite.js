@@ -62,6 +62,11 @@ export function buildCharacterComposite({ baseSrc, elements = [], box, scale = 1
     root.appendChild(img);
     applyElementPlacement(img,st,{left:0,top:0,width:box.width*scale,height:box.height*scale});
     img.style.zIndex=String(st.layer==='behind-character'?1:5);
+    // Keep the accessory's anchor available to spore object actions.
+    if ((st.shownOnSpore ?? st.shown) === false) {
+      img.style.visibility = 'hidden';
+      img.setAttribute('aria-hidden', 'true');
+    }
   }
 
   return root;
