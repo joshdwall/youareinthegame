@@ -56,6 +56,7 @@ export async function onRequestGet(context) {
   };
   const etag = await weakEtag({
     updatedAt: view.updatedAt,
+    settings: view.settings,
     costumeLibraryRevision: body.costumeLibraryRevision,
     livePercents: percents,
     animations: view.animations,
