@@ -17,10 +17,7 @@ function pegColor(count) {
   Math.round(channel + (pegColors[start + 1][index] - channel) * blend)).join(',') + ')';
 }
 function locationName(point) {
- const name = [point.city, point.region, country(point.country)].filter(Boolean).join(', ');
- if (point.city) return name;
- const coordinate = (value,positive,negative) => Math.abs(value).toFixed(1)+'\u00b0'+(value < 0 ? negative : positive);
- return name + ' \u00b7 approximate area near ' + coordinate(point.lat,'N','S') + ', ' + coordinate(point.lng,'E','W');
+ return [point.city, point.region, country(point.country)].filter(Boolean).join(', ');
 }
 function describePoint(point) {
  return locationName(point) + ' \u00b7 ' + number.format(point.count) + (point.count === 1 ? ' visitor' : ' visitors');

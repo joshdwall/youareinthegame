@@ -1,4 +1,5 @@
 import {WORLDMAP_SETTINGS} from '../../runtime/worldmap/settings.js';
+import {cleanPlaceName, cityAreaKey, nearestLargeCity} from './nearest-city.js';
 const COOKIE='yaitg_worldmap',EXCLUDE='yaitg_worldmap_exclude',YEAR=31536000;
 const json=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store',...headers}});
 const cookies=request=>Object.fromEntries((request.headers.get('cookie')||'').split(';').map(p=>p.trim().split(/=(.*)/s).slice(0,2)).filter(p=>p.length===2));
@@ -9,13 +10,13 @@ export function areaFromCloudflare(cf){
  if(!cf||cf.latitude===undefined||cf.longitude===undefined||cf.latitude===null||cf.longitude===null||cf.latitude===''||cf.longitude==='')return null;
  const lat=Number(cf.latitude),lng=Number(cf.longitude),country=cf.country;
  if(!Number.isFinite(lat)||!Number.isFinite(lng)||lat< -90||lat>90||lng< -180||lng>180||!/^[A-Z]{2}$/.test(country||'')||['XX','T1'].includes(country))return null;
- const clean=value=>String(value||'').replace(/[\p{Cc}\p{Cf}]/gu,'').trim().slice(0,60);
- const city=clean(cf.city),region=clean(cf.region);
+ const city=cleanPlaceName(cf.city),region=cleanPlaceName(cf.region);
  if(city){
   // Keep one approximate center per named locality without retaining raw coordinates.
-  const locality=JSON.stringify([region,city]);
-  return {key:`city:${country}:${locality.toLowerCase()}`,lat:Math.round(lat*10)/10,lng:Math.round(lng*10)/10,country,region,city};
+  return {key:cityAreaKey(country,region,city),lat:Math.round(lat*10)/10,lng:Math.round(lng*10)/10,country,region,city};
  }
+ const nearest=nearestLargeCity(lat,lng,country,region);
+ if(nearest)return nearest;
  const y=Math.min(179,Math.floor(lat+90)),x=Math.min(359,Math.floor(lng+180));
  return {key:`${country}:${y}:${x}`,lat:y-89.5,lng:x-179.5,country,region};
 }
@@ -36,7 +37,7 @@ export async function recordWorldmapVisit(request,env){
 }
 export async function worldmapData({request,env}){
  if(!env.YAITG_WORLDMAP_DB)return json({ok:false,error:'The visitor globe is not connected yet.'},503);
- const key=new Request(new URL('/api/worldmap?public=2',request.url));const cache=globalThis.caches?.default;const cached=await cache?.match(key);if(cached)return cached;
+ const key=new Request(new URL('/api/worldmap?public=3',request.url));const cache=globalThis.caches?.default;const cached=await cache?.match(key);if(cached)return cached;
  const db=env.YAITG_WORLDMAP_DB,totalSql='SELECT COALESCE(SUM(visitors),0) AS visitors,COUNT(*) AS areas,COUNT(DISTINCT country) AS countries FROM worldmap_areas WHERE visitors>0';
  let [points,total]=await db.batch([db.prepare('SELECT area_key AS id,lat,lng,country,region,visitors AS count FROM worldmap_areas WHERE visitors>0 ORDER BY visitors DESC,area_key LIMIT 2001'),db.prepare(totalSql)]),gridDegrees=1;
  // Coarsen crowded views instead of silently dropping less-visited origins.
@@ -58,6 +59,6 @@ export async function excludeWorldmapBrowser({request,env}){
  if(!env.YAITG_WORLDMAP_DB)return json({ok:false,error:'Visitor counting is unavailable'},503);
  let body;try{body=await request.json();}catch{return json({ok:false,error:'Invalid request'},400);}if(typeof body.excluded!=='boolean')return json({ok:false,error:'Choose whether to exclude this browser'},400);
  const who=await identity(request,env);if(who)await env.YAITG_WORLDMAP_DB.prepare('UPDATE worldmap_visitors SET excluded=? WHERE visitor_hash=? AND excluded!=?').bind(body.excluded?1:0,who.hash,body.excluded?1:0).run();
- await globalThis.caches?.default?.delete(new Request(new URL('/api/worldmap?public=2',url)));
+ await globalThis.caches?.default?.delete(new Request(new URL('/api/worldmap?public=3',url)));
  return json({ok:true,excluded:body.excluded},200,{'set-cookie':cookie(EXCLUDE,body.excluded?'1':'0',url,false)});
 }
