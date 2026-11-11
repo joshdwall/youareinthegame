@@ -148,7 +148,12 @@ export function normalizeConfig(raw) {
       openingAnimationId: typeof rawSettings.openingAnimationId === 'string'
         && /^[a-z][a-z0-9-]{0,63}$/.test(rawSettings.openingAnimationId)
         ? rawSettings.openingAnimationId : null,
-      interactionOpacityDuringAnimation
+      interactionOpacityDuringAnimation,
+      tapSporeBadgeEnabled: rawSettings.tapSporeBadgeEnabled !== false,
+      visitorsEnabled: rawSettings.visitorsEnabled !== false,
+      visitorsLabel: typeof rawSettings.visitorsLabel === 'string'
+        ? rawSettings.visitorsLabel.trim().slice(0, 60) || 'Visitors'
+        : 'Visitors'
     },
     seasons: Array.isArray(base.seasons) ? base.seasons : [],
     animations
