@@ -1,7 +1,9 @@
 import fs from 'node:fs';import {feature} from 'topojson-client';import {geoArea,geoCentroid} from 'd3-geo';import iso from 'i18n-iso-countries';
 const dest='assets/worldmap';fs.mkdirSync(dest,{recursive:true});
 fs.copyFileSync('node_modules/globe.gl/dist/globe.gl.min.js',dest+'/globe.gl.min.js');
-const atlas=JSON.parse(fs.readFileSync('node_modules/world-atlas/countries-110m.json'));fs.writeFileSync(dest+'/countries.geojson',JSON.stringify(feature(atlas,atlas.objects.countries)));
+const atlas=JSON.parse(fs.readFileSync('node_modules/world-atlas/countries-110m.json'));// Two decimals (~1 km) is far finer than the 110m atlas and cuts the download by more than half.
+const round=c=>typeof c[0]==='number'?[Math.round(c[0]*100)/100,Math.round(c[1]*100)/100]:c.map(round);
+const land=feature(atlas,atlas.objects.countries);for(const f of land.features)if(f.geometry)f.geometry.coordinates=round(f.geometry.coordinates);fs.writeFileSync(dest+'/countries.geojson',JSON.stringify(land));
 const features=feature(atlas,atlas.objects.countries).features,centers={};
 for(const code of Object.keys(iso.getAlpha2Codes()).sort()){
  const numeric=iso.alpha2ToNumeric(code),f=features.find(f=>String(f.id).padStart(3,'0')===numeric);if(!f)continue;

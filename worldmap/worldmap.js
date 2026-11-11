@@ -87,7 +87,7 @@ function render(data) {
  }
  filterCountries();
  list.scrollTop = scrollTop;
- if (globe) globe.pointsData(points).labelsData(points.slice(0,100));
+ showPins();
 }
 async function refresh() {
  if (visitorRequest) return;
@@ -104,12 +104,28 @@ async function refresh() {
   visitorRequest = false;
  }
 }
-async function startGlobe(){try{
- if(document.readyState!=='complete')await new Promise(resolve=>window.addEventListener('load',resolve,{once:true}));
- const land=await(await fetch('/assets/worldmap/countries.geojson')).json();if(typeof window.Globe!=='function')throw Error('Globe component unavailable');
- const host=$('globe');host.addEventListener('pointerdown',()=>{rotating=false;rotation();});globe=new window.Globe(host,{rendererConfig:{antialias:true,alpha:true}}).backgroundColor('#00000000').showAtmosphere(true).atmosphereColor('#75abc1').atmosphereAltitude(.14).showGraticules(true).polygonsData(land.features).polygonCapColor(()=> '#7ab5a0').polygonSideColor(()=> '#567c6c').polygonStrokeColor(()=> '#c6d5bb').polygonCapCurvatureResolution(1).polygonAltitude(.012).polygonsTransitionDuration(0).pointLat('lat').pointLng('lng').pointColor(d=>pegColor(d.count)).pointAltitude(d=>Math.min(.17,.035+Math.log2(d.count+1)*.012)).pointRadius(d=>Math.min(1.55,.52+Math.sqrt(d.count)*.1)).pointsTransitionDuration(reduced?0:500).pointLabel(d=>{const node=document.createElement('div');node.className='globe-tooltip';node.textContent=`${d.region?d.region+', ':''}${country(d.country)} · ${number.format(d.count)} ${d.count===1?'visitor':'visitors'}`;return node;}).onPointClick(select).onLabelClick(select).labelLat('lat').labelLng('lng').labelText(d=>String(d.count)).labelColor(()=> '#ffe5bc').labelAltitude(d=>Math.min(.19,.05+Math.log2(d.count+1)*.012)).labelSize(1.5).labelDotRadius(.15).labelResolution(2);
+// Always-render: the ocean globe paints on the first frames, the baked land image is
+// layered on as soon as it arrives, then pins grow in a few at a time.
+const LAND_IMAGE='/img/worldmap-earth-v1.webp';
+let landShown=false,pinsShown=false,pinRun=0;
+const nextFrame=()=>new Promise(resolve=>requestAnimationFrame(()=>resolve()));
+function markReady(){if(landShown&&pinsShown)$('globe').dataset.ready='true';}
+function showPins(){
+ if(!globe||!landShown)return;
+ const target=points,run=++pinRun;
+ if(pinsShown||reduced||!target.length){globe.pointsData(target).labelsData(target.slice(0,100));pinsShown=true;$('globe').dataset.pins='true';markReady();return;}
+ const batch=Math.max(4,Math.ceil(target.length/8));let shown=0;
+ const step=()=>{if(run!==pinRun)return;shown=Math.min(target.length,shown+batch);const visible=target.slice(0,shown);globe.pointsData(visible).labelsData(visible.slice(0,100));if(shown<target.length)setTimeout(step,90);else{pinsShown=true;$('globe').dataset.pins='true';markReady();}};
+ step();
+}
+function landDone(){if(landShown)return;landShown=true;$('globe').dataset.land='true';showPins();}
+function startGlobe(){try{
+ if(typeof window.Globe!=='function')throw Error('Globe component unavailable');
+ const host=$('globe');host.addEventListener('pointerdown',()=>{rotating=false;rotation();});globe=new window.Globe(host,{rendererConfig:{antialias:true,alpha:true},waitForGlobeReady:false,animateIn:false}).backgroundColor('#00000000').showAtmosphere(true).atmosphereColor('#75abc1').atmosphereAltitude(.14).showGraticules(true).pointLat('lat').pointLng('lng').pointColor(d=>pegColor(d.count)).pointAltitude(d=>Math.min(.17,.035+Math.log2(d.count+1)*.012)).pointRadius(d=>Math.min(1.55,.52+Math.sqrt(d.count)*.1)).pointsTransitionDuration(reduced?0:500).pointLabel(d=>{const node=document.createElement('div');node.className='globe-tooltip';node.textContent=`${d.region?d.region+', ':''}${country(d.country)} · ${number.format(d.count)} ${d.count===1?'visitor':'visitors'}`;return node;}).onPointClick(select).onLabelClick(select).labelLat('lat').labelLng('lng').labelText(d=>String(d.count)).labelColor(()=> '#ffe5bc').labelAltitude(d=>Math.min(.19,.05+Math.log2(d.count+1)*.012)).labelSize(1.5).labelDotRadius(.15).labelResolution(2);
  globe.globeMaterial().color.set('#15374a');globe.globeMaterial().shininess=8;globe.renderer().setPixelRatio(Math.min(devicePixelRatio,1.5));globe.controls().enablePan=false;globe.controls().autoRotateSpeed=.35;globe.controls().minDistance=115;globe.controls().maxDistance=600;globe.pointOfView({...DEFAULT_VIEW},0);host.dataset.initialView=JSON.stringify(globe.pointOfView());
- const resize=()=>{globe.width(host.clientWidth).height(host.clientHeight);};new ResizeObserver(resize).observe(host);resize();rotation();globe.pointsData(points).labelsData(points.slice(0,100));host.dataset.ready='true';
+ const resize=()=>{globe.width(host.clientWidth).height(host.clientHeight);};new ResizeObserver(resize).observe(host);resize();rotation();host.dataset.shell='true';
+ // Let the plain ocean globe paint first, then layer on the land image; pins never wait more than 4s for it.
+ const landImage=new Image();landImage.crossOrigin='anonymous';landImage.src=LAND_IMAGE;const landApplied=()=>globe.globeMaterial().map?nextFrame().then(landDone):nextFrame().then(landApplied);nextFrame().then(()=>landImage.decode()).then(()=>{globe.globeImageUrl(LAND_IMAGE);return landApplied();}).catch(landDone);setTimeout(landDone,4000);
  }catch{globe?.pauseAnimation();$('globe').hidden=true;$('globeFallback').hidden=false;document.querySelector('.globe-controls').hidden=true;document.querySelector('.globe-hint').hidden=true;}}
 function zoom(delta){if(!globe)return;const view=globe.pointOfView();globe.pointOfView({...view,altitude:Math.max(.15,Math.min(4,view.altitude+delta))},reduced?0:250);}
 $('zoomIn').onclick=()=>zoom(-.4);$('zoomOut').onclick=()=>zoom(.4);$('rotateGlobe').onclick=()=>{rotating=!rotating;rotation();};$('resetGlobe').onclick=()=>globe?.pointOfView({...DEFAULT_VIEW},reduced?0:600);
@@ -119,4 +135,4 @@ function refreshWhenDue() {
  if (Date.now() - lastRead < settings.browserCacheSeconds * 1000) return;
  void refresh();
 }
-document.addEventListener('visibilitychange',()=>{if(document.hidden)globe?.pauseAnimation();else{globe?.resumeAnimation();refreshWhenDue();}});setInterval(()=>{if(!document.hidden)refreshWhenDue();},Math.min(60000,settings.browserCacheSeconds*1000));void refresh();void startGlobe();
+document.addEventListener('visibilitychange',()=>{if(document.hidden)globe?.pauseAnimation();else{globe?.resumeAnimation();refreshWhenDue();}});setInterval(()=>{if(!document.hidden)refreshWhenDue();},Math.min(60000,settings.browserCacheSeconds*1000));startGlobe();void refresh();
