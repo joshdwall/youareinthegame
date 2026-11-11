@@ -58,9 +58,9 @@ class MushroomPlatypusApp {
             this.flushPendingThresholdClicks();
             this.effectsReady = true;
             log('Mushroom Platypus: Initialization complete');
-        } catch (error) {
-            error('Failed to initialize Mushroom Platypus:', error);
-            this.handleInitializationError(error);
+        } catch (err) {
+            error('Failed to initialize Mushroom Platypus:', err);
+            this.handleInitializationError(err);
         }
     }
 
@@ -213,8 +213,8 @@ class MushroomPlatypusApp {
                 await new Promise(resolve => setTimeout(resolve, 5000));
             }
             await this.transitionToNewEffect();
-        } catch (error) {
-            error('Effect transition failed:', error);
+        } catch (err) {
+            error('Effect transition failed:', err);
         }
     }
 
@@ -233,8 +233,8 @@ class MushroomPlatypusApp {
                     );
                 }, 5000);
             }
-        } catch (error) {
-            error('Failed to transition to new effect:', error);
+        } catch (err) {
+            error('Failed to transition to new effect:', err);
         }
     }
 
