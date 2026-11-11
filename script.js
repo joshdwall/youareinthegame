@@ -77,8 +77,8 @@ class MushroomPlatypusApp {
     }
 
     async initializeEffects() {
-        const { default: effectLoader } = await import('./effects/EffectLoader.js');
-        const { installThresholdLootHook } = await import('./runtime/public/thresholdActivation.js');
+        const { default: effectLoader } = await import('./effects/EffectLoader.js?v=glow-jump-1');
+        const { installThresholdLootHook } = await import('./runtime/public/thresholdActivation.js?v=glow-jump-1');
         this.effectLoader = effectLoader;
         if (typeof window !== 'undefined') {
             window.effectLoader = effectLoader;

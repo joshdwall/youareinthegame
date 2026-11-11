@@ -604,13 +604,25 @@ export function ensurePublicOverlayDom(creature) {
   rig = document.createElement('div');
   rig.id = 'creatureRig';
   rig.className = 'creature-rig';
+  // Keep the float clock continuous. Copying `animation` onto a new node
+  // otherwise restarts at the 0% keyframe (translateY(0)) and the character
+  // jumps down from the top of its bob.
   const cs = getComputedStyle(creature);
-  if (cs.animationName && cs.animationName !== 'none') {
-    rig.style.animation = cs.animation;
-    creature.style.animation = 'none';
-  }
+  const running = cs.animationName && cs.animationName !== 'none';
+  const fromAnim = running
+    ? (creature.getAnimations?.() || []).find((a) => a.animationName === 'float')
+      || (creature.getAnimations?.() || [])[0]
+    : null;
+  const continueAt = fromAnim && Number.isFinite(fromAnim.currentTime) ? fromAnim.currentTime : null;
   parent.insertBefore(rig, creature);
   rig.appendChild(creature);
+  if (running) {
+    rig.style.animation = cs.animation;
+    const toAnim = (rig.getAnimations?.() || []).find((a) => a.animationName === 'float')
+      || (rig.getAnimations?.() || [])[0];
+    if (toAnim && continueAt != null) toAnim.currentTime = continueAt;
+    creature.style.animation = 'none';
+  }
   overlay = document.createElement('div');
   overlay.id = 'overlayLayer';
   overlay.className = 'public-overlay';

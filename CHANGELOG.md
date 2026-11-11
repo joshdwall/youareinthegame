@@ -5,6 +5,13 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
+## 2026-11-11 (America/Chicago) — Character no longer jumps when the glow first appears
+
+- **Root cause:** `ensurePublicOverlayDom` moved the `float` animation from `#mainCreature` onto a newly created `.creature-rig` and cleared the creature animation, which restarts `float` at the 0% keyframe (`translateY(0)`). If the platypus was mid-bob (`translateY(-10px)`), it popped downward. This lined up with first hover/tap glow because the wrap runs when the loot hook finishes loading.
+- **Fix:** the rig is in `index.html` from first paint, and `float` runs only on `.creature-rig`. Glow stays a `filter` / `--creature-shadow` on the character (no transform change). If a wrap is still needed, the float clock is copied via `currentTime` before the old animation is cleared. Storm-level rules no longer re-apply `float` on a rig child.
+- Checkpoint `checkpoint-2026-11-11-pre-glow-jump`. Cache-bust `glow-jump-1`.
+
+
 ## 2026-11-11 (America/Chicago) — Interrobang while the next costume preview loads
 
 - **Root cause:** character clicks were not dropped. After a costume handoff (and on the first decode), `prepareUpcoming` cleared the ready preview and waited on image fetch/decode before anything could paint. The click still built a costume burst from those undecoded images, so the burst had no pixels. A casual second click in that gap looked like it did nothing.

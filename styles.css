@@ -99,6 +99,7 @@ img {
   cursor: pointer;
   position: relative;
   z-index: 10;
+  /* Float runs on .creature-rig so wrapping/glow cannot restart it. */
   animation: float 4s ease-in-out infinite;
   /* Disable mobile touch highlighting and selection */
   -webkit-touch-callout: none;
@@ -330,17 +331,21 @@ body, .container { cursor: default; }
 .creature { cursor: pointer; }
 input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-select: text; caret-color: auto; cursor: text; }
 
-/* Public loot-table overlays: float on the rig so accessories bob with the creature */
+/* Public loot-table overlays: float on the rig so accessories bob with the creature.
+   The character itself does not run `float` — that would restart (and jump) if a
+   glow class or later wrap retargeted the animation. */
 .creature-rig {
   position: relative;
   display: inline-block;
   line-height: 0;
   z-index: 10;
+  animation: float 4s ease-in-out infinite;
 }
 .creature-rig > .creature {
   display: block;
   position: relative;
   z-index: 2;
+  animation: none;
 }
 .public-overlay,
 #overlayLayer.public-overlay {
