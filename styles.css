@@ -94,7 +94,7 @@ img {
 .creature {
   width: 400px;
   height: auto;
-  filter: drop-shadow(0 0 20px rgba(0, 0, 0, 0.3));
+  filter: var(--creature-shadow, drop-shadow(0 0 20px rgba(0, 0, 0, 0.3)));
   transition: filter 0.25s ease;
   cursor: pointer;
   position: relative;
@@ -118,11 +118,11 @@ img {
 }
 
 .creature.has-touch-shadow {
-  filter: drop-shadow(0 0 22px rgba(0, 0, 0, 0.65));
+  --creature-shadow: drop-shadow(0 0 22px rgba(0, 0, 0, 0.65));
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .creature:hover,
+  .creature:hover { --creature-shadow: drop-shadow(0 0 22px rgba(0, 0, 0, 0.65)); }
   .spore-sticker-picture:not(:disabled):hover {
     filter: drop-shadow(0 0 22px rgba(0, 0, 0, 0.65));
   }
