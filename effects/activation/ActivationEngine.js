@@ -150,8 +150,21 @@ export async function runActivation(opts) {
     if(aborted())return {ok:false,aborted:true};
     const hasExit=elements.some(e=>(e.placement?.objectActions||[]).some(a=>a.phase==='exit'));
     if(hasExit){player.show();const exits=roots.map(root=>actions(root,'activation','exit'));await delay(reduced?100:preset.phases.exitMs);exits.forEach(c=>c.stop());}
-    player.hide();
-    if (replaceCreature) creature.style.visibility = originalVisibility;
+    const showCostume = animation.showCostumeWithSpores !== false;
+    const configuredFade = animation.costumeSporeFadeMs;
+    const fadeMs = reduced ? 0 : Number.isFinite(configuredFade)
+      ? Math.max(0, Math.min(5000, configuredFade)) : 350;
+    if (showCostume) player.hold();
+    else {
+      player.hide();
+      if (replaceCreature) creature.style.visibility = originalVisibility;
+    }
+    if (animation.previewSporesDuringBurst !== false) {
+      opts.onSporePhase?.((x, y) => previewClick({
+        container, creature, animation, x, y, sporeHost,
+        compositeElements: elements
+      }));
+    }
     const charBox={width:box.width,height:box.height};
     const spec=preset.spores;
     const count=reduced?Math.min(spec.count,4):Math.min(spec.count,LIMITS.clones);
@@ -188,17 +201,25 @@ export async function runActivation(opts) {
       // interrupt the finale; the lighting reset begins after the manager finishes.
       await Promise.race([finished,abortPromise]);
       if(aborted())return {ok:false,aborted:true};
-      if(transition==='lightning'&&!reduced){
-        const n=stageFlash(container,'final-reset');nodes.add(n);n.style.opacity='1';
-        const fadeMs=window.__yaitgEffect?.__liveStormResetMs||overlayProfile.animations.STORM_RESET_DURATION;
-        n.style.transition=`opacity ${fadeMs}ms ease-out`;requestAnimationFrame(()=>{n.style.opacity='0';});
-        await resetToLight();
-      }
     }
     if(aborted())return {ok:false,aborted:true};
-    await resetToLight();
+    opts.onSporePhase?.(null);
+    if (showCostume) {
+      if (replaceCreature) creature.style.visibility = originalVisibility;
+      player.hide(fadeMs);
+    }
+    if (spec.trajectory !== 'burst' && transition === 'lightning' && !reduced) {
+      const n = stageFlash(container, 'final-reset');
+      nodes.add(n);
+      n.style.opacity = '1';
+      const resetMs = opts.stormResetDurationMs || window.__yaitgEffect?.__liveStormResetMs || overlayProfile.animations.STORM_RESET_DURATION;
+      n.style.transition = 'opacity ' + resetMs + 'ms ease-out';
+      requestAnimationFrame(() => { n.style.opacity = '0'; });
+    }
+    await Promise.all([resetToLight(), showCostume && fadeMs ? delay(fadeMs) : null]);
     return {ok:true};
   }finally{
+    opts.onSporePhase?.(null);
     if (replaceCreature) creature.style.visibility = originalVisibility;
     signal?.removeEventListener('abort',onAbort);timers.forEach(id=>{clearTimeout(id);clearInterval(id);});timers.clear();
     [...controls].reverse().forEach(stopControl);manager?.cleanup?.();manager?.destroy?.();player?.cleanup();
