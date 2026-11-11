@@ -79,6 +79,10 @@ export function mountOverlayProps(overlayHost, opts) {
     img.draggable = false;
     img.style.pointerEvents = 'none';
     img.style.zIndex = String(st.layer==='behind-character'?1:5);
+    if ((st.shownOnMain ?? st.shown) === false) {
+      img.style.visibility = 'hidden';
+      img.setAttribute('aria-hidden', 'true');
+    }
 
     applyElementPlacement(img, st, box);
 

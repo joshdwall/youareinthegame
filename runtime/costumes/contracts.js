@@ -50,6 +50,7 @@ export function validatePlacement(raw,rig=MUSHROOM_RIG){
 export function editorPlacement(raw,rig=MUSHROOM_RIG){const p=resolvePlacement(raw,rig);return {...p,characterAnchor:{...p.characterAnchor}};}
 export function normalizeEditedPlacement(raw,rig=MUSHROOM_RIG){
  const p=validatePlacement(raw,rig);
+ for(const field of ['shownOnMain','shownOnSpore'])requireOk(p[field]===undefined||typeof p[field]==='boolean','Invalid accessory visibility');
  if(p.attachment){const a=rig.anchors[p.attachment.point==='bill'?'mouth':p.attachment.point];p.offset={x:p.characterAnchor.x-a.x,y:p.characterAnchor.y-a.y};delete p.characterAnchor;}
  return p;
 }
