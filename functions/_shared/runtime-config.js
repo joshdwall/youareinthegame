@@ -151,6 +151,10 @@ export function normalizeConfig(raw) {
       interactionOpacityDuringAnimation,
       tapSporeBadgeEnabled: rawSettings.tapSporeBadgeEnabled !== false,
       visitorsEnabled: rawSettings.visitorsEnabled !== false,
+      visitorsLabelEnabled: rawSettings.visitorsLabelEnabled !== false,
+      visitorsImage: typeof rawSettings.visitorsImage === 'string'
+        && /^\/api\/assets\/animations\/visitors\/[a-f0-9-]{36}\.(webp|png|jpg)$/.test(rawSettings.visitorsImage)
+        ? rawSettings.visitorsImage : null,
       visitorsLabel: typeof rawSettings.visitorsLabel === 'string'
         ? rawSettings.visitorsLabel.trim().slice(0, 60) || 'Visitors'
         : 'Visitors'

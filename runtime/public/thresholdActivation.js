@@ -169,7 +169,19 @@ export async function fetchAnimationConfig(force = false) {
       const label = globalThis.document?.getElementById('visitorsLabel');
       if (badge) badge.disabled = data.settings?.tapSporeBadgeEnabled === false;
       if (visitors) visitors.hidden = data.settings?.visitorsEnabled === false;
-      if (label) label.textContent = data.settings?.visitorsLabel || 'Visitors';
+      const visitorLabel = data.settings?.visitorsLabel || 'Visitors';
+      if (visitors) {
+        visitors.setAttribute('aria-label', visitorLabel);
+        const image = visitors.querySelector('img');
+        if (image) {
+          const source = data.settings?.visitorsImage || '/img/visitors-earth-v2.webp';
+          if (image.getAttribute('src') !== source) image.src = source;
+        }
+      }
+      if (label) {
+        label.textContent = visitorLabel;
+        label.hidden = data.settings?.visitorsLabelEnabled === false;
+      }
       cachedConfig = data;
       cachedConfigEtag = r.headers.get('etag');
       cacheAt = now;
