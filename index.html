@@ -9,7 +9,7 @@
   <link rel="icon" type="image/png" href="/favicon.png" sizes="48x48">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css?v=iphone-fixes-1">
+  <link rel="stylesheet" href="styles.css?v=interaction-shadow-1">
 </head>
 
 <body>
@@ -110,12 +110,20 @@
           e.preventDefault();
         }
       }
+      function onFirstTouchClick(e) {
+        var isTouch = e.pointerType === 'touch' ||
+          (!e.pointerType && e.detail > 0 && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+        if (!isTouch || !e.target.closest('#mainCreature, #tapSporeBadge:not(:disabled)')) return;
+        creature.classList.add('has-touch-shadow');
+        document.removeEventListener('click', onFirstTouchClick, true);
+      }
       function attach() {
         creature = document.getElementById('mainCreature');
         container = document.querySelector('.container');
         if (!creature || !container) return;
         hardenImg(creature);
         hardenImg(container);
+        document.addEventListener('click', onFirstTouchClick, true);
         creature.addEventListener('click', onCreature);
         container.addEventListener('click', onContainer);
         document.addEventListener('contextmenu', onContextMenu, true);
