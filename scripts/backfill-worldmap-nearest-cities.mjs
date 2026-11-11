@@ -92,7 +92,7 @@ console.log(JSON.stringify({
 
 if (!APPLY) process.exit(0);
 
-const statements = ['PRAGMA foreign_keys=ON', 'BEGIN IMMEDIATE'];
+const statements = [];
 for (const item of plan) {
   if (!item.new_key) continue;
   const old = item.old_key.replace(/'/g, "''");
@@ -103,7 +103,6 @@ for (const item of plan) {
   statements.push(`UPDATE worldmap_areas SET visitors=visitors+(SELECT visitors FROM worldmap_areas WHERE area_key='${old}') WHERE area_key='${neu}'`);
   statements.push(`DELETE FROM worldmap_areas WHERE area_key='${old}'`);
 }
-statements.push('COMMIT');
 
 mkdirSync('/tmp/worldmap-backfill', {recursive: true});
 const sqlPath = path.join('/tmp/worldmap-backfill', 'apply-nearest-cities.sql');
