@@ -360,11 +360,14 @@ export function textProjectileOnce({ root, el, action }) {
     const travel = Math.min(...[crossX, crossY].filter(value => value > 0));
     if (!Number.isFinite(travel)) { tip.remove(); return; }
     tip.dataset.exitViewport = 'true';
-    Object.assign(tip.style, { position: 'fixed', left: `${x}px`, top: `${y}px`, zIndex: '101' });
+    // Rotate the artwork after translating so its heading cannot rotate the flight path.
+    const heading = (action.spriteRotationDeg ?? 0) + deg - localDeg;
+    const facing = `rotate(${heading}deg)`;
+    Object.assign(tip.style, { position: 'fixed', left: `${x}px`, top: `${y}px`, zIndex: '101', rotate: 'none' });
     document.body.appendChild(tip);
     const flight = tip.animate([
-      { transform: 'translate(-50%, -50%)' },
-      { transform: `translate(-50%, -50%) translate(${dx * travel}px, ${dy * travel}px)` }
+      { transform: `translate(-50%, -50%) ${facing}` },
+      { transform: `translate(-50%, -50%) translate(${dx * travel}px, ${dy * travel}px) ${facing}` }
     ], { duration: Math.max(80, Math.min(12000, travel * durationMs / Math.max(14, dist))), easing: 'linear' });
     flight.finished.then(() => tip.remove(), () => tip.remove());
     return;
