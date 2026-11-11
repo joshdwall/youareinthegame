@@ -138,6 +138,11 @@ class MushroomPlatypusApp {
     setupEventListeners() {
         this.creature.addEventListener('click', (e) => this.handleCreatureClick(e));
         this.container.addEventListener('click', (e) => {
+            const badge = e.target.closest?.('#tapSporeBadge');
+            if (badge) {
+                if (!badge.disabled) this.handleCreatureClick(e, true);
+                return;
+            }
             if (e.target !== this.creature) {
                 this.handleContainerClick(e);
             }
@@ -148,7 +153,7 @@ class MushroomPlatypusApp {
         });
     }
 
-    handleCreatureClick(e) {
+    handleCreatureClick(e, fromBadge = false) {
         const now = Date.now();
         if (now - this.lastClickTime < this.clickDebounce) return;
         this.lastClickTime = now;
@@ -156,8 +161,9 @@ class MushroomPlatypusApp {
         this.clickCount++;
 
         const rect = this.container.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+        const center = fromBadge ? this.creature.getBoundingClientRect() : null;
+        const x = (center ? center.left + center.width / 2 : e.clientX) - rect.left;
+        const y = (center ? center.top + center.height / 2 : e.clientY) - rect.top;
 
         if (this.effectsReady && this.currentEffect && this.currentEffect.onSporeClick) {
             this.currentEffect.onSporeClick(x, y);

@@ -4,12 +4,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Mushroom Platypus - Now With Spores!</title>
+  <title>Mushroom Platypus - Tap for Spores</title>
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="icon" type="image/png" href="/favicon.png" sizes="48x48">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css?v=ii-3">
+  <link rel="stylesheet" href="styles.css?v=tap-spores-1">
 </head>
 
 <body>
@@ -17,12 +17,10 @@
     <img src="img/mushroom-platypus.webp" alt="Mushroom Platypus Creature" class="creature" id="mainCreature"
       draggable="false"
       onerror="this.onerror=null;this.src='img/mushroom-platypus.png'">
-    <picture class="spore-sticker-picture">
-      <source type="image/avif" srcset="img/now-with-spores.avif">
-      <source type="image/webp" srcset="img/now-with-spores.webp">
-      <img src="img/now-with-spores.png" alt="Now With Spores!" class="spore-sticker" draggable="false"
+    <button type="button" id="tapSporeBadge" class="spore-sticker-picture">
+      <img src="img/tap-for-spores.png" alt="Tap for spores" class="spore-sticker" draggable="false"
         width="192" height="192">
-    </picture>
+    </button>
   </div>
   <!-- Instant interactivity: attach listeners at first paint (before module graph). -->
   <script>
@@ -69,15 +67,25 @@
           }
         }
       }
-      function onCreature(e) {
+      function onCreature(e, fromBadge) {
         if (takenOver) return;
         pending++;
         var rect = container.getBoundingClientRect();
-        burst(e.clientX - rect.left, e.clientY - rect.top);
+        if (fromBadge) {
+          var center = creature.getBoundingClientRect();
+          burst(center.left + center.width / 2 - rect.left, center.top + center.height / 2 - rect.top);
+        } else {
+          burst(e.clientX - rect.left, e.clientY - rect.top);
+        }
       }
       function onContainer(e) {
         if (takenOver) return;
         if (e.target === creature) return;
+        var badge = e.target.closest && e.target.closest('#tapSporeBadge');
+        if (badge) {
+          if (!badge.disabled) onCreature(e, true);
+          return;
+        }
         var rect = container.getBoundingClientRect();
         burst(e.clientX - rect.left, e.clientY - rect.top);
       }
@@ -138,13 +146,9 @@
       else attach();
     })();
   </script>
-  <a class="worldmap-link" href="/worldmap/">
-    <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
-      <circle cx="16" cy="16" r="14" fill="#244c62" stroke="#143244" stroke-width="1.5"/>
-      <path d="M5 10l5-4 5 2 1 4-4 2-1 4-4-2zm9 9 5-2 4 3-2 5-3 4-2-4zm7-12 4 2 3 5-4 3-3-4z" fill="#91bba3"/>
-      <path d="M3 16h26M16 2c-9 7-9 21 0 28m0-28c9 7 9 21 0 28" fill="none" stroke="#ecf0db" stroke-opacity=".45"/>
-    </svg>
-    <span>visitors</span>
+  <a class="worldmap-link" id="visitorsLink" href="/worldmap/">
+    <img src="/img/visitors-earth.png" alt="" width="36" height="36" draggable="false">
+    <span id="visitorsLabel">Visitors</span>
   </a>
   <script>
     (function () {
@@ -156,7 +160,7 @@
       } catch (_) { /* visitor counting is optional */ }
     })();
   </script>
-  <script type="module" src="script.js?v=ii-3"></script>
+  <script type="module" src="script.js?v=tap-spores-1"></script>
   <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "a0a8c066c7c7450f8d4ccde07d01bfcf"}'></script>
 </body>
 

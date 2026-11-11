@@ -156,6 +156,12 @@ export async function fetchAnimationConfig(force = false) {
     }
     const data = await r.json();
     if (r.ok && data.ok) {
+      const badge = globalThis.document?.getElementById('tapSporeBadge');
+      const visitors = globalThis.document?.getElementById('visitorsLink');
+      const label = globalThis.document?.getElementById('visitorsLabel');
+      if (badge) badge.disabled = data.settings?.tapSporeBadgeEnabled === false;
+      if (visitors) visitors.hidden = data.settings?.visitorsEnabled === false;
+      if (label) label.textContent = data.settings?.visitorsLabel || 'Visitors';
       cachedConfig = data;
       cachedConfigEtag = r.headers.get('etag');
       cacheAt = now;
