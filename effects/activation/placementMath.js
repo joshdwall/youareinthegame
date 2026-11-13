@@ -95,3 +95,15 @@ export default {
   applyElementPlacement,
   expectedElementRect
 };
+
+/** Map an artwork point into its host using the same pivot as applyElementPlacement. */
+export function elementPointInHost(node, placement, point, width = node.offsetWidth, height = node.offsetHeight) {
+  const anchor = placement.objectAnchor || { x: .5, y: .5 };
+  const rotation = (+placement.rotation || 0) * Math.PI / 180;
+  const dx = (point.x - anchor.x) * width * (placement.flipX ? -1 : 1);
+  const dy = (point.y - anchor.y) * height;
+  return {
+    x: (parseFloat(node.style.left) || 0) + dx * Math.cos(rotation) - dy * Math.sin(rotation),
+    y: (parseFloat(node.style.top) || 0) + dx * Math.sin(rotation) + dy * Math.cos(rotation)
+  };
+}
