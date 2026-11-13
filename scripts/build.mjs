@@ -49,7 +49,7 @@ function copyDir(rel) {
 }
 
 
-const MODULE_CACHE_BUST = 'rig-reuse-1';
+const MODULE_CACHE_BUST = 'costume-lock-1';
 
 function bustImportUrl(spec) {
   if (!spec || /^(https?:|data:|blob:)/i.test(spec)) return spec;

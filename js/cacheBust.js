@@ -1,5 +1,5 @@
 /** Query token appended to module URLs so Safari/Chrome do not keep stale effects/*.js. */
-export const CACHE_BUST = 'rig-reuse-1';
+export const CACHE_BUST = 'costume-lock-1';
 
 /**
  * @param {string} url

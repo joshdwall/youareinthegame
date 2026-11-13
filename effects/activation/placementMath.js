@@ -2,7 +2,8 @@
  * SSOT: place overlay elements on the rendered character box.
  *
  * Coordinate system (both Cambio edit-mode and public apex MUST use this):
- * - box = creature getBoundingClientRect relative to the overlay host (rig)
+ * - box = creature rest box relative to the overlay host (rig); the body's
+ *   own transient translate is removed (all motion belongs to the rig)
  * - characterAnchor {x,y} in [0,1+] of character box (attachment point)
  * - objectAnchor {x,y} in [0,1] of the element image (pivot)
  * - scale = element width as a FRACTION OF CHARACTER WIDTH
@@ -15,12 +16,38 @@
  * Xform: translate(-objectAnchor%) rotate(deg) [scaleX(-1)]
  */
 
+/**
+ * Translation the element applies to itself (transform + translate), in px.
+ * Costume layers are placed in the rig's local space, so the body's own
+ * momentary motion must never be baked into their coordinates.
+ */
+export function ownTranslatePx(el) {
+  let x = 0;
+  let y = 0;
+  try {
+    if (typeof getComputedStyle !== 'function' || !el) return { x, y };
+    const cs = getComputedStyle(el);
+    if (cs.transform && cs.transform !== 'none' && typeof DOMMatrixReadOnly === 'function') {
+      const m = new DOMMatrixReadOnly(cs.transform);
+      x += m.m41;
+      y += m.m42;
+    }
+    if (cs.translate && cs.translate !== 'none') {
+      const [tx = '0px', ty = '0px'] = cs.translate.split(/\s+/);
+      if (tx.endsWith('px')) x += parseFloat(tx) || 0;
+      if (ty.endsWith('px')) y += parseFloat(ty) || 0;
+    }
+  } catch (_) {}
+  return { x, y };
+}
+
 export function measureCreatureBoxInHost(creatureEl, hostEl) {
   const host = hostEl.getBoundingClientRect();
   const r = creatureEl.getBoundingClientRect();
+  const own = ownTranslatePx(creatureEl);
   return {
-    left: r.left - host.left,
-    top: r.top - host.top,
+    left: r.left - host.left - own.x,
+    top: r.top - host.top - own.y,
     width: r.width,
     height: r.height
   };

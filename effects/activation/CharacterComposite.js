@@ -1,4 +1,4 @@
-import { elementWidthPx } from './placementMath.js';
+import { elementWidthPx, measureCreatureBoxInHost } from './placementMath.js';
 import {applyElementPlacement} from './placementMath.js';
 import {resolvePlacement} from '../../runtime/costumes/contracts.js';
 
@@ -76,12 +76,5 @@ export function buildCharacterComposite({ baseSrc, elements = [], box, scale = 1
  * Measure creature box relative to a host element.
  */
 export function measureCreatureBox(creatureEl, hostEl) {
-  const host = hostEl.getBoundingClientRect();
-  const r = creatureEl.getBoundingClientRect();
-  return {
-    left: r.left - host.left,
-    top: r.top - host.top,
-    width: r.width,
-    height: r.height
-  };
+  return measureCreatureBoxInHost(creatureEl, hostEl);
 }

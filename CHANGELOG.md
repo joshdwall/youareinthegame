@@ -5,6 +5,15 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
+## 2026-11-13 (America/Chicago) — Costumes locked to the platypus during every motion
+
+- **Root cause:** the storm "shake" (`electricCrackle`, storm levels 4–5) animated `transform` on `#mainCreature` itself, while every costume layer lives in `#overlayLayer` / `.costume-back-layer` as siblings of the body inside `#creatureRig`. The rig's `float` carried both, but the shake moved only the body, so hats, hair and props slid up to 2 px against it at 2.5 Hz during the finale. The click threshold is random (3–5), so rounds that ended at storm level 3 had no shake and looked fine; level 4–5 rounds did not. Costume placement was also measured from the body's shaken position at mount time.
+- **Standard:** `#creatureRig` is the only element that moves. Body and every costume layer are its children, placed in the body's rest box (rig-local coordinates from config). No per-costume or per-body motion; only configured `objectActions` (sway, bounce, etc.) may add sub-motion, layered inside the rig.
+- **Fix:** the shake now runs on the rig as `rigCrackle`, which animates the independent `translate` property so it layers on top of `float` without restarting it. The body keeps only its glow (filter) animations. `measureCreatureBoxInHost` removes the body's own transient translate, so mounts always use the rest box. An owned flash image inside the rig never runs its own float.
+- No KV change. Costume appearance at rest is unchanged (≤0.02 px).
+- Verified locally against the live costume config: 18 costumes × desktop, iPhone and Android sizes × storm levels 3, 4 and 5. The spread of each layer's offset from the body was 1.9–2 px before the fix at levels 4–5 (all 54 runs failed) and 0 px after (all 162 runs passed). Float stays continuous when the shake starts.
+- Checkpoint `checkpoint-costume-lock-20261113-1139`. Cache-bust `costume-lock-1`.
+
 ## 2026-11-13 (America/Chicago) — Costume mount reuses the first-paint rig; spore timing equalized
 
 - **Root cause:** after the glow-jump fix put `#creatureRig` in first-paint markup, `ensurePublicOverlayDom` still created a second nested `#creatureRig` when `#overlayLayer` was missing. Callers looked the rig up by id (the outer one) while the character sat in the inner one, so `mountOverlayProps` threw `insertBefore ... not a child` and the costume finale could skip.
