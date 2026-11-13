@@ -26,14 +26,16 @@
    </section>
    <section id="contact" class="contact-form discovery-card" aria-labelledby="discoveryQuestion">
     <div id="discoveryControls">
+     <!-- comm:poll how-did-you-find (generated at build from config/communications.json) -->
      <h2 id="discoveryQuestion">How did you find PlatypusShroom?</h2>
-     <div id="discoveryChoices" class="discovery-choices" role="group" aria-labelledby="discoveryQuestion">
+     <div id="discoveryChoices" class="discovery-choices" data-poll="how-did-you-find" role="group" aria-labelledby="discoveryQuestion">
       <button type="button" data-answer="random" disabled>Random</button>
       <button type="button" data-answer="word-of-mouth" disabled>Word of Mouth</button>
       <button type="button" data-answer="search" disabled>Search Engine</button>
       <button type="button" data-answer="social" disabled>Social Media</button>
       <button type="button" data-answer="link" disabled>Another Site</button>
      </div>
+     <!-- /comm:poll -->
      <p id="discoveryStatus" class="form-note" role="status" hidden></p>
      <button type="button" id="openContactForm">Send a Message</button>
     </div>
