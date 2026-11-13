@@ -1,3 +1,4 @@
+import { elementPointInHost } from './placementMath.js';
 /**
  * Pluggable objectActions registry.
  * Element schema: objectActions: [{ type, point:{x,y}, direction, pattern, rate, jitter, appliesTo, ... }]
@@ -274,13 +275,10 @@ export function textProjectileOnce({ root, el, action }) {
 
   const w = node.offsetWidth || parseFloat(node.style.width) || root.offsetWidth || 40;
   const h = node.offsetHeight || parseFloat(node.style.height) || root.offsetHeight || w * 0.7;
-  const oa = st.objectAnchor || { x: 0.5, y: 0.5 };
-  const elLeft = parseFloat(node.style.left) || 0;
-  const elTop = parseFloat(node.style.top) || 0;
-  // When the img fills the root (ghost wrap), left/top are 0 and oa is unused — point is fraction of node box.
   const fillsRoot = !node.style.left && node.parentElement === root;
-  const mx = fillsRoot ? point.x * w : elLeft + (point.x - oa.x) * w;
-  const my = fillsRoot ? point.y * h : elTop + (point.y - oa.y) * h;
+  const { x: mx, y: my } = fillsRoot
+    ? { x: point.x * w, y: point.y * h }
+    : elementPointInHost(node, st, point, w, h);
 
   const distRatio = Number.isFinite(+action.distanceRatio) ? +action.distanceRatio : 0.55;
   let dist = Number.isFinite(+action.distance)
@@ -359,6 +357,15 @@ export function textProjectileOnce({ root, el, action }) {
   } else {
     tip.textContent = rawText;
   }
+  // The white-hot core in the welding arc artwork is left of center.
+  const weldingArc = '/api/assets/animations/costumes/5603a0fa89833587eb8fcdb8cd972f82c89f7ffbd3abaa29913710b0ac9e403d.png';
+  const usesArc = action.sprite === weldingArc;
+  const pivot = usesArc ? '10%, 61%' : '50%, 50%';
+  const align = usesArc ? 'translate(-10%, -61%)' : 'translate(-50%, -50%)';
+  const spriteAngle = Number.isFinite(action.spriteRotationDeg)
+    ? action.spriteRotationDeg + (usesArc ? deg - localDeg : 0)
+    : 0;
+  const pose = (x, y, scale) => `translate(${x}px, ${y}px) ${align} rotate(${spriteAngle}deg) scale(${scale})`;
   const cssParts = [
     'position:absolute',
     `left:${mx}px`,
@@ -373,14 +380,15 @@ export function textProjectileOnce({ root, el, action }) {
     'pointer-events:none',
     'z-index:36',
     'user-select:none',
-    `transform:translate(-50%,-50%) translate(0px,0px) scale(${scaleFrom})`,
+    `transform:${pose(0, 0, scaleFrom)}`,
+    `transform-origin:${pivot.replace(',', '')}`,
     'opacity:1'
   ];
   if (fontFamily) cssParts.splice(5, 0, `font-family:${fontFamily}`);
   if (action.sprite) {
     const width = Math.max(8, Math.min(64, Number(action.spriteWidthPx) || 28));
     cssParts.push(`width:${width}px`, 'height:auto');
-    if (Number.isFinite(action.spriteRotationDeg)) cssParts.push(`rotate:${action.spriteRotationDeg}deg`);
+
   }
   tip.style.cssText = cssParts.join(';');
   root.appendChild(tip);
@@ -402,7 +410,7 @@ export function textProjectileOnce({ root, el, action }) {
     // Rotate the artwork after translating so its heading cannot rotate the flight path.
     const heading = (action.spriteRotationDeg ?? 0) + deg - localDeg;
     const facing = `rotate(${heading}deg)`;
-    Object.assign(tip.style, { position: 'fixed', left: `${x}px`, top: `${y}px`, zIndex: '101', rotate: 'none' });
+    Object.assign(tip.style, { position: 'fixed', left: `${x}px`, top: `${y}px`, zIndex: '101' });
     document.body.appendChild(tip);
     const flight = tip.animate([
       { transform: `translate(-50%, -50%) ${facing}` },
@@ -419,17 +427,17 @@ export function textProjectileOnce({ root, el, action }) {
     [
       {
         offset: 0,
-        transform: `translate(-50%, -50%) translate(0px, 0px) scale(${scaleFrom})`,
+        transform: pose(0, 0, scaleFrom),
         opacity: 1
       },
       {
         offset: holdRatio,
-        transform: `translate(-50%, -50%) translate(${midX}px, ${midY}px) scale(${midScale})`,
+        transform: pose(midX, midY, midScale),
         opacity: 1
       },
       {
         offset: 1,
-        transform: `translate(-50%, -50%) translate(${endX}px, ${endY}px) scale(${scaleTo})`,
+        transform: pose(endX, endY, scaleTo),
         opacity: 0
       }
     ],
