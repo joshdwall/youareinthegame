@@ -599,6 +599,18 @@ export function ensurePublicOverlayDom(creature) {
   let rig = document.getElementById('creatureRig');
   let overlay = document.getElementById('overlayLayer');
   if (rig && overlay) return { rig, overlay, creature };
+  // The rig ships in first-paint markup; reuse it and only add the overlay.
+  // Creating a second #creatureRig nested the character away from the rig
+  // that callers look up by id, so costume mounting threw on insertBefore.
+  if (rig && rig.contains(creature)) {
+    overlay = document.createElement('div');
+    overlay.id = 'overlayLayer';
+    overlay.className = 'public-overlay';
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.style.opacity = '0';
+    rig.appendChild(overlay);
+    return { rig, overlay, creature };
+  }
 
   const parent = creature.parentElement;
   rig = document.createElement('div');

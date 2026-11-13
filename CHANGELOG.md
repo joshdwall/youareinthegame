@@ -5,6 +5,14 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
+## 2026-11-13 (America/Chicago) — Costume mount reuses the first-paint rig; spore timing equalized
+
+- **Root cause:** after the glow-jump fix put `#creatureRig` in first-paint markup, `ensurePublicOverlayDom` still created a second nested `#creatureRig` when `#overlayLayer` was missing. Callers looked the rig up by id (the outer one) while the character sat in the inner one, so `mountOverlayProps` threw `insertBefore ... not a child` and the costume finale could skip.
+- **Fix:** reuse the existing rig and only add `#overlayLayer`.
+- Ships the spore-timing fix (single clock, Safari desktop-mode detection, config-driven `settings.reducedMotion`).
+- Verified: 12 combinations (iPhone Safari, Safari desktop mode, iPhone Chrome, Android Chrome, Samsung Internet, desktop Chrome, each with Reduce Motion on and off) all fire 8 spores lasting about 3–4 s, no errors.
+- Checkpoint `checkpoint-2026-11-13-pre-rig-reuse-fix`. Cache-bust `rig-reuse-1`.
+
 ## 2026-11-11 (America/Chicago) — Character no longer jumps when the glow first appears
 
 - **Root cause:** `ensurePublicOverlayDom` moved the `float` animation from `#mainCreature` onto a newly created `.creature-rig` and cleared the creature animation, which restarts `float` at the 0% keyframe (`translateY(0)`). If the platypus was mid-bob (`translateY(-10px)`), it popped downward. This lined up with first hover/tap glow because the wrap runs when the loot hook finishes loading.

@@ -117,7 +117,7 @@ export const GHOST_CONFIG = {
 
     // Stylesheet Paths
     STYLESHEETS: {
-        EFFECT: '/effects/spore/ghost/effect.css?v=spore-timing2',
+        EFFECT: '/effects/spore/ghost/effect.css?v=rig-reuse-1',
         FINALE: '/effects/spore/finale.css'
     },
 

@@ -1,5 +1,5 @@
 /** Query token appended to module URLs so Safari/Chrome do not keep stale effects/*.js. */
-export const CACHE_BUST = 'spore-timing2';
+export const CACHE_BUST = 'rig-reuse-1';
 
 /**
  * @param {string} url
