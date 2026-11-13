@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { renderPollBlocks } from './comm-poll-markup.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SITE_DIR = path.resolve(__dirname, '..');
@@ -100,6 +101,11 @@ function main() {
     copyDir(rel);
     count += 1;
   }
+
+  // Poll card markup from config/communications.json (site-hub communications module; one config for options).
+  const commConfig = JSON.parse(fs.readFileSync(path.join(SITE_DIR, 'config', 'communications.json'), 'utf8'));
+  const worldmapHtml = path.join(OUT_DIR, 'worldmap', 'index.html');
+  fs.writeFileSync(worldmapHtml, renderPollBlocks(fs.readFileSync(worldmapHtml, 'utf8'), commConfig));
 
   const cacheBust = bustStagedModuleImports(OUT_DIR);
   console.log(`[stage-pages] youareinthegame → dist (${count} roots, module ?v=${cacheBust})`);
