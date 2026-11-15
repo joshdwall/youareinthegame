@@ -4,6 +4,7 @@ const projectile = {type:'fire', ...spore, spriteWidthPx:42, durationMs:700, dis
 export const ACTION_CATALOG_VERSION = 1;
 
 export const ACTION_CATALOG = Object.freeze({
+  beam: {label:'Laser bolt', defaults:{type:'fire', ...spore, shape:'beam', color:'#ff263d', fontSizePx:20, durationMs:200, distance:480, exitViewport:true, rate:4}},
   flash: {label:'Flash', defaults:{type:'fire', ...spore}},
   text: {label:'Text or symbol', defaults:{type:'textProjectile', ...spore, text:'!', color:'#ffffff', durationMs:700}},
   sprite: {label:'Straight projectile', defaults:projectile},
@@ -21,13 +22,14 @@ export const ACTION_CATALOG = Object.freeze({
 });
 
 export const ACTION_CATEGORIES = Object.freeze({
-  'Emissions':['flash','text','sprite','offscreen'],
+  'Emissions':['flash','text','sprite','offscreen','beam'],
   'Projectile flight':['ricochet','dart','wind'],
   'Item motion':['detach','sway','bounce','spin','recoil','fade','particles'],
   'Attack shapes':['slash','thrust','impact']
 });
 
 export function actionPresetKey(action) {
+  if (action.shape==='beam') return 'beam';
   if (action.type==='fire') return action.flightPath || (action.exitViewport?'offscreen':action.sprite?'sprite':'flash');
   if (action.type==='textProjectile') return action.shape || 'text';
   return action.type==='windLaunch'?'detach':action.type;
