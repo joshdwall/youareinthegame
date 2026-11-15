@@ -63,6 +63,11 @@ export function launchMainCharacterItem(img, action, signal) {
 
 /** Detach the mounted spore accessory and carry it away in two gusts. */
 function windLaunch({root, el}) {
+  if (!root.isConnected) {
+    let flight;
+    const frame = requestAnimationFrame(() => { if (root.isConnected) flight = windLaunch({root, el}); });
+    return {stop() { cancelAnimationFrame(frame); flight?.stop(); }};
+  }
   const img = resolveActionNode(root, el);
   if (!img?.complete || !img.naturalWidth) {
     let stopped = false;
