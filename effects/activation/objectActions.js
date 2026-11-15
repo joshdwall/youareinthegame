@@ -105,7 +105,8 @@ function windFlightFrames(lean, gust, travel, bend, heading = 0) {
 }
 
 function projectileFlightFrames(x, y, heading, action) {
-  const rad = heading * Math.PI / 180;
+  const spread = action.flightPath === 'ricochet' ? (action.directionSpreadDeg || 0) : 0;
+  const rad = (heading + (spread ? (Math.random() - .5) * spread : 0)) * Math.PI / 180;
   let dx = Math.cos(rad);
   let dy = Math.sin(rad);
   if (action.flightPath === 'wind') {
@@ -259,7 +260,7 @@ function runAlternatingFire({ root, slots, sporeIndex }) {
  * Spawn a muzzle flash / puff along the action direction from the muzzle point.
  */
 export function fireOnce({ root, el, action }) {
-  if (action.sprite) {
+  if (action.sprite || action.shape === 'beam') {
     textProjectileOnce({ root, el, action });
     return;
   }
@@ -429,7 +430,8 @@ export function textProjectileOnce({ root, el, action }) {
     ? Math.max(8, +action.fontSizePx)
     : Math.max(10, w * fontSizeRatio);
   const rawText = (action.text != null ? String(action.text) : 'BOO');
-  const color = action.color || '#000';
+  const beam = action.shape === 'beam';
+  const color = beam ? (/^#[0-9a-f]{6}$/i.test(action.color) ? action.color : '#ff263d') : action.color || '#000';
   const fontWeight = action.fontWeight != null ? String(action.fontWeight) : '700';
   const fontFamily = (action.fontFamily != null ? String(action.fontFamily).trim() : '');
 
@@ -447,10 +449,11 @@ export function textProjectileOnce({ root, el, action }) {
   // The white-hot core in the welding arc artwork is left of center.
   const weldingArc = '/api/assets/animations/costumes/5603a0fa89833587eb8fcdb8cd972f82c89f7ffbd3abaa29913710b0ac9e403d.png';
   const usesArc = action.sprite === weldingArc;
-  const pivot = usesArc ? '10%, 61%' : '50%, 50%';
-  const align = usesArc ? 'translate(-10%, -61%)' : 'translate(-50%, -50%)';
+  const origin = action.spriteOrigin || (usesArc ? {x:.1,y:.61} : {x:.5,y:.5});
+  const pivot = origin.x * 100 + '% ' + origin.y * 100 + '%';
+  const align = 'translate(' + (-origin.x * 100) + '%, ' + (-origin.y * 100) + '%)';
   const spriteAngle = Number.isFinite(action.spriteRotationDeg)
-    ? action.spriteRotationDeg + (usesArc ? deg - localDeg : 0)
+    ? action.spriteRotationDeg + (usesArc || action.spriteOrigin ? deg - localDeg : 0)
     : 0;
   const pose = (x, y, scale) => `translate(${x}px, ${y}px) ${align} rotate(${spriteAngle}deg) scale(${scale})`;
   const cssParts = [
@@ -486,6 +489,13 @@ export function textProjectileOnce({ root, el, action }) {
     tip.textContent='';
     cssParts.push(`width:${fontSize*1.8}px`, `height:${fontSize}px`, 'background:currentColor', 'clip-path:'+shapes[action.shape], `rotate:${deg}deg`);
   }
+  if (beam) {
+    tip.textContent='';
+    tip.dataset.beam='true';
+    cssParts.push(`width:${fontSize*2.4}px`, 'height:4px', 'border-radius:50%',
+      'background:linear-gradient(90deg,transparent,currentColor 20%,white 82%,currentColor)',
+      'box-shadow:0 0 6px 1px currentColor');
+  }
   tip.style.cssText = cssParts.join(';');
   root.appendChild(tip);
 
@@ -497,12 +507,12 @@ export function textProjectileOnce({ root, el, action }) {
     Object.assign(tip.style, {position:'fixed',left:x+'px',top:y+'px',zIndex:'101',marginLeft:'-'+(tip.offsetWidth/2)+'px',marginTop:'-'+(tip.offsetHeight/2)+'px'});
     document.body.append(tip);
     const frames = projectileFlightFrames(x,y,deg,action);
-    const flight = tip.animate(frames,{duration:action.flightPath === 'ricochet' ? 210 * frames.length : action.flightPath === 'wind' ? Math.max(200, action.durationMs || 760) : 540,easing:action.flightPath === 'wind' ? 'ease-in' : 'linear'});
+    const flight = tip.animate(frames,{duration:action.flightPath === 'ricochet' ? (action.ricochetLegMs || 210) * frames.length : action.flightPath === 'wind' ? Math.max(200, action.durationMs || 760) : 540,easing:action.flightPath === 'wind' ? 'ease-in' : 'linear'});
     flight.finished.then(() => tip.remove(), () => tip.remove());
     return;
   }
 
-  if (action.sprite && action.exitViewport === true) {
+  if ((action.sprite || beam) && action.exitViewport === true) {
     const box = tip.getBoundingClientRect();
     const x = box.left + box.width / 2;
     const y = box.top + box.height / 2;
@@ -517,7 +527,7 @@ export function textProjectileOnce({ root, el, action }) {
     if (!Number.isFinite(travel)) { tip.remove(); return; }
     tip.dataset.exitViewport = 'true';
     // Rotate the artwork after translating so its heading cannot rotate the flight path.
-    const heading = (action.spriteRotationDeg ?? 0) + deg - localDeg;
+    const heading = beam ? deg : (action.spriteRotationDeg ?? 0) + deg - localDeg;
     const facing = `rotate(${heading}deg)`;
     Object.assign(tip.style, { position: 'fixed', left: `${x}px`, top: `${y}px`, zIndex: '101' });
     document.body.appendChild(tip);
