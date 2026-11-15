@@ -1,6 +1,8 @@
 const spore = {phase:'activation', appliesTo:['spore'], point:{x:.8,y:.25}, direction:-45};
 const projectile = {type:'fire', ...spore, spriteWidthPx:42, durationMs:700, distance:75, rate:2, launchWindowMs:450};
 
+export const ACTION_CATALOG_VERSION = 1;
+
 export const ACTION_CATALOG = Object.freeze({
   flash: {label:'Flash', defaults:{type:'fire', ...spore}},
   text: {label:'Text or symbol', defaults:{type:'textProjectile', ...spore, text:'!', color:'#ffffff', durationMs:700}},
@@ -26,8 +28,10 @@ export function actionPresetKey(action) {
 
 export function createAction(key, sprite) {
   const entry=ACTION_CATALOG[key];
-  if (!entry) throw Error('Unknown action preset');
+  if (!Object.hasOwn(ACTION_CATALOG,key)) throw Error('Unknown action preset');
   const action=structuredClone(entry.defaults);
+  action.id=`action-${crypto.randomUUID()}`;
+  action.presetRef=`${key}@${ACTION_CATALOG_VERSION}`;
   if (['sprite','offscreen','ricochet','dart','wind'].includes(key) && sprite) action.sprite=sprite;
   return action;
 }
