@@ -20,6 +20,13 @@ export const ACTION_CATALOG = Object.freeze({
   }]))
 });
 
+export const ACTION_CATEGORIES = Object.freeze({
+  'Emissions':['flash','text','sprite','offscreen'],
+  'Projectile flight':['ricochet','dart','wind'],
+  'Item motion':['detach','sway','bounce','spin','recoil','fade','particles'],
+  'Attack shapes':['slash','thrust','impact']
+});
+
 export function actionPresetKey(action) {
   if (action.type==='fire') return action.flightPath || (action.exitViewport?'offscreen':action.sprite?'sprite':'flash');
   if (action.type==='textProjectile') return action.shape || 'text';
