@@ -60,6 +60,76 @@ export function launchMainCharacterItem(img, action, signal) {
   };
 }
 
+
+/** Detach the mounted spore accessory and carry it away in two gusts. */
+function windLaunch({root, el}) {
+  const img = resolveActionNode(root, el);
+  if (!img?.complete || !img.naturalWidth) {
+    let stopped = false;
+    let flight;
+    img?.decode().then(() => { if (!stopped && root.isConnected) flight = windLaunch({root, el}); }).catch(() => {});
+    return {stop() { stopped = true; flight?.stop(); }};
+  }
+  const box = img.getBoundingClientRect();
+  if (!box.width || !box.height || getComputedStyle(img).visibility === 'hidden') return;
+  const sprite = img.cloneNode();
+  const originalVisibility = img.style.visibility;
+  const lean = Math.random() < .5 ? -1 : 1;
+  const gust = lean * (Math.random() < .5 ? -1 : 1);
+  const travel = Math.max(120, box.bottom + box.height);
+  const bend = travel * (.25 + Math.random() * .35);
+  sprite.dataset.windLaunch = el.id;
+  sprite.style.cssText = `position:fixed;left:${box.left}px;top:${box.top}px;width:${box.width}px;height:${box.height}px;object-fit:contain;pointer-events:none;z-index:101;transform-origin:50% 85%`;
+  img.style.visibility = 'hidden';
+  document.body.append(sprite);
+  const flight = sprite.animate([
+    {transform:'translate(0,0) rotate(0deg)'},
+    {offset:.19, transform:`translate(${lean * 8}px,-8px) rotate(${lean * 23}deg)`},
+    {offset:.54, transform:`translate(${lean * bend}px,${-travel * .38}px) rotate(${lean * 33}deg)`},
+    {transform:`translate(${lean * bend + gust * travel * .7}px,${-travel}px) rotate(${gust * 78}deg)`}
+  ], {duration:760, easing:'ease-in'});
+  flight.finished.catch(() => {}).finally(() => sprite.remove());
+  return {stop() { flight.cancel(); if (root.isConnected) img.style.visibility = originalVisibility; }};
+}
+
+registerAction('windLaunch', windLaunch);
+
+function projectileFlightFrames(x, y, heading, action) {
+  const rad = heading * Math.PI / 180;
+  let dx = Math.cos(rad);
+  let dy = Math.sin(rad);
+  if (action.flightPath === 'dart') {
+    const travel = Math.max(140, Math.min(innerWidth, innerHeight) * .65);
+    const turn = Math.random() < .5 ? -1 : 1;
+    const lateralFractions = [0, .14, -.13, .08];
+    return [0, .32, .64, 1].map((offset, index, offsets) => {
+      const lateral = lateralFractions[index] * turn * travel;
+      const from = Math.min(index, 2);
+      const slope = (lateralFractions[from + 1] - lateralFractions[from]) * turn / (offsets[from + 1] - offsets[from]);
+      const angle = heading + Math.atan(slope) * 180 / Math.PI + 90;
+      return {offset, transform:`translate(${dx * travel * offset - dy * lateral}px,${dy * travel * offset + dx * lateral}px) rotate(${angle}deg)`, opacity:index === 3 ? 0 : 1};
+    });
+  }
+  const margin = 15;
+  x = Math.max(margin, Math.min(innerWidth - margin, x));
+  y = Math.max(margin, Math.min(innerHeight - margin, y));
+  const originX = x, originY = y;
+  const frames = [{transform:'translate(0px,0px)',opacity:1}];
+  const bounces = 1 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < bounces; i++) {
+    const tx = Math.abs(dx) < 1e-5 ? Infinity : ((dx > 0 ? innerWidth - margin : margin) - x) / dx;
+    const ty = Math.abs(dy) < 1e-5 ? Infinity : ((dy > 0 ? innerHeight - margin : margin) - y) / dy;
+    const step = Math.min(tx, ty);
+    x += dx * step;
+    y += dy * step;
+    if (tx <= ty) dx = -dx;
+    if (ty <= tx) dy = -dy;
+    frames.push({transform:`translate(${x-originX}px,${y-originY}px)`,opacity:1});
+  }
+  frames.push({transform:`translate(${x-originX+dx*65}px,${y-originY+dy*65}px)`,opacity:0});
+  return frames;
+}
+
 export function listActionTypes() {
   return [...registry.keys()];
 }
@@ -392,6 +462,19 @@ export function textProjectileOnce({ root, el, action }) {
   }
   tip.style.cssText = cssParts.join(';');
   root.appendChild(tip);
+
+  if (action.sprite && (action.flightPath === 'ricochet' || action.flightPath === 'dart')) {
+    const box = tip.getBoundingClientRect();
+    const x = box.left + box.width / 2;
+    const y = box.top + box.height / 2;
+    tip.dataset.flightPath = action.flightPath;
+    Object.assign(tip.style, {position:'fixed',left:x+'px',top:y+'px',zIndex:'101',marginLeft:'-'+(tip.offsetWidth/2)+'px',marginTop:'-'+(tip.offsetHeight/2)+'px'});
+    document.body.append(tip);
+    const frames = projectileFlightFrames(x,y,deg,action);
+    const flight = tip.animate(frames,{duration:action.flightPath === 'ricochet' ? 210 * frames.length : 540,easing:'linear'});
+    flight.finished.then(() => tip.remove(), () => tip.remove());
+    return;
+  }
 
   if (action.sprite && action.exitViewport === true) {
     const box = tip.getBoundingClientRect();
