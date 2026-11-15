@@ -103,6 +103,17 @@ function projectileFlightFrames(x, y, heading, action) {
   const rad = heading * Math.PI / 180;
   let dx = Math.cos(rad);
   let dy = Math.sin(rad);
+  if (action.flightPath === 'wind') {
+    const side = Math.random() < .5 ? -1 : 1;
+    const gust = Math.min(170, innerWidth * .2) * side;
+    const lift = Math.max(120, y + 70);
+    return [
+      {transform:'translate(0px,0px) rotate(0deg)'},
+      {offset:.2,transform:`translate(${side*12}px,-9px) rotate(${side*24}deg)`},
+      {offset:.55,transform:`translate(${gust}px,${-lift*.35}px) rotate(${side*44}deg)`},
+      {transform:`translate(${-gust*.6}px,${-lift}px) rotate(${side*-75}deg)`}
+    ];
+  }
   if (action.flightPath === 'dart') {
     const travel = Math.max(140, Math.min(innerWidth, innerHeight) * .65);
     const turn = Math.random() < .5 ? -1 : 1;
@@ -465,10 +476,19 @@ export function textProjectileOnce({ root, el, action }) {
     cssParts.push(`width:${width}px`, 'height:auto');
 
   }
+  const shapes = {
+    slash:'polygon(0 90%, 25% 42%, 66% 10%, 100% 4%, 69% 27%, 35% 57%, 14% 96%)',
+    thrust:'polygon(0 41%, 70% 41%, 64% 12%, 100% 50%, 64% 88%, 70% 59%, 0 59%)',
+    impact:'polygon(50% 0, 61% 37%, 100% 18%, 75% 48%, 100% 80%, 61% 64%, 50% 100%, 39% 64%, 0 80%, 25% 48%, 0 18%, 39% 37%)'
+  };
+  if (!action.sprite && Object.hasOwn(shapes, action.shape)) {
+    tip.textContent='';
+    cssParts.push(`width:${fontSize*1.8}px`, `height:${fontSize}px`, 'background:currentColor', 'clip-path:'+shapes[action.shape], `rotate:${deg}deg`);
+  }
   tip.style.cssText = cssParts.join(';');
   root.appendChild(tip);
 
-  if (action.sprite && (action.flightPath === 'ricochet' || action.flightPath === 'dart')) {
+  if (action.sprite && (['ricochet','dart','wind'].includes(action.flightPath))) {
     const box = tip.getBoundingClientRect();
     const x = box.left + box.width / 2;
     const y = box.top + box.height / 2;
@@ -476,7 +496,7 @@ export function textProjectileOnce({ root, el, action }) {
     Object.assign(tip.style, {position:'fixed',left:x+'px',top:y+'px',zIndex:'101',marginLeft:'-'+(tip.offsetWidth/2)+'px',marginTop:'-'+(tip.offsetHeight/2)+'px'});
     document.body.append(tip);
     const frames = projectileFlightFrames(x,y,deg,action);
-    const flight = tip.animate(frames,{duration:action.flightPath === 'ricochet' ? 210 * frames.length : 540,easing:'linear'});
+    const flight = tip.animate(frames,{duration:action.flightPath === 'ricochet' ? 210 * frames.length : action.flightPath === 'wind' ? 760 : 540,easing:'linear'});
     flight.finished.then(() => tip.remove(), () => tip.remove());
     return;
   }
