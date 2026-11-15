@@ -87,32 +87,33 @@ function windLaunch({root, el}) {
   sprite.style.cssText = `position:fixed;left:${box.left}px;top:${box.top}px;width:${box.width}px;height:${box.height}px;object-fit:contain;pointer-events:none;z-index:101;transform-origin:50% 85%`;
   img.style.visibility = 'hidden';
   document.body.append(sprite);
-  const flight = sprite.animate([
-    {transform:'translate(0,0) rotate(0deg)'},
-    {offset:.19, transform:`translate(${lean * 8}px,-8px) rotate(${lean * 23}deg)`},
-    {offset:.54, transform:`translate(${lean * bend}px,${-travel * .38}px) rotate(${lean * 33}deg)`},
-    {transform:`translate(${lean * bend + gust * travel * .7}px,${-travel}px) rotate(${gust * 78}deg)`}
-  ], {duration:760, easing:'ease-in'});
+  const flight = sprite.animate(windFlightFrames(lean, gust, travel, bend), {duration:760, easing:'ease-in'});
   flight.finished.catch(() => {}).finally(() => sprite.remove());
   return {stop() { flight.cancel(); if (root.isConnected) img.style.visibility = originalVisibility; }};
 }
 
 registerAction('windLaunch', windLaunch);
 
+/** The same two gusts can carry a detached item or a spawned projectile. */
+function windFlightFrames(lean, gust, travel, bend, heading = 0) {
+  return [
+    {transform:`translate(0,0) rotate(${heading}deg)`},
+    {offset:.19, transform:`translate(${lean * 8}px,-8px) rotate(${heading + lean * 23}deg)`},
+    {offset:.54, transform:`translate(${lean * bend}px,${-travel * .38}px) rotate(${heading + lean * 33}deg)`},
+    {transform:`translate(${lean * bend + gust * travel * .7}px,${-travel}px) rotate(${heading + gust * 78}deg)`}
+  ];
+}
+
 function projectileFlightFrames(x, y, heading, action) {
   const rad = heading * Math.PI / 180;
   let dx = Math.cos(rad);
   let dy = Math.sin(rad);
   if (action.flightPath === 'wind') {
-    const side = Math.random() < .5 ? -1 : 1;
-    const gust = Math.min(170, innerWidth * .2) * side;
-    const lift = Math.max(120, y + 70);
-    return [
-      {transform:'translate(0px,0px) rotate(0deg)'},
-      {offset:.2,transform:`translate(${side*12}px,-9px) rotate(${side*24}deg)`},
-      {offset:.55,transform:`translate(${gust}px,${-lift*.35}px) rotate(${side*44}deg)`},
-      {transform:`translate(${-gust*.6}px,${-lift}px) rotate(${side*-75}deg)`}
-    ];
+    const lean = Math.abs(dx) < .1 ? (Math.random() < .5 ? -1 : 1) : Math.sign(dx);
+    const gust = Math.random() < .5 ? -lean : lean;
+    const travel = Math.max(120, y + 70);
+    const bend = Math.min(170, innerWidth * .2);
+    return windFlightFrames(lean, gust, travel, bend, action.spriteRotationDeg ?? heading);
   }
   if (action.flightPath === 'dart') {
     const travel = Math.max(140, Math.min(innerWidth, innerHeight) * .65);
@@ -496,7 +497,7 @@ export function textProjectileOnce({ root, el, action }) {
     Object.assign(tip.style, {position:'fixed',left:x+'px',top:y+'px',zIndex:'101',marginLeft:'-'+(tip.offsetWidth/2)+'px',marginTop:'-'+(tip.offsetHeight/2)+'px'});
     document.body.append(tip);
     const frames = projectileFlightFrames(x,y,deg,action);
-    const flight = tip.animate(frames,{duration:action.flightPath === 'ricochet' ? 210 * frames.length : action.flightPath === 'wind' ? 760 : 540,easing:'linear'});
+    const flight = tip.animate(frames,{duration:action.flightPath === 'ricochet' ? 210 * frames.length : action.flightPath === 'wind' ? Math.max(200, action.durationMs || 760) : 540,easing:action.flightPath === 'wind' ? 'ease-in' : 'linear'});
     flight.finished.then(() => tip.remove(), () => tip.remove());
     return;
   }
