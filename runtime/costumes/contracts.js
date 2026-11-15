@@ -1,6 +1,6 @@
 /** Shared authoring contract. No network, DOM, credentials or provider dependencies. */
 export const LIMITS=Object.freeze({elements:24,clones:24,actions:6,assetBytes:8_000_000,dimension:8192});
-export const ACTION_TYPES=Object.freeze(['fire','textProjectile','sway','bounce','spin','recoil','fade','particles']);
+export const ACTION_TYPES=Object.freeze(['fire','textProjectile','sway','bounce','spin','recoil','fade','particles','windLaunch']);
 export const LAYERS=Object.freeze(['behind-character','foreground']);
 export const PHASES=Object.freeze(['equip','idle','interact','activation','exit']);
 export const MUSHROOM_RIG=Object.freeze({id:'mushroom-platypus',version:1,width:709,height:470,anchors:{head:{x:.48798449304854485,y:-.07305050626728364},'bill-top':{x:.5,y:.5},mouth:{x:.4949264790076918,y:.7959222378465736},'bill-bottom':{x:.5,y:.99},'eye-left':{x:.42,y:.477},'eye-right':{x:.565,y:.477},eyes:{x:.4925,y:.477},handL:{x:.05,y:.5},handR:{x:.95,y:.5}},coverage:{bandana:[{x:.27,y:.5},{x:.73,y:.5},{x:.5,y:1.08}]}});
@@ -30,6 +30,7 @@ export function validateActions(actions=[]){
   if(a.sprite!==undefined)requireOk(a.type==='fire'&&safeAssetSource(a.sprite),'Projectile sprite must be a site asset on a fire action');
   if(a.spriteWidthPx!==undefined)requireOk(a.sprite!==undefined&&finite(a.spriteWidthPx,8,64),'Projectile sprite width must be 8–64 px');
   if(a.spriteRotationDeg!==undefined)requireOk(a.sprite!==undefined&&finite(a.spriteRotationDeg,-360,360),'Projectile sprite rotation must be within 360°');
+  if(a.flightPath!==undefined)requireOk(a.type==='fire'&&a.sprite&&['ricochet','dart'].includes(a.flightPath),'Invalid projectile flight path');
   if(a.exitViewport!==undefined)requireOk(a.sprite!==undefined&&typeof a.exitViewport==='boolean','Off-screen flight requires a projectile sprite');
  }
  return actions;
