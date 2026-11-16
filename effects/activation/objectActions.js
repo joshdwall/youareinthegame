@@ -62,17 +62,17 @@ export function launchMainCharacterItem(img, action, signal) {
 
 
 /** Detach the mounted spore accessory and carry it away in two gusts. */
-function windLaunch({root, el}) {
+function windLaunch({root, el, action}) {
   if (!root.isConnected) {
     let flight;
-    const frame = requestAnimationFrame(() => { if (root.isConnected) flight = windLaunch({root, el}); });
+    const frame = requestAnimationFrame(() => { if (root.isConnected) flight = windLaunch({root, el, action}); });
     return {stop() { cancelAnimationFrame(frame); flight?.stop(); }};
   }
   const img = resolveActionNode(root, el);
   if (!img?.complete || !img.naturalWidth) {
     let stopped = false;
     let flight;
-    img?.decode().then(() => { if (!stopped && root.isConnected) flight = windLaunch({root, el}); }).catch(() => {});
+    img?.decode().then(() => { if (!stopped && root.isConnected) flight = windLaunch({root, el, action}); }).catch(() => {});
     return {stop() { stopped = true; flight?.stop(); }};
   }
   const box = img.getBoundingClientRect();
@@ -87,7 +87,7 @@ function windLaunch({root, el}) {
   sprite.style.cssText = `position:fixed;left:${box.left}px;top:${box.top}px;width:${box.width}px;height:${box.height}px;object-fit:contain;pointer-events:none;z-index:101;transform-origin:50% 85%`;
   img.style.visibility = 'hidden';
   document.body.append(sprite);
-  const flight = sprite.animate(windFlightFrames(lean, gust, travel, bend), {duration:760, easing:'ease-in'});
+  const flight = sprite.animate(windFlightFrames(lean, gust, travel, bend), {duration:Math.max(1100, action?.durationMs || 1350), easing:'linear'});
   flight.finished.catch(() => {}).finally(() => sprite.remove());
   return {stop() { flight.cancel(); if (root.isConnected) img.style.visibility = originalVisibility; }};
 }
@@ -98,8 +98,8 @@ registerAction('windLaunch', windLaunch);
 function windFlightFrames(lean, gust, travel, bend, heading = 0) {
   return [
     {transform:`translate(0,0) rotate(${heading}deg)`},
-    {offset:.19, transform:`translate(${lean * 8}px,-8px) rotate(${heading + lean * 23}deg)`},
-    {offset:.54, transform:`translate(${lean * bend}px,${-travel * .38}px) rotate(${heading + lean * 33}deg)`},
+    {offset:.14, easing:'ease-in-out', transform:`translate(${lean * 8}px,-8px) rotate(${heading + lean * 23}deg)`},
+    {offset:.4, easing:'ease-out', transform:`translate(${lean * bend}px,${-travel * .38}px) rotate(${heading + lean * 33}deg)`},
     {transform:`translate(${lean * bend + gust * travel * .7}px,${-travel}px) rotate(${heading + gust * 78}deg)`}
   ];
 }
@@ -117,16 +117,32 @@ function projectileFlightFrames(x, y, heading, action) {
     return windFlightFrames(lean, gust, travel, bend, action.spriteRotationDeg ?? heading);
   }
   if (action.flightPath === 'dart') {
-    const travel = Math.max(140, Math.min(innerWidth, innerHeight) * .65);
     const turn = Math.random() < .5 ? -1 : 1;
-    const lateralFractions = [0, .14, -.13, .08];
-    return [0, .32, .64, 1].map((offset, index, offsets) => {
-      const lateral = lateralFractions[index] * turn * travel;
-      const from = Math.min(index, 2);
-      const slope = (lateralFractions[from + 1] - lateralFractions[from]) * turn / (offsets[from + 1] - offsets[from]);
-      const angle = heading + Math.atan(slope) * 180 / Math.PI + 90;
-      return {offset, transform:`translate(${dx * travel * offset - dy * lateral}px,${dy * travel * offset + dx * lateral}px) rotate(${angle}deg)`, opacity:index === 3 ? 0 : 1};
+    const bounds = Math.min(innerWidth, innerHeight);
+    const stride = Math.min(115, bounds * .17);
+    const wing = stride * (.46 + Math.random() * .26) * turn;
+    const keepVisible = (value, limit) => Math.max(26, Math.min(limit - 26, value));
+    const stopA = {x:keepVisible(x + dx*stride - dy*wing, innerWidth), y:keepVisible(y + dy*stride + dx*wing, innerHeight)};
+    const stopB = {x:keepVisible(stopA.x + dx*stride + dy*wing*1.5, innerWidth), y:keepVisible(stopA.y + dy*stride - dx*wing*1.5, innerHeight)};
+    const angle = (ax, ay, bx, by) => Math.atan2(by-ay,bx-ax)*180/Math.PI + 90;
+    const firstAim = angle(x,y,stopA.x,stopA.y);
+    const secondAim = angle(stopA.x,stopA.y,stopB.x,stopB.y);
+    const exitAim = heading + 90;
+    const margin = Math.max(48, (action.spriteWidthPx || 28)*2);
+    const edgeX = Math.abs(dx)<1e-5 ? Infinity : ((dx>0?innerWidth+margin:-margin)-stopB.x)/dx;
+    const edgeY = Math.abs(dy)<1e-5 ? Infinity : ((dy>0?innerHeight+margin:-margin)-stopB.y)/dy;
+    const exitTravel = Math.min(edgeX,edgeY);
+    const frame = (offset, px, py, aim, easing='linear') => ({
+      offset, easing, transform: 'translate('+(px-x)+'px,'+(py-y)+'px) rotate('+aim+'deg)'
     });
+    return [
+      frame(0,x,y,firstAim,'ease-out'),
+      frame(.13,stopA.x,stopA.y,firstAim),
+      frame(.29,stopA.x,stopA.y,secondAim,'ease-out'),
+      frame(.42,stopB.x,stopB.y,secondAim),
+      frame(.59,stopB.x,stopB.y,exitAim,'ease-in-out'),
+      frame(1,stopB.x+dx*exitTravel,stopB.y+dy*exitTravel,exitAim)
+    ];
   }
   const margin = 15;
   x = Math.max(margin, Math.min(innerWidth - margin, x));
@@ -507,7 +523,7 @@ export function textProjectileOnce({ root, el, action }) {
     Object.assign(tip.style, {position:'fixed',left:x+'px',top:y+'px',zIndex:'101',marginLeft:'-'+(tip.offsetWidth/2)+'px',marginTop:'-'+(tip.offsetHeight/2)+'px'});
     document.body.append(tip);
     const frames = projectileFlightFrames(x,y,deg,action);
-    const flight = tip.animate(frames,{duration:action.flightPath === 'ricochet' ? (action.ricochetLegMs || 210) * frames.length : action.flightPath === 'wind' ? Math.max(200, action.durationMs || 760) : 540,easing:action.flightPath === 'wind' ? 'ease-in' : 'linear'});
+    const flight = tip.animate(frames,{duration:action.flightPath === 'ricochet' ? (action.ricochetLegMs || 210) * frames.length : action.flightPath === 'wind' ? Math.max(200, action.durationMs || 1350) : Math.max(1650, action.durationMs || 0),easing:'linear'});
     flight.finished.then(() => tip.remove(), () => tip.remove());
     return;
   }
