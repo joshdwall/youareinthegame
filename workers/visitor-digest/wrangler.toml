@@ -1,0 +1,17 @@
+name = "youareinthegame-visitor-digest"
+main = "index.js"
+compatibility_date = "2024-09-23"
+workers_dev = true
+preview_urls = false
+
+[triggers]
+crons = ["30 12,13 * * *"]
+
+[[send_email]]
+name = "EMAIL"
+destination_address = "joshdwall@gmail.com"
+
+[[d1_databases]]
+binding = "VISITORS"
+database_name = "youareinthegame-worldmap"
+database_id = "dc3f9e8b-5b98-406d-a0d7-a0d7c355b24e"

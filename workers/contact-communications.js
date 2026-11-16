@@ -31,6 +31,17 @@ async function track(env, id, operations) {
   }))));
 }
 
+export async function recordDigestMessage(env, {id, subject, sender}) {
+  if (!env.VISITORS) return;
+  try {
+    await env.VISITORS.prepare(
+      'INSERT OR IGNORE INTO visitor_digest_messages(id,subject,sender,received_at) VALUES(?,?,?,?)'
+    ).bind(id, String(subject || '(No subject)').slice(0,240), String(sender || '').slice(0,254), new Date().toISOString()).run();
+  } catch {
+    console.error('Visitor digest message recording failed');
+  }
+}
+
 export async function archiveForm(env, raw, events) {
   const separator = raw.indexOf("\r\n\r\n");
   if (separator < 0) throw new Error("Invalid message headers");
@@ -61,6 +72,7 @@ export async function receive(message, env, ctx) {
     if (message.rawSize <= 2_000_000) {
       const mail = await PostalMime.parse(message.raw);
       const id = await fingerprint(JSON.stringify([message.to, message.from, mail.messageId, mail.date, mail.subject, mail.text, mail.html]));
+      await recordDigestMessage(env, {id, subject: mail.subject, sender: mail.from?.address || message.from});
       const body = mail.text?.trim() || (mail.html ? "[HTML-only email. See forwarded copy.]" : "[No text body]");
       events.push(["workers", "communications.archive.request"]);
       await archive(env, id, mail.from?.address || message.from, body);

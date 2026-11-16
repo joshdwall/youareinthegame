@@ -10,3 +10,8 @@ destination_address = "joshdwall@gmail.com"
 
 [[send_email]]
 name = "SEND_VISITOR"
+
+[[d1_databases]]
+binding = "VISITORS"
+database_name = "youareinthegame-worldmap"
+database_id = "dc3f9e8b-5b98-406d-a0d7-a0d7c355b24e"
