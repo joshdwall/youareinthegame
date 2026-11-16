@@ -1,5 +1,5 @@
 import { EmailMessage } from "cloudflare:email";
-import { archiveForm, receive, report } from "./contact-communications.js";
+import { archiveForm, receive, report, recordDigestMessage } from "./contact-communications.js";
 import { resolveSettings } from "./site-settings.mjs";
 import { sendZohoReceipt } from "./zoho-mail.mjs";
 
@@ -61,6 +61,11 @@ export default {
       console.error("Communications form archive failed");
     }
 
+    ctx.waitUntil(recordDigestMessage(env,{
+      id:crypto.randomUUID(),
+      subject:/^Subject: ([^\r\n]+)/mi.exec(body.raw)?.[1],
+      sender:/^Reply-To: ([^\r\n]+)/mi.exec(body.raw)?.[1]
+    }));
     const lead = withCurrentSender(body.raw, cfFrom);
     const owner = settings.forwardTo || OWNER;
 
