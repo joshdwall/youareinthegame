@@ -34,6 +34,8 @@ export function validateActions(actions=[]){
   if(a.flightPath!==undefined)requireOk(a.type==='fire'&&a.sprite&&['ricochet','dart','wind'].includes(a.flightPath),'Invalid projectile flight path');
   if(a.spriteOrigin!==undefined)requireOk(a.sprite&&point(a.spriteOrigin),'Invalid sprite origin');
   if(a.directionSpreadDeg!==undefined)requireOk(finite(a.directionSpreadDeg,0,360),'Invalid direction spread');
+  if(a.aimMode!==undefined)requireOk(a.type==='fire'&&a.sprite&&a.flightPath&&['heading','point','distributed','random'].includes(a.aimMode),'Invalid projectile aim mode');
+  if(a.aimTarget!==undefined||a.aimMode==='point')requireOk(point(a.aimTarget),'Target must use normalized viewport coordinates');
   if(a.ricochetLegMs!==undefined)requireOk(finite(a.ricochetLegMs,80,1500),'Invalid ricochet timing');
   if(a.exitViewport!==undefined)requireOk((a.sprite!==undefined||a.shape==='beam')&&typeof a.exitViewport==='boolean','Off-screen flight requires a projectile sprite');
  }
