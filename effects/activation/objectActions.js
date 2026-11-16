@@ -104,7 +104,18 @@ function windFlightFrames(lean, gust, travel, bend, heading = 0) {
   ];
 }
 
-function projectileFlightFrames(x, y, heading, action) {
+export function resolveProjectileAim(action, heading, origin, viewport, {index=0,count=8,random=Math.random}={}) {
+  if(action.aimMode==='distributed')return {heading:heading+360*(index%count)/count};
+  if(action.aimMode==='random')return {heading:360*random()-180};
+  if(action.aimMode==='point'&&action.aimTarget){
+    const target={x:action.aimTarget.x*viewport.width,y:action.aimTarget.y*viewport.height};
+    const dx=target.x-origin.x,dy=target.y-origin.y;
+    return {heading:Math.hypot(dx,dy)>1?Math.atan2(dy,dx)*180/Math.PI:heading,target};
+  }
+  return {heading};
+}
+
+function projectileFlightFrames(x, y, heading, action, target) {
   const spread = action.flightPath === 'ricochet' ? (action.directionSpreadDeg || 0) : 0;
   const rad = (heading + (spread ? (Math.random() - .5) * spread : 0)) * Math.PI / 180;
   let dx = Math.cos(rad);
@@ -122,7 +133,7 @@ function projectileFlightFrames(x, y, heading, action) {
     const stride = Math.min(115, bounds * .17);
     const wing = stride * (.46 + Math.random() * .26) * turn;
     const keepVisible = (value, limit) => Math.max(26, Math.min(limit - 26, value));
-    const stopA = {x:keepVisible(x + dx*stride - dy*wing, innerWidth), y:keepVisible(y + dy*stride + dx*wing, innerHeight)};
+    const stopA = {x:keepVisible(target?.x ?? x + dx*stride - dy*wing, innerWidth), y:keepVisible(target?.y ?? y + dy*stride + dx*wing, innerHeight)};
     const stopB = {x:keepVisible(stopA.x + dx*stride + dy*wing*1.5, innerWidth), y:keepVisible(stopA.y + dy*stride - dx*wing*1.5, innerHeight)};
     const angle = (ax, ay, bx, by) => Math.atan2(by-ay,bx-ax)*180/Math.PI + 90;
     const firstAim = angle(x,y,stopA.x,stopA.y);
@@ -191,7 +202,7 @@ export function actionsForElement(el) {
  * @param {number} [opts.sporeIndex]
  * @returns {{ stop: Function }}
  */
-export function runObjectActions({ root, elements = [], target = 'spore', sporeIndex = 0 }) {
+export function runObjectActions({ root, elements = [], target = 'spore', sporeIndex = 0, sporeCount = 8 }) {
   const stoppers = [];
   // Collect fire-capable guns for alternate pattern coordination per root
   const fireSlots = [];
@@ -214,7 +225,7 @@ export function runObjectActions({ root, elements = [], target = 'spore', sporeI
   }
 
   if (fireSlots.length) {
-    const ctrl = runAlternatingFire({ root, slots: fireSlots, sporeIndex });
+    const ctrl = runAlternatingFire({ root, slots: fireSlots, sporeIndex, sporeCount });
     if (ctrl?.stop) stoppers.push(ctrl.stop);
   }
 
@@ -230,7 +241,9 @@ export function runObjectActions({ root, elements = [], target = 'spore', sporeI
 /**
  * Alternate (or random) fire across gun slots on one spore/composite.
  */
-function runAlternatingFire({ root, slots, sporeIndex }) {
+function runAlternatingFire({ root, slots, sporeIndex, sporeCount }) {
+  const randomValue = slots.some(slot=>slot.action.aimMode==='random') ? Math.random() : .5;
+  const aim = {index:sporeIndex,count:Math.max(1,sporeCount),random:()=>randomValue};
   const timers = new Set();
   const startedAt = performance.now();
   let idx = sporeIndex % Math.max(1, slots.length);
@@ -249,7 +262,7 @@ function runAlternatingFire({ root, slots, sporeIndex }) {
     const baseMs = 1000 / rate;
     const delay = baseMs * (1 + (Math.random() * 2 - 1) * jitter);
     if (!Number.isFinite(action.launchWindowMs) || performance.now() - startedAt <= action.launchWindowMs) {
-      fireOnce({ root, el: slot.el, action });
+      fireOnce({ root, el: slot.el, action, aim });
     }
     const id = setTimeout(scheduleNext, Math.max(80, delay));
     timers.add(id);
@@ -257,7 +270,7 @@ function runAlternatingFire({ root, slots, sporeIndex }) {
 
   // Fire once immediately, then stagger subsequent shots so spores don't sync
   const firstSlot = slots[sporeIndex % Math.max(1, slots.length)];
-  if (firstSlot) fireOnce({ root, el: firstSlot.el, action: firstSlot.action });
+  if (firstSlot) fireOnce({ root, el: firstSlot.el, action: firstSlot.action, aim });
   idx = (sporeIndex % Math.max(1, slots.length)) + 1;
   const firstDelay = 120 + (sporeIndex % 7) * 35 + Math.random() * 100;
   const first = setTimeout(scheduleNext, firstDelay);
@@ -275,9 +288,9 @@ function runAlternatingFire({ root, slots, sporeIndex }) {
 /**
  * Spawn a muzzle flash / puff along the action direction from the muzzle point.
  */
-export function fireOnce({ root, el, action }) {
+export function fireOnce({ root, el, action, aim }) {
   if (action.sprite || action.shape === 'beam') {
-    textProjectileOnce({ root, el, action });
+    textProjectileOnce({ root, el, action, aim });
     return;
   }
   const img = root.querySelector(`[data-element-id="${el.id}"]`);
@@ -362,7 +375,7 @@ function resolveActionNode(root, el) {
  * durationMs, holdRatio, distance | distanceRatio, point (anchor), direction (local deg),
  * scaleFrom, scaleTo, pattern ('once' | 'repeat'), rate, jitter, appliesTo.
  */
-export function textProjectileOnce({ root, el, action }) {
+export function textProjectileOnce({ root, el, action, aim }) {
   if (!root?.isConnected) return;
   if (action.sprite && !safeAssetSource(action.sprite)) return;
   const node = resolveActionNode(root, el);
@@ -522,7 +535,8 @@ export function textProjectileOnce({ root, el, action }) {
     tip.dataset.flightPath = action.flightPath;
     Object.assign(tip.style, {position:'fixed',left:x+'px',top:y+'px',zIndex:'101',marginLeft:'-'+(tip.offsetWidth/2)+'px',marginTop:'-'+(tip.offsetHeight/2)+'px'});
     document.body.append(tip);
-    const frames = projectileFlightFrames(x,y,deg,action);
+    const {heading,target}=resolveProjectileAim(action,deg,{x,y},{width:innerWidth,height:innerHeight},aim);
+    const frames = projectileFlightFrames(x,y,heading,action,target);
     const flight = tip.animate(frames,{duration:action.flightPath === 'ricochet' ? (action.ricochetLegMs || 210) * frames.length : action.flightPath === 'wind' ? Math.max(200, action.durationMs || 1350) : Math.max(1650, action.durationMs || 0),easing:'linear'});
     flight.finished.then(() => tip.remove(), () => tip.remove());
     return;

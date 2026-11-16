@@ -188,7 +188,7 @@ export async function runActivation(opts) {
         node=document.createElement('div');const image=document.createElement('img');image.src=elements.find(e=>e.role==='sporeBody')?.src||GHOST_CONFIG.ASSETS.SPORE_IMAGE;image.dataset.elementId=elements.find(e=>e.role==='sporeBody')?.id||'ghostBody';image.alt='';image.draggable=false;image.style.cssText='width:100%;height:100%;display:block;pointer-events:none';node.appendChild(image);
       }
       node.classList.add('activation-spore');node.style.position='absolute';node.style.width=dims.width+'px';node.style.height=dims.height+'px';node.style.zIndex='25';node.style.overflow='visible';
-      const selected=actionsForPhase('activation');const action=track(runObjectActions({root:node,elements:selected,target:'spore',sporeIndex:index}));const motion=track(runBehaviors({root:node,elements:selected,target:'spore',phase:'activation',signal}));
+      const selected=actionsForPhase('activation');const action=track(runObjectActions({root:node,elements:selected,target:'spore',sporeIndex:index,sporeCount:count}));const motion=track(runBehaviors({root:node,elements:selected,target:'spore',phase:'activation',signal}));
       node.__actionStop=()=>{stopControl(motion);stopControl(action);};return node;
     };
     if(spec.trajectory==='burst'){
