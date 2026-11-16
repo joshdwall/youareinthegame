@@ -51,27 +51,33 @@ async function sendDigest(env, timestamp, test=false){
  await env.EMAIL.send(new EmailMessage(sender,recipient,raw));
 }
 
-export default {
- async fetch(request,env){
-  if(request.method!=='POST'||new URL(request.url).pathname!=='/test')return new Response(null,{status:404});
-  const auth=request.headers.get('Authorization');
-  if(!env.TEST_TOKEN||auth!=='Bearer '+env.TEST_TOKEN)return new Response(null,{status:403});
-  await sendDigest(env,Date.now(),true);
-  return new Response('Test accepted by mail provider');
- },
- async scheduled(event,env){
-  const parts=Object.fromEntries(central.formatToParts(event.scheduledTime).map(p=>[p.type,p.value]));
-  if(parts.hour!=='07'||parts.minute!=='30')return;
-  const day=utcDay(new Date(event.scheduledTime-86400000));
+async function deliverDaily(env,timestamp){
+  const day=utcDay(new Date(timestamp-86400000));
   const claimed=await env.VISITORS.prepare('INSERT OR IGNORE INTO visitor_digest_deliveries(day) VALUES(?)').bind(day).run();
   if(!claimed.meta.changes)return;
   try{
-   await sendDigest(env,event.scheduledTime);
+   await sendDigest(env,timestamp);
   }catch(error){
    await env.VISITORS.prepare('DELETE FROM visitor_digest_deliveries WHERE day=? AND sent_at IS NULL').bind(day).run();
    throw error;
   }
   await env.VISITORS.prepare('UPDATE visitor_digest_deliveries SET sent_at=? WHERE day=?').bind(new Date().toISOString(),day).run();
   console.log('Visitor digest accepted for '+day);
+}
+
+export default {
+ async fetch(request,env){
+  if(request.method!=='POST'||new URL(request.url).pathname!=='/test')return new Response(null,{status:404});
+  const auth=request.headers.get('Authorization');
+  if(!env.TEST_TOKEN||auth!=='Bearer '+env.TEST_TOKEN)return new Response(null,{status:403});
+  const catchUp=new URL(request.url).searchParams.has('catch-up');
+  if(catchUp)await deliverDaily(env,Date.now());
+  else await sendDigest(env,Date.now(),true);
+  return new Response('Digest accepted by mail provider');
+ },
+ async scheduled(event,env){
+  const parts=Object.fromEntries(central.formatToParts(event.scheduledTime).map(p=>[p.type,p.value]));
+  if(parts.hour!=='07'||parts.minute!=='30')return;
+  await deliverDaily(env,event.scheduledTime);
  }
 };
