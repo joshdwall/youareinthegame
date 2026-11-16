@@ -13,6 +13,14 @@ export async function refreshHistory(scheduledTime, env) {
   if (!['shadow', 'production'].includes(deployment) || !['public', 'private'].includes(visibility)) {
     throw new Error('Invalid history sync configuration');
   }
+  if (!Number.isFinite(scheduledTime) || !Number.isFinite(time.getTime())) {
+    throw new Error('Invalid scheduled time');
+  }
+  const scope = WORLDMAP_SETTINGS.historySource === 'edge' ? env.CLOUDFLARE_ZONE_ID : env.CLOUDFLARE_ACCOUNT_ID;
+  if (!scope || !env.ANALYTICS_READ_TOKEN || !env.ACTION_LEDGER_TOKEN ||
+      typeof env.HISTORY_KV?.get !== 'function' || typeof env.HISTORY_KV?.put !== 'function') {
+    throw new Error('Missing history sync bindings');
+  }
 
   let analyticsCalls = 0;
   let writes = 0;

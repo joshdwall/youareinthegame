@@ -31,6 +31,9 @@ test('publishes a validated snapshot, skips stale runs, and preserves data on an
   const env = {
     SYNC_ENVIRONMENT: 'shadow',
     REPOSITORY_VISIBILITY: 'public',
+    CLOUDFLARE_ZONE_ID: 'test-zone',
+    ANALYTICS_READ_TOKEN: 'test-analytics',
+    ACTION_LEDGER_TOKEN: 'test-ledger',
     HISTORY_KV: {
       async get(key) { assert.equal(key, HISTORY_KEY); return snapshot; },
       async put(key, value) { assert.equal(key, HISTORY_KEY); snapshot = JSON.parse(value); writes++; }
@@ -45,4 +48,12 @@ test('publishes a validated snapshot, skips stale runs, and preserves data on an
   fail = true;
   await assert.rejects(refreshHistory(scheduledTime + 3600000, env), /HTTP 503/);
   assert.equal(writes, 1);
+});
+
+test('rejects invalid scheduling and missing bindings before touching the network', async t => {
+  t.mock.method(globalThis, 'fetch', () => assert.fail('must not fetch'));
+  const env = { SYNC_ENVIRONMENT: 'shadow', REPOSITORY_VISIBILITY: 'public' };
+  await assert.rejects(refreshHistory(NaN, env), /Invalid scheduled time/);
+  await assert.rejects(refreshHistory(scheduledTime, env), /Missing history sync bindings/);
+  await assert.rejects(refreshHistory(scheduledTime, { ...env, SYNC_ENVIRONMENT: 'other' }), /Invalid history sync configuration/);
 });
