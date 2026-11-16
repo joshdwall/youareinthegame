@@ -6,6 +6,9 @@
 import { CONFIG } from './mainConfig.js';
 import { createDefaultSporeExplosion } from './effects/spore/defaultSpore.js';
 import { log, info, debug, warn, error } from './js/log.js';
+import { initReducedMotionWatch } from './runtime/public/reducedMotion.js';
+import { withCacheBust } from './js/cacheBust.js';
+initReducedMotionWatch();
 
 class MushroomPlatypusApp {
     constructor() {
@@ -58,9 +61,9 @@ class MushroomPlatypusApp {
             this.flushPendingThresholdClicks();
             this.effectsReady = true;
             log('Mushroom Platypus: Initialization complete');
-        } catch (error) {
-            error('Failed to initialize Mushroom Platypus:', error);
-            this.handleInitializationError(error);
+        } catch (err) {
+            error('Failed to initialize Mushroom Platypus:', err);
+            this.handleInitializationError(err);
         }
     }
 
@@ -77,8 +80,8 @@ class MushroomPlatypusApp {
     }
 
     async initializeEffects() {
-        const { default: effectLoader } = await import('./effects/EffectLoader.js');
-        const { installThresholdLootHook } = await import('./runtime/public/thresholdActivation.js');
+        const { default: effectLoader } = await import(withCacheBust('./effects/EffectLoader.js'));
+        const { installThresholdLootHook } = await import(withCacheBust('./runtime/public/thresholdActivation.js'));
         this.effectLoader = effectLoader;
         if (typeof window !== 'undefined') {
             window.effectLoader = effectLoader;
@@ -138,6 +141,11 @@ class MushroomPlatypusApp {
     setupEventListeners() {
         this.creature.addEventListener('click', (e) => this.handleCreatureClick(e));
         this.container.addEventListener('click', (e) => {
+            const badge = e.target.closest?.('#tapSporeBadge');
+            if (badge) {
+                if (!badge.disabled) this.handleCreatureClick(e, true);
+                return;
+            }
             if (e.target !== this.creature) {
                 this.handleContainerClick(e);
             }
@@ -148,7 +156,7 @@ class MushroomPlatypusApp {
         });
     }
 
-    handleCreatureClick(e) {
+    handleCreatureClick(e, fromBadge = false) {
         const now = Date.now();
         if (now - this.lastClickTime < this.clickDebounce) return;
         this.lastClickTime = now;
@@ -156,8 +164,9 @@ class MushroomPlatypusApp {
         this.clickCount++;
 
         const rect = this.container.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+        const center = fromBadge ? this.creature.getBoundingClientRect() : null;
+        const x = (center ? center.left + center.width / 2 : e.clientX) - rect.left;
+        const y = (center ? center.top + center.height / 2 : e.clientY) - rect.top;
 
         if (this.effectsReady && this.currentEffect && this.currentEffect.onSporeClick) {
             this.currentEffect.onSporeClick(x, y);
@@ -187,7 +196,7 @@ class MushroomPlatypusApp {
     pulseCreature() {
         this.creature.style.filter = CONFIG.VISUALS.CREATURE_PULSE_FILTER;
         setTimeout(() => {
-            this.creature.style.filter = CONFIG.VISUALS.CREATURE_INITIAL_FILTER;
+            this.creature.style.removeProperty('filter');
         }, CONFIG.ANIMATIONS.CREATURE_PULSE_DURATION);
     }
 
@@ -207,8 +216,8 @@ class MushroomPlatypusApp {
                 await new Promise(resolve => setTimeout(resolve, 5000));
             }
             await this.transitionToNewEffect();
-        } catch (error) {
-            error('Effect transition failed:', error);
+        } catch (err) {
+            error('Effect transition failed:', err);
         }
     }
 
@@ -227,8 +236,8 @@ class MushroomPlatypusApp {
                     );
                 }, 5000);
             }
-        } catch (error) {
-            error('Failed to transition to new effect:', error);
+        } catch (err) {
+            error('Failed to transition to new effect:', err);
         }
     }
 

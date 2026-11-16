@@ -22,6 +22,24 @@
   will-change: transform, opacity, left, top;
 }
 
+/* U+203D shown while the next costume's preview images are still decoding. */
+.costume-preview-pending {
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  overflow: visible;
+  pointer-events: none;
+}
+.costume-preview-mark {
+  color: #14120b;
+  font-weight: 700;
+  line-height: 1;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+  text-shadow: 0 0 1px #fff, 1px 0 #fff, -1px 0 #fff, 0 1px #fff, 0 -1px #fff;
+}
+
 /* objectActions: fire muzzle flash / streak */
 .activation-muzzle-flash {
   border-radius: 40% 60% 50% 50%;

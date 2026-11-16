@@ -4,13 +4,13 @@
  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
  <meta name="description" content="Spin the Earth and see where Mushroom Platypus visitors are joining the game.">
  <title>Visitor globe · You Are In The Game</title>
- <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/worldmap/worldmap.css">
- <script src="/assets/worldmap/globe.gl.min.js" defer></script><script type="module" src="/worldmap/worldmap.js"></script>
+ <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/worldmap/worldmap.css?v=found-card-row1">
+ <link rel="preload" href="/img/worldmap-earth-v1.webp" as="image" type="image/webp" crossorigin="anonymous"><script src="/assets/worldmap/globe.gl.min.js" defer></script><script type="module" src="/worldmap/worldmap.js?v=nearest-city1"></script>
 </head>
 <body>
  <header class="site-header"><a class="brand" href="/"><img src="/img/mushroom-platypus.webp" width="40" height="27" alt=""><span>You are in the game</span></a><a class="back-link" href="/"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m0 0 6-6m-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>PlatapusShroom</a></header>
  <main>
-  <section class="earth-stage" id="world-map" tabindex="-1" aria-label="Interactive world map"><div class="orbit" aria-hidden="true"></div><div id="globe" tabindex="0" role="img" aria-label="Visitor globe. Drag to rotate, scroll to zoom, or use arrow keys and the controls below."></div><p id="pegSelection" class="peg-selection" role="status">Tap or click a peg for its location and visitor count.</p><p class="globe-hint">Drag to spin <span aria-hidden="true">·</span> Scroll or pinch to zoom</p><div class="globe-controls" aria-label="Globe controls"><button id="zoomIn" type="button" aria-label="Zoom in">+</button><button id="zoomOut" type="button" aria-label="Zoom out">−</button><button id="rotateGlobe" type="button" aria-pressed="true">Pause rotation</button><button id="resetGlobe" type="button">Reset view</button></div><p id="globeFallback" hidden>Interactive 3D is unavailable in this browser. You can still explore the visitor countries list.</p><a class="mobile-map-jump" href="#visitor-countries">↓ Countries</a></section>
+  <section class="earth-stage" id="world-map" tabindex="-1" aria-label="Interactive world map"><div class="orbit" aria-hidden="true"></div><div id="globe" tabindex="0" role="img" aria-label="Visitor globe. Drag to rotate, scroll to zoom, or use arrow keys and the controls below."></div><p id="pegSelection" class="peg-selection" role="status">Tap or click a peg for its location and visitor count.</p><select id="nearbyPegs" aria-label="Choose a nearby visitor pin" hidden></select><p class="globe-hint">Drag to spin <span aria-hidden="true">·</span> Scroll or pinch to zoom</p><div class="globe-controls" aria-label="Globe controls"><button id="zoomIn" type="button" aria-label="Zoom in">+</button><button id="zoomOut" type="button" aria-label="Zoom out">−</button><button id="rotateGlobe" type="button" aria-pressed="true">Pause rotation</button><button id="resetGlobe" type="button">Reset view</button></div><p id="globeFallback" hidden>Interactive 3D is unavailable in this browser. You can still explore the visitor countries list.</p><a class="mobile-map-jump" href="#visitor-countries">↓ Countries</a></section>
   <section class="intro" aria-labelledby="map-title"><p class="eyebrow">Mushroom Platypus / Visitor globe</p><h1 id="map-title">You are in<br><em>the world.</em></h1>
    <dl class="totals" aria-label="Visitor totals"><div><dt id="metricLabel">Unique browsers</dt><dd id="visitorTotal">—</dd></div><div><dt>Countries</dt><dd id="countryTotal">—</dd></div></dl>
    <p class="live-note" id="mapStatus" role="status">Finding our place in the world…</p>
@@ -24,19 +24,36 @@
      <p id="countryNoResults" class="selection-note" role="status" hidden>No countries match your search.</p>
     </div>
    </section>
-   <form method="post" action="/api/contact" id="contact" class="contact-form" aria-label="Contact">
+   <section id="contact" class="contact-form discovery-card" aria-labelledby="discoveryQuestion">
+    <div id="discoveryControls">
+     <!-- comm:poll how-did-you-find (generated at build from config/communications.json) -->
+     <h2 id="discoveryQuestion">How did you find PlatypusShroom?</h2>
+     <div id="discoveryChoices" class="discovery-choices" data-poll="how-did-you-find" role="group" aria-labelledby="discoveryQuestion">
+      <button type="button" data-answer="random" disabled>Random</button>
+      <button type="button" data-answer="word-of-mouth" disabled>Word of Mouth</button>
+      <button type="button" data-answer="search" disabled>Search Engine</button>
+      <button type="button" data-answer="social" disabled>Social Media</button>
+      <button type="button" data-answer="link" disabled>Another Site</button>
+     </div>
+     <!-- /comm:poll -->
+     <p id="discoveryStatus" class="form-note" role="status" hidden></p>
+     <button type="button" id="openContactForm">Send a Message</button>
+    </div>
     <p id="form-sent" class="form-note" role="status" hidden>Message sent.</p>
     <p id="form-slow" class="form-note form-note-warn" role="status" hidden>Message sent. If you do not hear back, try again in a few minutes.</p>
     <p id="form-limited" class="form-note form-note-warn" role="status" hidden>Too many sends. Wait a minute and try again.</p>
     <p id="form-error" class="form-note form-note-bad" role="status" hidden>That message did not send. Try again.</p>
+   <form method="post" action="/api/contact" id="contactMessageForm" aria-label="Send a message" hidden>
     <input class="contact-field" name="email" type="email" required maxlength="200" autocomplete="email" inputmode="email" placeholder="Email" aria-label="Email">
     <textarea class="contact-field" name="message" rows="2" required maxlength="4000" placeholder="Message" aria-label="Message"></textarea>
     <div class="hp" aria-hidden="true"><label>Company URL <input name="company_url" tabindex="-1" autocomplete="off"></label></div>
     <div class="contact-actions">
      <div class="cf-turnstile" data-sitekey="0x4AAAAAAF1aECr019WDOHBg" data-size="flexible" data-theme="light"></div>
      <button type="submit">Send</button>
+     <button type="button" id="closeContactForm">Back</button>
     </div>
    </form>
+   </section>
   </section>
 
  </main>
@@ -51,29 +68,5 @@
     } catch (_) { /* visitor counting is optional */ }
   })();
  </script>
- <script>
-  const contactForm = document.querySelector("form[action='/api/contact']");
-  if (contactForm) {
-   contactForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const button = contactForm.querySelector("button[type=submit]");
-    contactForm.querySelectorAll(".form-note").forEach((note) => { note.hidden = true; });
-    button.disabled = true;
-    const label = button.textContent;
-    button.textContent = "Sending…";
-    let code = "error";
-    try {
-     const res = await fetch(contactForm.action, { method: "POST", body: new FormData(contactForm), headers: { Accept: "application/json" } });
-     const data = await res.json();
-     code = data.code || "error";
-    } catch { code = "error"; }
-    const note = document.getElementById("form-" + code);
-    if (note) note.hidden = false;
-    button.disabled = false;
-    button.textContent = label;
-    if (code === "sent" || code === "slow") contactForm.reset();
-    if (window.turnstile) window.turnstile.reset();
-   });
-  }
- </script>
+ <script type="module" src="/worldmap/discovery-card.js"></script>
 </body></html>

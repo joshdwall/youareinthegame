@@ -1,4 +1,4 @@
-import { elementWidthPx } from './placementMath.js';
+import { elementWidthPx, measureCreatureBoxInHost } from './placementMath.js';
 import {applyElementPlacement} from './placementMath.js';
 import {resolvePlacement} from '../../runtime/costumes/contracts.js';
 
@@ -62,6 +62,11 @@ export function buildCharacterComposite({ baseSrc, elements = [], box, scale = 1
     root.appendChild(img);
     applyElementPlacement(img,st,{left:0,top:0,width:box.width*scale,height:box.height*scale});
     img.style.zIndex=String(st.layer==='behind-character'?1:5);
+    // Keep the accessory's anchor available to spore object actions.
+    if ((st.shownOnSpore ?? st.shown) === false) {
+      img.style.visibility = 'hidden';
+      img.setAttribute('aria-hidden', 'true');
+    }
   }
 
   return root;
@@ -71,12 +76,5 @@ export function buildCharacterComposite({ baseSrc, elements = [], box, scale = 1
  * Measure creature box relative to a host element.
  */
 export function measureCreatureBox(creatureEl, hostEl) {
-  const host = hostEl.getBoundingClientRect();
-  const r = creatureEl.getBoundingClientRect();
-  return {
-    left: r.left - host.left,
-    top: r.top - host.top,
-    width: r.width,
-    height: r.height
-  };
+  return measureCreatureBoxInHost(creatureEl, hostEl);
 }

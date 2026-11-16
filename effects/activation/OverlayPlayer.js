@@ -148,11 +148,16 @@ export function createOverlayPlayer({ layer, owned, flash = OVERLAY_FLASH, secon
         timers.add(flickerInterval);
       }
     },
-    hide() {
+    hold() {
+      clearFlicker();
+      setStyle('transition', 'none');
+      setStyle('opacity', '1');
+    },
+    hide(duration = flash.FADE_OUT_MS ?? 150) {
       if (!layer) return;
       clearFlicker();
       if (!layer.isConnected) return;
-      setStyle('transition',`opacity ${flash.FADE_OUT_MS ?? 150}ms ease`);
+      setStyle('transition',`opacity ${duration}ms ease`);
       setStyle('opacity','0');
     },
     /** End of run: hide; remove if owned; leave host at opacity 0. */

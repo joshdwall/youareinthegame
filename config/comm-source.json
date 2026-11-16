@@ -1,0 +1,12 @@
+{
+  "$comment": "Pinned site-hub communications module (plans/Communications-Module-Messages-And-Polls-Plan.md). Upgrade: change tag + sha, run node scripts/sync-communications.mjs, commit. tests/communications-pin.test.mjs fails if the vendored files drift from treeHash.",
+  "repo": "joshdwall/site-hub",
+  "tag": "comm-v2026.11.13.1",
+  "sha": "5d5f74ffc2d0a851f549c35f3057873ecb5b79aa",
+  "path": "shared/communications",
+  "vendor": {
+    "server": "functions/_shared/communications/server",
+    "client": "js/comm"
+  },
+  "treeHash": "28fa95cf7c53a4b30a7ce40f06bc8a96ea6e0b6187638001cfd11e3a109d928d"
+}

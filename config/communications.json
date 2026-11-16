@@ -1,0 +1,32 @@
+{
+  "$comment": "Communications module config (site-hub shared/communications, schema communications.v1). Poll text, options and colors live here only: the worldmap card markup is generated from it at build, the API validates against it, and COMPA's Poll Answers registry mirrors the option ids. Adding an option = add it here (ids are stable; votes are never rewritten). Answers never change (one per browser).",
+  "schema": "communications.v1",
+  "siteId": "youareinthegame",
+  "basePath": "/api/comm",
+  "voter": { "cookie": "yaitg_discovery", "maxAgeDays": 365 },
+  "storage": {
+    "adapter": "d1",
+    "binding": "YAITG_WORLDMAP_DB",
+    "table": "discovery_responses",
+    "columns": { "voter": "browser_hash", "option": "answer", "at": "answered_at" }
+  },
+  "polls": [
+    {
+      "id": "how-did-you-find",
+      "title": "How Did You Find PlatypusShroom?",
+      "question": "How did you find PlatypusShroom?",
+      "status": "open",
+      "dedupe": "browser",
+      "publicResults": true,
+      "placement": ["worldmap#contact"],
+      "thanks": "Thanks for answering!",
+      "options": [
+        { "id": "random", "label": "Random", "color": "#4e79a7" },
+        { "id": "word-of-mouth", "label": "Word of Mouth", "color": "#f28e2b" },
+        { "id": "search", "label": "Search Engine", "color": "#59a14f" },
+        { "id": "social", "label": "Social Media", "color": "#e15759" },
+        { "id": "link", "label": "Another Site", "color": "#76b7b2" }
+      ]
+    }
+  ]
+}

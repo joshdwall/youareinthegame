@@ -5,9 +5,53 @@ Dates are America/Chicago. Production = Cloudflare Pages project **youareinthega
 
 SSOT for cross-project PM/changelog: [joshdwall/knowledge-hub](https://github.com/joshdwall/knowledge-hub) (`pm/projects/youareinthegame/`, `changelog/`).
 
+## 2026-11-13 (America/Chicago) — Costumes locked to the platypus during every motion
+
+- **Root cause:** the storm "shake" (`electricCrackle`, storm levels 4–5) animated `transform` on `#mainCreature` itself, while every costume layer lives in `#overlayLayer` / `.costume-back-layer` as siblings of the body inside `#creatureRig`. The rig's `float` carried both, but the shake moved only the body, so hats, hair and props slid up to 2 px against it at 2.5 Hz during the finale. The click threshold is random (3–5), so rounds that ended at storm level 3 had no shake and looked fine; level 4–5 rounds did not. Costume placement was also measured from the body's shaken position at mount time.
+- **Standard:** `#creatureRig` is the only element that moves. Body and every costume layer are its children, placed in the body's rest box (rig-local coordinates from config). No per-costume or per-body motion; only configured `objectActions` (sway, bounce, etc.) may add sub-motion, layered inside the rig.
+- **Fix:** the shake now runs on the rig as `rigCrackle`, which animates the independent `translate` property so it layers on top of `float` without restarting it. The body keeps only its glow (filter) animations. `measureCreatureBoxInHost` removes the body's own transient translate, so mounts always use the rest box. An owned flash image inside the rig never runs its own float.
+- No KV change. Costume appearance at rest is unchanged (≤0.02 px).
+- Verified locally against the live costume config: 18 costumes × desktop, iPhone and Android sizes × storm levels 3, 4 and 5. The spread of each layer's offset from the body was 1.9–2 px before the fix at levels 4–5 (all 54 runs failed) and 0 px after (all 162 runs passed). Float stays continuous when the shake starts.
+- Checkpoint `checkpoint-costume-lock-20261113-1139`. Cache-bust `costume-lock-1`.
+
+## 2026-11-13 (America/Chicago) — Costume mount reuses the first-paint rig; spore timing equalized
+
+- **Root cause:** after the glow-jump fix put `#creatureRig` in first-paint markup, `ensurePublicOverlayDom` still created a second nested `#creatureRig` when `#overlayLayer` was missing. Callers looked the rig up by id (the outer one) while the character sat in the inner one, so `mountOverlayProps` threw `insertBefore ... not a child` and the costume finale could skip.
+- **Fix:** reuse the existing rig and only add `#overlayLayer`.
+- Ships the spore-timing fix (single clock, Safari desktop-mode detection, config-driven `settings.reducedMotion`).
+- Verified: 12 combinations (iPhone Safari, Safari desktop mode, iPhone Chrome, Android Chrome, Samsung Internet, desktop Chrome, each with Reduce Motion on and off) all fire 8 spores lasting about 3–4 s, no errors.
+- Checkpoint `checkpoint-2026-11-13-pre-rig-reuse-fix`. Cache-bust `rig-reuse-1`.
+
+## 2026-11-11 (America/Chicago) — Character no longer jumps when the glow first appears
+
+- **Root cause:** `ensurePublicOverlayDom` moved the `float` animation from `#mainCreature` onto a newly created `.creature-rig` and cleared the creature animation, which restarts `float` at the 0% keyframe (`translateY(0)`). If the platypus was mid-bob (`translateY(-10px)`), it popped downward. This lined up with first hover/tap glow because the wrap runs when the loot hook finishes loading.
+- **Fix:** the rig is in `index.html` from first paint, and `float` runs only on `.creature-rig`. Glow stays a `filter` / `--creature-shadow` on the character (no transform change). If a wrap is still needed, the float clock is copied via `currentTime` before the old animation is cleared. Storm-level rules no longer re-apply `float` on a rig child.
+- Checkpoint `checkpoint-2026-11-11-pre-glow-jump`. Cache-bust `glow-jump-1`.
+
+## 2026-11-11 (America/Chicago) — Spore-timing preview only (not production)
+
+- **Preview only.** Built for a Cloudflare Pages branch alias `spore-timing-test`. **Not pushed to `main`.** Production stays on the glow-jump commit and must not receive this commit yet.
+- Rebased onto the glow-jump fix so the friend's preview includes both. Cache-bust `?v=spore-timing2`.
+- One clock in `FireworkManager` (`effects/spore/finale.js`): rAF uses only the rAF timestamp (first frame dt=0); the setTimeout fallback uses only `performance.now()`. 0.1s dt clamp kept. No other mixed clocks in spore/activation physics.
+- iPhone/iPad "Request Desktop Website" (Mac-like UA/platform + `maxTouchPoints > 1`) is treated as mobile via `js/isMobileClient.js`.
+- Reduce Motion is config-driven (`settings.reducedMotion`, defaults `timeScale: 1` so timing matches Reduce Motion off). Live `matchMedia` listener. No KV write; code defaults apply when the key is absent.
+- Checkpoint `checkpoint-2026-11-11-pre-spore-timing`.
+
+
+## 2026-11-11 (America/Chicago) — Interrobang while the next costume preview loads
+
+- **Root cause:** character clicks were not dropped. After a costume handoff (and on the first decode), `prepareUpcoming` cleared the ready preview and waited on image fetch/decode before anything could paint. The click still built a costume burst from those undecoded images, so the burst had no pixels. A casual second click in that gap looked like it did nothing.
+- **Click semantics:** each character click still counts once toward the activation threshold. It does not advance the costume cursor and does not start another prepare. One in-flight selection is the latest intent. If that costume's preview is not decoded yet, the click paints U+203D (‽) immediately; still-visible marks swap to that costume when decode finishes. A newer published pick replaces the target before the swap. The 50ms duplicate-event guard in `script.js` is unchanged.
+- **Preload:** the following costume (and a small live pool) is decoded in the background during the current round, and the handoff picks from the config already in memory instead of waiting on `/api/animations`. That read still happens once per activation, after the optimistic pick. No new KV operations.
+- Checkpoint `checkpoint/pre-interrobang-2026-11-11` @ `11a66de`.
 
 - **Public site image protect:** Creature, sticker, overlays, spore images: `draggable=false`, `contextmenu` preventDefault, CSS `-webkit-touch-callout:none`, `-webkit-user-drag:none`, `user-select:none`. No hit-shield / no `pointer-events:none` on creature (would steal threshold clicks). Clicks/taps, spore bursts, overlays unchanged.
 - YAITG `2e77f99` → CF Pages deploy **`313f4f53-b262-4817-9371-b77afc4c1c08`** (production aliases: apex, www, app). Local + prod image-protect PASS; uniform-actions Playwright PASS.
+
+## 2026-11-11 (America/Chicago) — Shared Tap For Spores cache for Cambio (pt69u)
+
+- `/img/tap-for-spores.png` cache `max-age=60, must-revalidate` + `Access-Control-Allow-Origin: *` so Cambio at `app.youareinthegame.com` can load the live site's badge as the single source and pick up replacements quickly. Other `/img/*` stay immutable. Markup and image bytes unchanged. Follow-up: Pages `_headers` was appending the `/img/*` immutable policy onto this file; a targeted Function overwrite now sets a single `max-age=60` Cache-Control.
+- Checkpoint `checkpoint-2026-11-11-pre-shared-tap-badge` @ `a905bd2`.
 
 ## 2026-11-01 (America/Chicago) — LIVE KV only: restore ghost BOO direction 90→-90
 

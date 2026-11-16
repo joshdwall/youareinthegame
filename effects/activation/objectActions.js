@@ -1,3 +1,4 @@
+import { elementPointInHost } from './placementMath.js';
 /**
  * Pluggable objectActions registry.
  * Element schema: objectActions: [{ type, point:{x,y}, direction, pattern, rate, jitter, appliesTo, ... }]
@@ -21,6 +22,157 @@ export function registerAction(type, handler) {
 
 export function getAction(type) {
   return registry.get(type) || null;
+}
+
+/** Run the configured exit action on a mounted main-character accessory. */
+export function launchMainCharacterItem(img, action, signal) {
+  if (action?.type !== 'launchOffScreen' || !img?.isConnected ||
+      getComputedStyle(img).visibility === 'hidden' || signal?.aborted) return null;
+  const box = img.getBoundingClientRect();
+  if (!box.width || !box.height) return null;
+  const sprite = document.createElement('img');
+  sprite.src = img.currentSrc || img.src;
+  sprite.alt = '';
+  sprite.setAttribute('aria-hidden', 'true');
+  sprite.dataset.mainCharacterAction = action.type;
+  sprite.dataset.elementId = img.dataset.elementId;
+  Object.assign(sprite.style, {
+    position: 'fixed', left: `${box.left}px`, top: `${box.top}px`,
+    width: `${box.width}px`, height: `${box.height}px`,
+    objectFit: 'contain', pointerEvents: 'none', zIndex: '101'
+  });
+  const oldVisibility = img.style.visibility;
+  img.style.visibility = 'hidden';
+  document.body.appendChild(sprite);
+  const distance = Math.max(0, box.bottom) + 16;
+  const flight = sprite.animate([
+    { transform: 'translateY(0)' },
+    { transform: `translateY(-${distance}px)` }
+  ], { duration: Math.max(80, distance / 1.6), easing: 'linear', fill: 'forwards' });
+  const cancel = () => flight.cancel();
+  signal?.addEventListener('abort', cancel, { once: true });
+  return {
+    finished: flight.finished.catch(() => {}).finally(() => {
+      sprite.remove();
+      signal?.removeEventListener('abort', cancel);
+    }),
+    restore() { img.style.visibility = oldVisibility; }
+  };
+}
+
+
+/** Detach the mounted spore accessory and carry it away in two gusts. */
+function windLaunch({root, el, action}) {
+  if (!root.isConnected) {
+    let flight;
+    const frame = requestAnimationFrame(() => { if (root.isConnected) flight = windLaunch({root, el, action}); });
+    return {stop() { cancelAnimationFrame(frame); flight?.stop(); }};
+  }
+  const img = resolveActionNode(root, el);
+  if (!img?.complete || !img.naturalWidth) {
+    let stopped = false;
+    let flight;
+    img?.decode().then(() => { if (!stopped && root.isConnected) flight = windLaunch({root, el, action}); }).catch(() => {});
+    return {stop() { stopped = true; flight?.stop(); }};
+  }
+  const box = img.getBoundingClientRect();
+  if (!box.width || !box.height || getComputedStyle(img).visibility === 'hidden') return;
+  const sprite = img.cloneNode();
+  const originalVisibility = img.style.visibility;
+  const lean = Math.random() < .5 ? -1 : 1;
+  const gust = lean * (Math.random() < .5 ? -1 : 1);
+  const travel = Math.max(120, box.bottom + box.height);
+  const bend = travel * (.25 + Math.random() * .35);
+  sprite.dataset.windLaunch = el.id;
+  sprite.style.cssText = `position:fixed;left:${box.left}px;top:${box.top}px;width:${box.width}px;height:${box.height}px;object-fit:contain;pointer-events:none;z-index:101;transform-origin:50% 85%`;
+  img.style.visibility = 'hidden';
+  document.body.append(sprite);
+  const flight = sprite.animate(windFlightFrames(lean, gust, travel, bend), {duration:Math.max(1100, action?.durationMs || 1350), easing:'linear'});
+  flight.finished.catch(() => {}).finally(() => sprite.remove());
+  return {stop() { flight.cancel(); if (root.isConnected) img.style.visibility = originalVisibility; }};
+}
+
+registerAction('windLaunch', windLaunch);
+
+/** The same two gusts can carry a detached item or a spawned projectile. */
+function windFlightFrames(lean, gust, travel, bend, heading = 0) {
+  return [
+    {transform:`translate(0,0) rotate(${heading}deg)`},
+    {offset:.14, easing:'ease-in-out', transform:`translate(${lean * 8}px,-8px) rotate(${heading + lean * 23}deg)`},
+    {offset:.4, easing:'ease-out', transform:`translate(${lean * bend}px,${-travel * .38}px) rotate(${heading + lean * 33}deg)`},
+    {transform:`translate(${lean * bend + gust * travel * .7}px,${-travel}px) rotate(${heading + gust * 78}deg)`}
+  ];
+}
+
+export function resolveProjectileAim(action, heading, origin, viewport, {index=0,count=8,random=Math.random}={}) {
+  if(action.aimMode==='distributed')return {heading:heading+360*(index%count)/count};
+  if(action.aimMode==='random')return {heading:360*random()-180};
+  if(action.aimMode==='point'&&action.aimTarget){
+    const target={x:action.aimTarget.x*viewport.width,y:action.aimTarget.y*viewport.height};
+    const dx=target.x-origin.x,dy=target.y-origin.y;
+    return {heading:Math.hypot(dx,dy)>1?Math.atan2(dy,dx)*180/Math.PI:heading,target};
+  }
+  return {heading};
+}
+
+function projectileFlightFrames(x, y, heading, action, target) {
+  const spread = action.flightPath === 'ricochet' ? (action.directionSpreadDeg || 0) : 0;
+  const rad = (heading + (spread ? (Math.random() - .5) * spread : 0)) * Math.PI / 180;
+  let dx = Math.cos(rad);
+  let dy = Math.sin(rad);
+  if (action.flightPath === 'wind') {
+    const lean = Math.abs(dx) < .1 ? (Math.random() < .5 ? -1 : 1) : Math.sign(dx);
+    const gust = Math.random() < .5 ? -lean : lean;
+    const travel = Math.max(120, y + 70);
+    const bend = Math.min(170, innerWidth * .2);
+    return windFlightFrames(lean, gust, travel, bend, action.spriteRotationDeg ?? heading);
+  }
+  if (action.flightPath === 'dart') {
+    const turn = Math.random() < .5 ? -1 : 1;
+    const bounds = Math.min(innerWidth, innerHeight);
+    const stride = Math.min(115, bounds * .17);
+    const wing = stride * (.46 + Math.random() * .26) * turn;
+    const keepVisible = (value, limit) => Math.max(26, Math.min(limit - 26, value));
+    const stopA = {x:keepVisible(target?.x ?? x + dx*stride - dy*wing, innerWidth), y:keepVisible(target?.y ?? y + dy*stride + dx*wing, innerHeight)};
+    const stopB = {x:keepVisible(stopA.x + dx*stride + dy*wing*1.5, innerWidth), y:keepVisible(stopA.y + dy*stride - dx*wing*1.5, innerHeight)};
+    const angle = (ax, ay, bx, by) => Math.atan2(by-ay,bx-ax)*180/Math.PI + 90;
+    const firstAim = angle(x,y,stopA.x,stopA.y);
+    const secondAim = angle(stopA.x,stopA.y,stopB.x,stopB.y);
+    const exitAim = heading + 90;
+    const margin = Math.max(48, (action.spriteWidthPx || 28)*2);
+    const edgeX = Math.abs(dx)<1e-5 ? Infinity : ((dx>0?innerWidth+margin:-margin)-stopB.x)/dx;
+    const edgeY = Math.abs(dy)<1e-5 ? Infinity : ((dy>0?innerHeight+margin:-margin)-stopB.y)/dy;
+    const exitTravel = Math.min(edgeX,edgeY);
+    const frame = (offset, px, py, aim, easing='linear') => ({
+      offset, easing, transform: 'translate('+(px-x)+'px,'+(py-y)+'px) rotate('+aim+'deg)'
+    });
+    return [
+      frame(0,x,y,firstAim,'ease-out'),
+      frame(.13,stopA.x,stopA.y,firstAim),
+      frame(.29,stopA.x,stopA.y,secondAim,'ease-out'),
+      frame(.42,stopB.x,stopB.y,secondAim),
+      frame(.59,stopB.x,stopB.y,exitAim,'ease-in-out'),
+      frame(1,stopB.x+dx*exitTravel,stopB.y+dy*exitTravel,exitAim)
+    ];
+  }
+  const margin = 15;
+  x = Math.max(margin, Math.min(innerWidth - margin, x));
+  y = Math.max(margin, Math.min(innerHeight - margin, y));
+  const originX = x, originY = y;
+  const frames = [{transform:'translate(0px,0px)',opacity:1}];
+  const bounces = 1 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < bounces; i++) {
+    const tx = Math.abs(dx) < 1e-5 ? Infinity : ((dx > 0 ? innerWidth - margin : margin) - x) / dx;
+    const ty = Math.abs(dy) < 1e-5 ? Infinity : ((dy > 0 ? innerHeight - margin : margin) - y) / dy;
+    const step = Math.min(tx, ty);
+    x += dx * step;
+    y += dy * step;
+    if (tx <= ty) dx = -dx;
+    if (ty <= tx) dy = -dy;
+    frames.push({transform:`translate(${x-originX}px,${y-originY}px)`,opacity:1});
+  }
+  frames.push({transform:`translate(${x-originX+dx*65}px,${y-originY+dy*65}px)`,opacity:0});
+  return frames;
 }
 
 export function listActionTypes() {
@@ -50,7 +202,7 @@ export function actionsForElement(el) {
  * @param {number} [opts.sporeIndex]
  * @returns {{ stop: Function }}
  */
-export function runObjectActions({ root, elements = [], target = 'spore', sporeIndex = 0 }) {
+export function runObjectActions({ root, elements = [], target = 'spore', sporeIndex = 0, sporeCount = 8 }) {
   const stoppers = [];
   // Collect fire-capable guns for alternate pattern coordination per root
   const fireSlots = [];
@@ -73,7 +225,7 @@ export function runObjectActions({ root, elements = [], target = 'spore', sporeI
   }
 
   if (fireSlots.length) {
-    const ctrl = runAlternatingFire({ root, slots: fireSlots, sporeIndex });
+    const ctrl = runAlternatingFire({ root, slots: fireSlots, sporeIndex, sporeCount });
     if (ctrl?.stop) stoppers.push(ctrl.stop);
   }
 
@@ -89,8 +241,11 @@ export function runObjectActions({ root, elements = [], target = 'spore', sporeI
 /**
  * Alternate (or random) fire across gun slots on one spore/composite.
  */
-function runAlternatingFire({ root, slots, sporeIndex }) {
+function runAlternatingFire({ root, slots, sporeIndex, sporeCount }) {
+  const randomValue = slots.some(slot=>slot.action.aimMode==='random') ? Math.random() : .5;
+  const aim = {index:sporeIndex,count:Math.max(1,sporeCount),random:()=>randomValue};
   const timers = new Set();
+  const startedAt = performance.now();
   let idx = sporeIndex % Math.max(1, slots.length);
   let stopped = false;
 
@@ -106,14 +261,16 @@ function runAlternatingFire({ root, slots, sporeIndex }) {
     const jitter = Math.max(0, +action.jitter || 0.4);
     const baseMs = 1000 / rate;
     const delay = baseMs * (1 + (Math.random() * 2 - 1) * jitter);
-    fireOnce({ root, el: slot.el, action });
+    if (!Number.isFinite(action.launchWindowMs) || performance.now() - startedAt <= action.launchWindowMs) {
+      fireOnce({ root, el: slot.el, action, aim });
+    }
     const id = setTimeout(scheduleNext, Math.max(80, delay));
     timers.add(id);
   };
 
   // Fire once immediately, then stagger subsequent shots so spores don't sync
   const firstSlot = slots[sporeIndex % Math.max(1, slots.length)];
-  if (firstSlot) fireOnce({ root, el: firstSlot.el, action: firstSlot.action });
+  if (firstSlot) fireOnce({ root, el: firstSlot.el, action: firstSlot.action, aim });
   idx = (sporeIndex % Math.max(1, slots.length)) + 1;
   const firstDelay = 120 + (sporeIndex % 7) * 35 + Math.random() * 100;
   const first = setTimeout(scheduleNext, firstDelay);
@@ -131,9 +288,9 @@ function runAlternatingFire({ root, slots, sporeIndex }) {
 /**
  * Spawn a muzzle flash / puff along the action direction from the muzzle point.
  */
-export function fireOnce({ root, el, action }) {
-  if (action.sprite) {
-    textProjectileOnce({ root, el, action });
+export function fireOnce({ root, el, action, aim }) {
+  if (action.sprite || action.shape === 'beam') {
+    textProjectileOnce({ root, el, action, aim });
     return;
   }
   const img = root.querySelector(`[data-element-id="${el.id}"]`);
@@ -218,7 +375,7 @@ function resolveActionNode(root, el) {
  * durationMs, holdRatio, distance | distanceRatio, point (anchor), direction (local deg),
  * scaleFrom, scaleTo, pattern ('once' | 'repeat'), rate, jitter, appliesTo.
  */
-export function textProjectileOnce({ root, el, action }) {
+export function textProjectileOnce({ root, el, action, aim }) {
   if (!root?.isConnected) return;
   if (action.sprite && !safeAssetSource(action.sprite)) return;
   const node = resolveActionNode(root, el);
@@ -235,13 +392,10 @@ export function textProjectileOnce({ root, el, action }) {
 
   const w = node.offsetWidth || parseFloat(node.style.width) || root.offsetWidth || 40;
   const h = node.offsetHeight || parseFloat(node.style.height) || root.offsetHeight || w * 0.7;
-  const oa = st.objectAnchor || { x: 0.5, y: 0.5 };
-  const elLeft = parseFloat(node.style.left) || 0;
-  const elTop = parseFloat(node.style.top) || 0;
-  // When the img fills the root (ghost wrap), left/top are 0 and oa is unused — point is fraction of node box.
   const fillsRoot = !node.style.left && node.parentElement === root;
-  const mx = fillsRoot ? point.x * w : elLeft + (point.x - oa.x) * w;
-  const my = fillsRoot ? point.y * h : elTop + (point.y - oa.y) * h;
+  const { x: mx, y: my } = fillsRoot
+    ? { x: point.x * w, y: point.y * h }
+    : elementPointInHost(node, st, point, w, h);
 
   const distRatio = Number.isFinite(+action.distanceRatio) ? +action.distanceRatio : 0.55;
   let dist = Number.isFinite(+action.distance)
@@ -305,7 +459,8 @@ export function textProjectileOnce({ root, el, action }) {
     ? Math.max(8, +action.fontSizePx)
     : Math.max(10, w * fontSizeRatio);
   const rawText = (action.text != null ? String(action.text) : 'BOO');
-  const color = action.color || '#000';
+  const beam = action.shape === 'beam';
+  const color = beam ? (/^#[0-9a-f]{6}$/i.test(action.color) ? action.color : '#ff263d') : action.color || '#000';
   const fontWeight = action.fontWeight != null ? String(action.fontWeight) : '700';
   const fontFamily = (action.fontFamily != null ? String(action.fontFamily).trim() : '');
 
@@ -320,6 +475,16 @@ export function textProjectileOnce({ root, el, action }) {
   } else {
     tip.textContent = rawText;
   }
+  // The white-hot core in the welding arc artwork is left of center.
+  const weldingArc = '/api/assets/animations/costumes/5603a0fa89833587eb8fcdb8cd972f82c89f7ffbd3abaa29913710b0ac9e403d.png';
+  const usesArc = action.sprite === weldingArc;
+  const origin = action.spriteOrigin || (usesArc ? {x:.1,y:.61} : {x:.5,y:.5});
+  const pivot = origin.x * 100 + '% ' + origin.y * 100 + '%';
+  const align = 'translate(' + (-origin.x * 100) + '%, ' + (-origin.y * 100) + '%)';
+  const spriteAngle = Number.isFinite(action.spriteRotationDeg)
+    ? action.spriteRotationDeg + (usesArc || action.spriteOrigin ? deg - localDeg : 0)
+    : 0;
+  const pose = (x, y, scale) => `translate(${x}px, ${y}px) ${align} rotate(${spriteAngle}deg) scale(${scale})`;
   const cssParts = [
     'position:absolute',
     `left:${mx}px`,
@@ -334,17 +499,75 @@ export function textProjectileOnce({ root, el, action }) {
     'pointer-events:none',
     'z-index:36',
     'user-select:none',
-    `transform:translate(-50%,-50%) translate(0px,0px) scale(${scaleFrom})`,
+    `transform:${pose(0, 0, scaleFrom)}`,
+    `transform-origin:${pivot.replace(',', '')}`,
     'opacity:1'
   ];
   if (fontFamily) cssParts.splice(5, 0, `font-family:${fontFamily}`);
   if (action.sprite) {
     const width = Math.max(8, Math.min(64, Number(action.spriteWidthPx) || 28));
     cssParts.push(`width:${width}px`, 'height:auto');
-    if (Number.isFinite(action.spriteRotationDeg)) cssParts.push(`rotate:${action.spriteRotationDeg}deg`);
+
+  }
+  const shapes = {
+    slash:'polygon(0 90%, 25% 42%, 66% 10%, 100% 4%, 69% 27%, 35% 57%, 14% 96%)',
+    thrust:'polygon(0 41%, 70% 41%, 64% 12%, 100% 50%, 64% 88%, 70% 59%, 0 59%)',
+    impact:'polygon(50% 0, 61% 37%, 100% 18%, 75% 48%, 100% 80%, 61% 64%, 50% 100%, 39% 64%, 0 80%, 25% 48%, 0 18%, 39% 37%)'
+  };
+  if (!action.sprite && Object.hasOwn(shapes, action.shape)) {
+    tip.textContent='';
+    cssParts.push(`width:${fontSize*1.8}px`, `height:${fontSize}px`, 'background:currentColor', 'clip-path:'+shapes[action.shape], `rotate:${deg}deg`);
+  }
+  if (beam) {
+    tip.textContent='';
+    tip.dataset.beam='true';
+    cssParts.push(`width:${fontSize*2.4}px`, 'height:4px', 'border-radius:50%',
+      'background:linear-gradient(90deg,transparent,currentColor 20%,white 82%,currentColor)',
+      'box-shadow:0 0 6px 1px currentColor');
   }
   tip.style.cssText = cssParts.join(';');
   root.appendChild(tip);
+
+  if (action.sprite && (['ricochet','dart','wind'].includes(action.flightPath))) {
+    const box = tip.getBoundingClientRect();
+    const x = box.left + box.width / 2;
+    const y = box.top + box.height / 2;
+    tip.dataset.flightPath = action.flightPath;
+    Object.assign(tip.style, {position:'fixed',left:x+'px',top:y+'px',zIndex:'101',marginLeft:'-'+(tip.offsetWidth/2)+'px',marginTop:'-'+(tip.offsetHeight/2)+'px'});
+    document.body.append(tip);
+    const {heading,target}=resolveProjectileAim(action,deg,{x,y},{width:innerWidth,height:innerHeight},aim);
+    const frames = projectileFlightFrames(x,y,heading,action,target);
+    const flight = tip.animate(frames,{duration:action.flightPath === 'ricochet' ? (action.ricochetLegMs || 210) * frames.length : action.flightPath === 'wind' ? Math.max(200, action.durationMs || 1350) : Math.max(1650, action.durationMs || 0),easing:'linear'});
+    flight.finished.then(() => tip.remove(), () => tip.remove());
+    return;
+  }
+
+  if ((action.sprite || beam) && action.exitViewport === true) {
+    const box = tip.getBoundingClientRect();
+    const x = box.left + box.width / 2;
+    const y = box.top + box.height / 2;
+    const margin = Math.max(box.width, box.height, Number(action.spriteWidthPx) || 28) * 2;
+    const dx = Math.cos(rad);
+    const dy = Math.sin(rad);
+    const crossX = Math.abs(dx) < 0.0001 ? Infinity
+      : ((dx > 0 ? innerWidth + margin : -margin) - x) / dx;
+    const crossY = Math.abs(dy) < 0.0001 ? Infinity
+      : ((dy > 0 ? innerHeight + margin : -margin) - y) / dy;
+    const travel = Math.min(...[crossX, crossY].filter(value => value > 0));
+    if (!Number.isFinite(travel)) { tip.remove(); return; }
+    tip.dataset.exitViewport = 'true';
+    // Rotate the artwork after translating so its heading cannot rotate the flight path.
+    const heading = beam ? deg : (action.spriteRotationDeg ?? 0) + deg - localDeg;
+    const facing = `rotate(${heading}deg)`;
+    Object.assign(tip.style, { position: 'fixed', left: `${x}px`, top: `${y}px`, zIndex: '101' });
+    document.body.appendChild(tip);
+    const flight = tip.animate([
+      { transform: `translate(-50%, -50%) ${facing}` },
+      { transform: `translate(-50%, -50%) translate(${dx * travel}px, ${dy * travel}px) ${facing}` }
+    ], { duration: Math.max(80, Math.min(12000, travel * durationMs / Math.max(14, dist))), easing: 'linear' });
+    flight.finished.then(() => tip.remove(), () => tip.remove());
+    return;
+  }
 
   const midX = endX * holdRatio;
   const midY = endY * holdRatio;
@@ -353,17 +576,17 @@ export function textProjectileOnce({ root, el, action }) {
     [
       {
         offset: 0,
-        transform: `translate(-50%, -50%) translate(0px, 0px) scale(${scaleFrom})`,
+        transform: pose(0, 0, scaleFrom),
         opacity: 1
       },
       {
         offset: holdRatio,
-        transform: `translate(-50%, -50%) translate(${midX}px, ${midY}px) scale(${midScale})`,
+        transform: pose(midX, midY, midScale),
         opacity: 1
       },
       {
         offset: 1,
-        transform: `translate(-50%, -50%) translate(${endX}px, ${endY}px) scale(${scaleTo})`,
+        transform: pose(endX, endY, scaleTo),
         opacity: 0
       }
     ],

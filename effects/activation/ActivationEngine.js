@@ -13,10 +13,16 @@ import { FireworkManager } from '../spore/finale.js';
 import { GHOST_CONFIG } from '../spore/ghost/config.js';
 import { fadeStormResetToLight } from './fadeStormReset.js';
 import { buildCharacterComposite, measureCreatureBox } from './CharacterComposite.js';
-import { runObjectActions } from './objectActions.js';
+import { launchMainCharacterItem, runObjectActions } from './objectActions.js';
 import { resolveClickEffect } from './clickEffect.js';
 import { computeClampedBurstDelta } from '../spore/sporeBurstMath.js';
 import { OVERLAY_PROFILES } from './overlayProfiles.js';
+import {
+  initReducedMotionWatch,
+  snapshotReducedMotion,
+  scaleReducedTime
+} from '../../runtime/public/reducedMotion.js';
+initReducedMotionWatch();
 import {
   preloadAndDecode,
   clearOwnedFlashLayers,
@@ -86,13 +92,17 @@ export async function runActivation(opts) {
   const preset=resolvePreset(opts.preset||animation.animationPreset);
   const transition=opts.transitionId||preset.transition;
   if(!['lightning','none'].includes(transition))throw new Error('Unsupported transition');
-  const reduced=typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const motion=snapshotReducedMotion();
+  const reduced=motion.prefersReduce;
+  const rm=motion.profile;
+  const time=(ms,override)=>scaleReducedTime(reduced,rm,ms,override);
   const flashParent=creatureRig||container;
   const elements=(composite?.elements||[]).slice(0,LIMITS.elements);
   const replaceCreature = profile === 'composite' && animation.replacesCreature === true;
   const originalVisibility = creature.style.visibility;
   const timers=new Set(),nodes=new Set(),controls=new Set();
   let player=null,manager=null,abortResolve;
+  const mainFlights = [];
   const abortPromise=new Promise(resolve=>{abortResolve=resolve;});
   const onAbort=()=>abortResolve();signal?.addEventListener('abort',onAbort,{once:true});
   const aborted=()=>signal?.aborted;
@@ -121,7 +131,7 @@ export async function runActivation(opts) {
       opts.onResetStart?.(fadeMs);
       resetPromise=delay(fadeMs);return resetPromise;
     };
-    const flash=transition==='none'||reduced?{...overlayProfile.flash,SHOW_PROBABILITY:1,MIN_OPACITY:1,MAX_OPACITY:1,FLICKER_ENABLED:false,FADE_IN_MS:preset.phases.equipMs,FADE_OUT_MS:preset.phases.exitMs}:overlayProfile.flash;
+    const flash=transition==='none'||(reduced&&rm.skipLightning)?{...overlayProfile.flash,SHOW_PROBABILITY:1,MIN_OPACITY:1,MAX_OPACITY:1,FLICKER_ENABLED:false,FADE_IN_MS:preset.phases.equipMs,FADE_OUT_MS:preset.phases.exitMs}:overlayProfile.flash;
     if(profile==='ghost'){
       const layer=createImageFlashLayer({parent:flashParent,src:overlayProfile.imageSrc,box,alt:'Ghost Overlay',matchCreatureFloat:true});
       player=createOverlayPlayer({layer,owned:true,flash});
@@ -133,28 +143,43 @@ export async function runActivation(opts) {
     if (replaceCreature) creature.style.visibility = 'hidden';
     player.show();
     const equip=roots.map(root=>actions(root,'activation','equip'));
-    if(preset.phases.equipMs)await delay(reduced?100:preset.phases.equipMs);
+    if(preset.phases.equipMs)await delay(time(preset.phases.equipMs,rm.equipMs));
     equip.forEach(c=>c.stop());
     if(aborted())return {ok:false,aborted:true};
     const active=roots.flatMap(root=>[actions(root,'activation','idle'),actions(root,'activation','activation')]);
-    const duration=reduced?150:preset.phases.activationMinMs+Math.random()*(preset.phases.activationMaxMs-preset.phases.activationMinMs);
-    if(transition==='lightning'&&!reduced){
+    const duration=time(preset.phases.activationMinMs+Math.random()*(preset.phases.activationMaxMs-preset.phases.activationMinMs),rm.activationMs);
+    if(transition==='lightning'&&!(reduced&&rm.skipLightning)){
       const L=overlayProfile.lightning;const end=Date.now()+duration;
       while(Date.now()<end&&!aborted()){
         const n=stageFlash(container);nodes.add(n);player.show();
-        await delay(L.FLASH_MIN_MS+Math.random()*(L.FLASH_MAX_MS-L.FLASH_MIN_MS));n.remove();nodes.delete(n);player.hide();
-        if(!aborted())await delay(L.FLASH_GAP_MIN_MS+Math.random()*(L.FLASH_GAP_MAX_MS-L.FLASH_GAP_MIN_MS));
+        await delay(time(L.FLASH_MIN_MS+Math.random()*(L.FLASH_MAX_MS-L.FLASH_MIN_MS)));n.remove();nodes.delete(n);player.hide();
+        if(!aborted())await delay(time(L.FLASH_GAP_MIN_MS+Math.random()*(L.FLASH_GAP_MAX_MS-L.FLASH_GAP_MIN_MS)));
       }
     }else await delay(duration);
     active.forEach(c=>c.stop());
     if(aborted())return {ok:false,aborted:true};
     const hasExit=elements.some(e=>(e.placement?.objectActions||[]).some(a=>a.phase==='exit'));
-    if(hasExit){player.show();const exits=roots.map(root=>actions(root,'activation','exit'));await delay(reduced?100:preset.phases.exitMs);exits.forEach(c=>c.stop());}
-    player.hide();
-    if (replaceCreature) creature.style.visibility = originalVisibility;
+    if(hasExit){player.show();const exits=roots.map(root=>actions(root,'activation','exit'));await delay(time(preset.phases.exitMs,rm.exitMs));exits.forEach(c=>c.stop());}
+    const showCostume = animation.showCostumeWithSpores !== false;
+    const configuredFade = animation.costumeSporeFadeMs;
+    const fadeBase = Number.isFinite(configuredFade)
+      ? Math.max(0, Math.min(5000, configuredFade)) : 350;
+    const fadeMs = time(fadeBase, rm.fadeMs);
+    if (showCostume) player.hold();
+    else {
+      player.hide();
+      if (replaceCreature) creature.style.visibility = originalVisibility;
+    }
+    if (animation.previewSporesDuringBurst !== false) {
+      opts.onSporePhase?.((x, y) => previewClick({
+        container, creature, animation, x, y, sporeHost,
+        compositeElements: elements
+      }));
+    }
     const charBox={width:box.width,height:box.height};
     const spec=preset.spores;
-    const count=reduced?Math.min(spec.count,4):Math.min(spec.count,LIMITS.clones);
+    const normalCount=Math.min(spec.count,LIMITS.clones);
+    const count=reduced&&rm.sporeCount!=null?Math.min(normalCount,Math.max(0,rm.sporeCount)):normalCount;
     const makeSpore=(dims,index)=>{
       let node;
       if(profile==='composite'){
@@ -163,24 +188,34 @@ export async function runActivation(opts) {
         node=document.createElement('div');const image=document.createElement('img');image.src=elements.find(e=>e.role==='sporeBody')?.src||GHOST_CONFIG.ASSETS.SPORE_IMAGE;image.dataset.elementId=elements.find(e=>e.role==='sporeBody')?.id||'ghostBody';image.alt='';image.draggable=false;image.style.cssText='width:100%;height:100%;display:block;pointer-events:none';node.appendChild(image);
       }
       node.classList.add('activation-spore');node.style.position='absolute';node.style.width=dims.width+'px';node.style.height=dims.height+'px';node.style.zIndex='25';node.style.overflow='visible';
-      const selected=actionsForPhase('activation');const action=track(runObjectActions({root:node,elements:selected,target:'spore',sporeIndex:index}));const motion=track(runBehaviors({root:node,elements:selected,target:'spore',phase:'activation',signal}));
+      const selected=actionsForPhase('activation');const action=track(runObjectActions({root:node,elements:selected,target:'spore',sporeIndex:index,sporeCount:count}));const motion=track(runBehaviors({root:node,elements:selected,target:'spore',phase:'activation',signal}));
       node.__actionStop=()=>{stopControl(motion);stopControl(action);};return node;
     };
     if(spec.trajectory==='burst'){
       const host=sporeHost.getBoundingClientRect();const x=window.innerWidth/2-host.left,y=window.innerHeight/2-host.top;
       for(let i=0;i<count;i++){
         const scale=spec.scale??.15;const dims={width:charBox.width*scale,height:charBox.height*scale};const node=makeSpore(dims,i);const angle=i/Math.max(1,count)*Math.PI*2;
-        const d=computeClampedBurstDelta(x,y,angle,reduced?0:spec.spreadPx??140,{...dims,host:sporeHost});
-        node.style.left=x-dims.width/2+'px';node.style.top=y-dims.height/2+'px';node.style.setProperty('--tx',d.tx+'px');node.style.setProperty('--ty',d.ty+'px');node.style.setProperty('--rotation',reduced?'0deg':'360deg');
-        node.style.animation=`explode ${reduced?200:spec.durationMs??1600}ms ease-out forwards`;sporeHost.appendChild(node);nodes.add(node);
+        const spread=reduced&&rm.freezeBurst?0:spec.spreadPx??140;
+        const explodeMs=time(spec.durationMs??1600,rm.explodeMs);
+        const d=computeClampedBurstDelta(x,y,angle,spread,{...dims,host:sporeHost});
+        node.style.left=x-dims.width/2+'px';node.style.top=y-dims.height/2+'px';node.style.setProperty('--tx',d.tx+'px');node.style.setProperty('--ty',d.ty+'px');node.style.setProperty('--rotation',reduced&&rm.freezeBurst?'0deg':'360deg');
+        node.style.animation=`explode ${explodeMs}ms ease-out forwards`;sporeHost.appendChild(node);nodes.add(node);
       }
-      await delay(reduced?200:spec.durationMs??1600);
+      await delay(time(spec.durationMs??1600,rm.explodeMs));
     }else{
       const fw={...overlayProfile.fireworks,SPORE_COUNT:count};
       if(spec.scale!==null){fw.BASE_WIDTH=charBox.width*spec.scale;fw.BASE_HEIGHT=charBox.height*spec.scale;}
       if(spec.durationMs!==null){fw.MIN_LIFESPAN=spec.durationMs/1000;fw.MAX_LIFESPAN=spec.durationMs/1000;}
       if(spec.spreadPx!==null){const seconds=(spec.durationMs||4000)/1000;fw.MIN_INITIAL_SPEED=spec.spreadPx*.7/seconds;fw.MAX_INITIAL_SPEED=spec.spreadPx/seconds;}
-      if(reduced){fw.MIN_INITIAL_SPEED=0;fw.MAX_INITIAL_SPEED=0;fw.MIN_LIFESPAN=.2;fw.MAX_LIFESPAN=.2;fw.GRAVITY=0;fw.MIN_SWIRL_AMPLITUDE=0;fw.MAX_SWIRL_AMPLITUDE=0;}
+      if(reduced){
+        const speedScale=rm.fireworkSpeedScale;
+        fw.MIN_INITIAL_SPEED=(fw.MIN_INITIAL_SPEED||0)*speedScale;
+        fw.MAX_INITIAL_SPEED=(fw.MAX_INITIAL_SPEED||0)*speedScale;
+        const life=rm.fireworkLifespanSec;
+        if(life!=null){fw.MIN_LIFESPAN=life;fw.MAX_LIFESPAN=life;}
+        else {fw.MIN_LIFESPAN=(fw.MIN_LIFESPAN||3)*rm.timeScale;fw.MAX_LIFESPAN=(fw.MAX_LIFESPAN||5)*rm.timeScale;}
+        if(rm.freezeBurst){fw.MIN_INITIAL_SPEED=0;fw.MAX_INITIAL_SPEED=0;fw.GRAVITY=0;fw.MIN_SWIRL_AMPLITUDE=0;fw.MAX_SWIRL_AMPLITUDE=0;}
+      }
       let sporeIndex = 0;
       fw.createSporeElement=(_spore,dims)=>makeSpore(dims||{width:fw.BASE_WIDTH,height:fw.BASE_HEIGHT},sporeIndex++);
       const finished=new Promise(resolve=>{if(count===0){resolve();return;}manager=new FireworkManager(fw);manager.launch(window.innerWidth/2+fw.LAUNCH_OFFSET_X,window.innerHeight/2+fw.LAUNCH_OFFSET_Y,sporeHost,resolve);});
@@ -188,20 +223,36 @@ export async function runActivation(opts) {
       // interrupt the finale; the lighting reset begins after the manager finishes.
       await Promise.race([finished,abortPromise]);
       if(aborted())return {ok:false,aborted:true};
-      if(transition==='lightning'&&!reduced){
-        const n=stageFlash(container,'final-reset');nodes.add(n);n.style.opacity='1';
-        const fadeMs=window.__yaitgEffect?.__liveStormResetMs||overlayProfile.animations.STORM_RESET_DURATION;
-        n.style.transition=`opacity ${fadeMs}ms ease-out`;requestAnimationFrame(()=>{n.style.opacity='0';});
-        await resetToLight();
-      }
     }
     if(aborted())return {ok:false,aborted:true};
-    await resetToLight();
+    opts.onSporePhase?.(null);
+    if (showCostume) {
+      if (!(reduced&&rm.skipMainCharacterLaunch)) for (const item of elements) {
+        const action = item.placement?.mainCharacterAction;
+        if (!action) continue;
+        const image = roots.map(root => root.querySelector(`[data-element-id="${item.id}"]`)).find(Boolean);
+        const flight = launchMainCharacterItem(image, action, signal);
+        if (flight) mainFlights.push(flight);
+      }
+      if (replaceCreature) creature.style.visibility = originalVisibility;
+      player.hide(fadeMs);
+    }
+    if (spec.trajectory !== 'burst' && transition === 'lightning' && !(reduced&&rm.skipLightning)) {
+      const n = stageFlash(container, 'final-reset');
+      nodes.add(n);
+      n.style.opacity = '1';
+      const resetMs = opts.stormResetDurationMs || window.__yaitgEffect?.__liveStormResetMs || overlayProfile.animations.STORM_RESET_DURATION;
+      n.style.transition = 'opacity ' + resetMs + 'ms ease-out';
+      requestAnimationFrame(() => { n.style.opacity = '0'; });
+    }
+    await Promise.all([resetToLight(), showCostume && fadeMs ? delay(fadeMs) : null, ...mainFlights.map(flight => flight.finished)]);
     return {ok:true};
   }finally{
+    opts.onSporePhase?.(null);
     if (replaceCreature) creature.style.visibility = originalVisibility;
     signal?.removeEventListener('abort',onAbort);timers.forEach(id=>{clearTimeout(id);clearInterval(id);});timers.clear();
     [...controls].reverse().forEach(stopControl);manager?.cleanup?.();manager?.destroy?.();player?.cleanup();
+    mainFlights.forEach(flight => flight.restore());
     nodes.forEach(n=>{n.__actionStop?.();n.remove();});
     sporeHost?.querySelectorAll('.activation-spore,.firework-spore,.activation-click-spore').forEach(n=>{n.__actionStop?.();n.remove();});
     clearOwnedFlashLayers(flashParent,container);

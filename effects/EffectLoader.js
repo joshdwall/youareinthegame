@@ -4,6 +4,7 @@
  * Handles random selection and effect lifecycle
  */
 import { log, info, debug, warn, error } from '../js/log.js';
+import { withCacheBust } from '../js/cacheBust.js';
 
 class EffectLoader {
     /**
@@ -24,7 +25,7 @@ class EffectLoader {
      */
     async loadManifest() {
         try {
-            const manifestModule = await import(this.manifestPath);
+            const manifestModule = await import(withCacheBust(this.manifestPath));
             this.availableEffects = manifestModule.effects || [];
 
             if (this.availableEffects.length === 0) {
@@ -96,7 +97,7 @@ class EffectLoader {
             log(`EffectLoader: Loading effect from ${effectPath}`);
 
             // Load the effect module
-            const effectModule = await import(effectPath);
+            const effectModule = await import(withCacheBust(effectPath));
             const EffectClass = effectModule.default || effectModule.Effect;
 
             if (!EffectClass) {
@@ -188,7 +189,7 @@ class EffectLoader {
             } while (this.currentEffect && nextEffectPath === this.currentEffect.constructor.name);
 
             // Load but don't initialize
-            const effectModule = await import(nextEffectPath);
+            const effectModule = await import(withCacheBust(nextEffectPath));
             const EffectClass = effectModule.default || effectModule.Effect;
 
             if (EffectClass) {

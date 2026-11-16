@@ -14,6 +14,7 @@ html {
   overflow: hidden;
   height: 100%;
   -webkit-overflow-scrolling: touch;
+  touch-action: manipulation;
 }
 
 /**
@@ -22,6 +23,7 @@ html {
 body {
   background-color: #7ab5a0;
   min-height: 100vh;
+  min-height: 100dvh;
   height: 100%;
   display: flex;
   justify-content: center;
@@ -33,6 +35,7 @@ body {
   width: 100%;
   top: 0;
   left: 0;
+  touch-action: manipulation;
 }
 
 /**
@@ -80,7 +83,9 @@ img {
   align-items: center;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   position: relative;
+  touch-action: manipulation;
 }
 
 /**
@@ -89,11 +94,12 @@ img {
 .creature {
   width: 400px;
   height: auto;
-  filter: drop-shadow(0 0 20px rgba(0, 0, 0, 0.3));
-  transition: transform 0.3s ease, filter 0.5s ease;
+  filter: var(--creature-shadow, drop-shadow(0 0 20px rgba(0, 0, 0, 0.3)));
+  transition: filter 0.25s ease;
   cursor: pointer;
   position: relative;
   z-index: 10;
+  /* Float runs on .creature-rig so wrapping/glow cannot restart it. */
   animation: float 4s ease-in-out infinite;
   /* Disable mobile touch highlighting and selection */
   -webkit-touch-callout: none;
@@ -112,8 +118,15 @@ img {
   draggable: false;
 }
 
-.creature:hover {
-  transform: scale(1.05);
+.creature.has-touch-shadow {
+  --creature-shadow: drop-shadow(0 0 22px rgba(0, 0, 0, 0.65));
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .creature:hover { --creature-shadow: drop-shadow(0 0 22px rgba(0, 0, 0, 0.65)); }
+  .spore-sticker-picture:not(:disabled):hover {
+    filter: drop-shadow(0 0 22px rgba(0, 0, 0, 0.65));
+  }
 }
 
 /**
@@ -187,11 +200,16 @@ img {
   left: auto;
   top: auto;
   z-index: var(--badge-z);
-  pointer-events: none;
+  pointer-events: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
   display: block;
   animation: floatWithRotation 4s ease-in-out infinite;
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
 }
+.spore-sticker-picture:not(:disabled) { cursor: pointer; }
+.spore-sticker-picture:focus-visible { outline: 3px solid currentColor; border-radius: 50%; }
 .spore-sticker-picture .spore-sticker {
   position: static;
   width: 100%;
@@ -272,7 +290,7 @@ img {
   left: auto;
   top: auto;
   z-index: var(--badge-z);
-  pointer-events: none;
+  pointer-events: auto;
   display: block;
 }
 .spore-sticker-picture .spore-sticker,
@@ -296,7 +314,7 @@ img {
   left: auto;
   top: auto;
   z-index: var(--badge-z);
-  pointer-events: none;
+  pointer-events: auto;
   display: block;
 }
 .spore-sticker-picture .spore-sticker,
@@ -313,17 +331,21 @@ body, .container { cursor: default; }
 .creature { cursor: pointer; }
 input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-select: text; caret-color: auto; cursor: text; }
 
-/* Public loot-table overlays: float on the rig so accessories bob with the creature */
+/* Public loot-table overlays: float on the rig so accessories bob with the creature.
+   The character itself does not run `float` — that would restart (and jump) if a
+   glow class or later wrap retargeted the animation. */
 .creature-rig {
   position: relative;
   display: inline-block;
   line-height: 0;
   z-index: 10;
+  animation: float 4s ease-in-out infinite;
 }
 .creature-rig > .creature {
   display: block;
   position: relative;
   z-index: 2;
+  animation: none;
 }
 .public-overlay,
 #overlayLayer.public-overlay {
@@ -354,7 +376,8 @@ img.spore,
   -webkit-user-select: none;
   user-select: none;
 }
-.worldmap-link { position:fixed; left:18px; bottom:18px; z-index:100; min-height:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:7px 10px; border:1px solid #14324466; border-radius:4px; color:#143244; background:#f2ead9e6; font-size:13px; text-decoration:none; }
+.worldmap-link { position:fixed; left:18px; bottom:18px; z-index:100; min-height:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:7px 10px; color:#143244; font-size:13px; text-decoration:none; }
 .worldmap-link:focus-visible { outline:3px solid #143244; outline-offset:3px; }
+.worldmap-link[hidden] { display: none; }
 
 .contact-link { position: fixed; bottom: 1rem; left: 1rem; z-index: 5; color: inherit; }

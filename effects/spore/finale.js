@@ -4,6 +4,7 @@
  * Fixed for mobile compatibility and reliable animation
  */
 import { getViewportSpreadScale } from './sporeBurstMath.js';
+import { isMobileClient } from '../../js/isMobileClient.js';
 import { log, info, debug, warn, error } from '../../js/log.js';
 
 
@@ -231,14 +232,25 @@ class FireworkManager {
      * @returns {boolean} True if mobile browser detected
      */
     detectMobileBrowser() {
-        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-        const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
-        const isReplit = window.location.hostname.includes('replit');
-
-        // Also check if requestAnimationFrame behaves properly
+        const isReplit = typeof window !== 'undefined' && window.location.hostname.includes('replit');
         const rafTest = typeof requestAnimationFrame !== 'function';
+        return isMobileClient() || isReplit || rafTest;
+    }
 
-        return isMobile || isReplit || rafTest;
+    /**
+     * Elapsed seconds on a single clock. First sample records the origin and
+     * returns 0 so we never mix performance.now with a rAF timestamp.
+     * @param {number} currentTime
+     * @returns {number}
+     */
+    advanceClock(currentTime) {
+        if (!this.lastUpdateTime) {
+            this.lastUpdateTime = currentTime;
+            return 0;
+        }
+        const deltaTime = (currentTime - this.lastUpdateTime) / 1000;
+        this.lastUpdateTime = currentTime;
+        return deltaTime;
     }
 
     /**
@@ -283,7 +295,7 @@ class FireworkManager {
         if (this.isAnimating) return; // Already running
 
         this.isAnimating = true;
-        this.lastUpdateTime = performance.now();
+        this.lastUpdateTime = 0;
 
         log(`FireworkManager: Starting animation (fallback mode: ${this.useFallbackAnimation})`);
 
@@ -301,9 +313,8 @@ class FireworkManager {
         const animate = (currentTime) => {
             if (!this.isAnimating) return;
 
-            // Calculate delta time in seconds
-            const deltaTime = (currentTime - this.lastUpdateTime) / 1000;
-            this.lastUpdateTime = currentTime;
+            // rAF clock only. First frame dt=0.
+            const deltaTime = this.advanceClock(currentTime);
 
             // Update all spores
             this.updateAndRenderSpores(deltaTime);
@@ -329,9 +340,8 @@ class FireworkManager {
         const animate = () => {
             if (!this.isAnimating) return;
 
-            const currentTime = performance.now();
-            const deltaTime = (currentTime - this.lastUpdateTime) / 1000;
-            this.lastUpdateTime = currentTime;
+            // performance.now clock only. First frame dt=0.
+            const deltaTime = this.advanceClock(performance.now());
 
             // Update all spores
             this.updateAndRenderSpores(deltaTime);
@@ -352,8 +362,8 @@ class FireworkManager {
      * @param {number} deltaTime - Time since last update in seconds
      */
     updateAndRenderSpores(deltaTime) {
-        // Clamp deltaTime to prevent huge jumps
-        deltaTime = Math.min(deltaTime, 0.1);
+        // Clamp deltaTime to prevent huge jumps; never run backwards.
+        deltaTime = Math.min(Math.max(0, deltaTime), 0.1);
 
         for (let i = this.fireworkSpores.length - 1; i >= 0; i--) {
             const spore = this.fireworkSpores[i];

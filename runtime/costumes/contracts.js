@@ -1,6 +1,6 @@
 /** Shared authoring contract. No network, DOM, credentials or provider dependencies. */
 export const LIMITS=Object.freeze({elements:24,clones:24,actions:6,assetBytes:8_000_000,dimension:8192});
-export const ACTION_TYPES=Object.freeze(['fire','textProjectile','sway','bounce','spin','recoil','fade','particles']);
+export const ACTION_TYPES=Object.freeze(['fire','textProjectile','sway','bounce','spin','recoil','fade','particles','windLaunch']);
 export const LAYERS=Object.freeze(['behind-character','foreground']);
 export const PHASES=Object.freeze(['equip','idle','interact','activation','exit']);
 export const MUSHROOM_RIG=Object.freeze({id:'mushroom-platypus',version:1,width:709,height:470,anchors:{head:{x:.48798449304854485,y:-.07305050626728364},'bill-top':{x:.5,y:.5},mouth:{x:.4949264790076918,y:.7959222378465736},'bill-bottom':{x:.5,y:.99},'eye-left':{x:.42,y:.477},'eye-right':{x:.565,y:.477},eyes:{x:.4925,y:.477},handL:{x:.05,y:.5},handR:{x:.95,y:.5}},coverage:{bandana:[{x:.27,y:.5},{x:.73,y:.5},{x:.5,y:1.08}]}});
@@ -26,10 +26,18 @@ export function validateActions(actions=[]){
   if(a.amplitude!==undefined)requireOk(finite(a.amplitude,0,50),'Action amplitude exceeds limits');
   if(a.count!==undefined)requireOk(Number.isInteger(a.count)&&finite(a.count,1,12),'Particle count exceeds limits');
   if(a.type==='textProjectile')requireOk(typeof a.text==='string'&&a.text.length>0&&a.text.length<=64,'Text action requires 1-64 characters');
+  if(a.shape!==undefined)requireOk((a.type==='textProjectile'&&['slash','thrust','impact'].includes(a.shape))||(a.type==='fire'&&a.shape==='beam'&&!a.sprite),'Invalid attack shape');
   if(a.textVariants!==undefined)requireOk(a.type==='textProjectile'&&Array.isArray(a.textVariants)&&a.textVariants.length===2&&a.textVariants.every(text=>typeof text==='string'&&text.length>0&&text.length<=64),'Text variants require two phrases of 1–64 characters');
   if(a.sprite!==undefined)requireOk(a.type==='fire'&&safeAssetSource(a.sprite),'Projectile sprite must be a site asset on a fire action');
   if(a.spriteWidthPx!==undefined)requireOk(a.sprite!==undefined&&finite(a.spriteWidthPx,8,64),'Projectile sprite width must be 8–64 px');
   if(a.spriteRotationDeg!==undefined)requireOk(a.sprite!==undefined&&finite(a.spriteRotationDeg,-360,360),'Projectile sprite rotation must be within 360°');
+  if(a.flightPath!==undefined)requireOk(a.type==='fire'&&a.sprite&&['ricochet','dart','wind'].includes(a.flightPath),'Invalid projectile flight path');
+  if(a.spriteOrigin!==undefined)requireOk(a.sprite&&point(a.spriteOrigin),'Invalid sprite origin');
+  if(a.directionSpreadDeg!==undefined)requireOk(finite(a.directionSpreadDeg,0,360),'Invalid direction spread');
+  if(a.aimMode!==undefined)requireOk(a.type==='fire'&&a.sprite&&a.flightPath&&['heading','point','distributed','random'].includes(a.aimMode),'Invalid projectile aim mode');
+  if(a.aimTarget!==undefined||a.aimMode==='point')requireOk(point(a.aimTarget),'Target must use normalized viewport coordinates');
+  if(a.ricochetLegMs!==undefined)requireOk(finite(a.ricochetLegMs,80,1500),'Invalid ricochet timing');
+  if(a.exitViewport!==undefined)requireOk((a.sprite!==undefined||a.shape==='beam')&&typeof a.exitViewport==='boolean','Off-screen flight requires a projectile sprite');
  }
  return actions;
 }
@@ -49,6 +57,8 @@ export function validatePlacement(raw,rig=MUSHROOM_RIG){
 export function editorPlacement(raw,rig=MUSHROOM_RIG){const p=resolvePlacement(raw,rig);return {...p,characterAnchor:{...p.characterAnchor}};}
 export function normalizeEditedPlacement(raw,rig=MUSHROOM_RIG){
  const p=validatePlacement(raw,rig);
+ requireOk(p.mainCharacterAction===undefined||(object(p.mainCharacterAction)&&p.mainCharacterAction.type==='launchOffScreen'),'Unsupported main character action');
+ for(const field of ['shownOnMain','shownOnSpore'])requireOk(p[field]===undefined||typeof p[field]==='boolean','Invalid accessory visibility');
  if(p.attachment){const a=rig.anchors[p.attachment.point==='bill'?'mouth':p.attachment.point];p.offset={x:p.characterAnchor.x-a.x,y:p.characterAnchor.y-a.y};delete p.characterAnchor;}
  return p;
 }
@@ -79,4 +89,10 @@ export function validateBundle(bundle,library={assets:[],rigs:[MUSHROOM_RIG],pre
  return {bundle:clone(bundle),assets:[...assets.values()],rig,preset,elements};
 }
 export function compileBundle(bundle,library){const v=validateBundle(bundle,library);return {animation:{id:bundle.costume.id,label:bundle.costume.label,version:bundle.costume.version,editable:true,placementEditable:true,live:false,archived:false,type:'character-overlay-activation',playMode:'character-overlay',overlayFlashMode:'composite',tier:'common',weight:100,multiplier:1,animationPreset:v.preset,costumeRef:ref(bundle.costume),rigRef:ref(v.rig),elements:v.elements.map(({placement,...e})=>({...e,placement})),clickEffect:{type:'composite-spores',count:16,scale:.15},transitionsAvailable:['lightning','none'],previewObjectActions:false},placements:{transitionId:v.preset.transition,elements:Object.fromEntries(v.elements.map(e=>[e.id,normalizeEditedPlacement(e.placement,v.rig)]))},resolved:v};}
-export function validateAnimationDraft(a){requireOk(validId(a.id)&&typeof a.label==='string'&&a.label.length<=80,'Invalid animation identity');requireOk(Array.isArray(a.elements)&&a.elements.length<=LIMITS.elements&&(!a.live||a.elements.length>0),'Invalid animation elements');if(a.animationPreset)resolvePreset(a.animationPreset);for(const e of a.elements){requireOk(typeof e.id==='string'&&/^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/.test(e.id)&&safeAssetSource(e.src),'Invalid accessory asset');if(e.placement)validatePlacement(e.placement);}return a;}
+export function validateAnimationDraft(a){
+ for (const field of ['showCostumeWithSpores', 'previewSporesDuringBurst']) {
+  requireOk(a[field] === undefined || typeof a[field] === 'boolean', 'Invalid ' + field);
+ }
+ const fade = a.costumeSporeFadeMs;
+ requireOk(fade === undefined || (Number.isInteger(fade) && fade >= 0 && fade <= 5000), 'Invalid costume spore fade duration');
+ requireOk(validId(a.id)&&typeof a.label==='string'&&a.label.length<=80,'Invalid animation identity');requireOk(Array.isArray(a.elements)&&a.elements.length<=LIMITS.elements&&(!a.live||a.elements.length>0),'Invalid animation elements');if(a.animationPreset)resolvePreset(a.animationPreset);for(const e of a.elements){requireOk(typeof e.id==='string'&&/^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/.test(e.id)&&safeAssetSource(e.src),'Invalid accessory asset');if(e.placement)validatePlacement(e.placement);}return a;}

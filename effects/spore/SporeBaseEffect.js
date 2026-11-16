@@ -5,6 +5,7 @@
  */
 
 import { FireworkManager } from './finale.js';
+import { setLiveReducedMotionConfig } from '../../runtime/public/reducedMotion.js';
 import { fadeStormResetToLight } from '../activation/fadeStormReset.js';
 import { computeClampedBurstDelta } from './sporeBurstMath.js';
 import { log, info, debug, warn, error } from '../../js/log.js';
@@ -562,7 +563,7 @@ class SporeBaseEffect {
         const CONFIG = this.getConfig();
         this.creature.style.filter = CONFIG.VISUALS.CREATURE_PULSE_FILTER;
         const timeout = setTimeout(() => {
-            this.creature.style.filter = CONFIG.VISUALS.CREATURE_INITIAL_FILTER;
+            this.creature.style.removeProperty('filter');
         }, CONFIG.ANIMATIONS.CREATURE_PULSE_DURATION);
         this.trackTimeout(timeout);
     }
@@ -605,6 +606,7 @@ class SporeBaseEffect {
         let opac = Number(settings.interactionOpacityDuringAnimation);
         if (!Number.isFinite(opac)) opac = 0.8;
         this.__liveInteractionOpacity = Math.min(1, Math.max(0, opac));
+        setLiveReducedMotionConfig(settings.reducedMotion);
     }
 
     /**
@@ -621,7 +623,7 @@ class SporeBaseEffect {
         if (this.creature) {
             this.creature.className = this.creature.className.replace(/storm-level-\d+/g, '');
             this.creature.classList.add('creature');
-            this.creature.style.filter = CONFIG.VISUALS.CREATURE_INITIAL_FILTER;
+            this.creature.style.removeProperty('filter');
         }
 
         if (this.effectOverlay) {

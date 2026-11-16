@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { renderPollBlocks } from './comm-poll-markup.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SITE_DIR = path.resolve(__dirname, '..');
@@ -48,6 +49,46 @@ function copyDir(rel) {
   fs.cpSync(src, dest, { recursive: true });
 }
 
+
+const MODULE_CACHE_BUST = 'costume-lock-1';
+
+function bustImportUrl(spec) {
+  if (!spec || /^(https?:|data:|blob:)/i.test(spec)) return spec;
+  if (!/\.js(?:\?|$)/.test(spec)) return spec;
+  if (/[?&]v=/.test(spec)) return spec;
+  return `${spec}${spec.includes('?') ? '&' : '?'}v=${MODULE_CACHE_BUST}`;
+}
+
+function bustStagedModuleImports(root) {
+  const skip = new Set(['.git']);
+  const walk = (dir, out = []) => {
+    for (const name of fs.readdirSync(dir)) {
+      if (skip.has(name)) continue;
+      const abs = path.join(dir, name);
+      const st = fs.statSync(abs);
+      if (st.isDirectory()) walk(abs, out);
+      else if (name.endsWith('.js')) out.push(abs);
+    }
+    return out;
+  };
+  const reFrom = /(\bfrom\s+)(['"`])([^'"`]+?)\2/g;
+  const reImport = /(\bimport\s*\(\s*)(['"`])([^'"`]+?)\2(\s*\))/g;
+  let files = 0;
+  for (const file of walk(root)) {
+    const rel = path.relative(root, file).replace(/\\/g, '/');
+    if (rel.startsWith('assets/') || rel.startsWith('node_modules/')) continue;
+    const src = fs.readFileSync(file, 'utf8');
+    const next = src
+      .replace(reFrom, (m, pre, q, spec) => `${pre}${q}${bustImportUrl(spec)}${q}`)
+      .replace(reImport, (m, pre, q, spec, post) => `${pre}${q}${bustImportUrl(spec)}${q}${post}`);
+    if (next !== src) {
+      fs.writeFileSync(file, next);
+      files += 1;
+    }
+  }
+  return MODULE_CACHE_BUST;
+}
+
 function main() {
   rmrf(OUT_DIR);
   fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -61,7 +102,13 @@ function main() {
     count += 1;
   }
 
-  console.log(`[stage-pages] youareinthegame → dist (${count} roots)`);
+  // Poll card markup from config/communications.json (site-hub communications module; one config for options).
+  const commConfig = JSON.parse(fs.readFileSync(path.join(SITE_DIR, 'config', 'communications.json'), 'utf8'));
+  const worldmapHtml = path.join(OUT_DIR, 'worldmap', 'index.html');
+  fs.writeFileSync(worldmapHtml, renderPollBlocks(fs.readFileSync(worldmapHtml, 'utf8'), commConfig));
+
+  const cacheBust = bustStagedModuleImports(OUT_DIR);
+  console.log(`[stage-pages] youareinthegame → dist (${count} roots, module ?v=${cacheBust})`);
 }
 
 main();
