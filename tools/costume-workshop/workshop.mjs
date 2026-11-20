@@ -64,6 +64,14 @@ export async function main(command='doctor',projectFile='costume.json'){
   c.generatorExe=process.env.COSTUME_GENERATOR_EXE||c.generatorExe;c.generatorModel=process.env.COSTUME_GENERATOR_MODEL||c.generatorModel;
   const exe=path.resolve(ROOT,c.generatorExe),model=path.resolve(ROOT,c.generatorModel);
   const dir=path.join(ROOT,'jobs',p.id);fs.mkdirSync(dir,{recursive:true});
+  if(command==='plan'||command==='run'){
+    const {preflight}=await import('./preflight.mjs');
+    const stateFile=path.join(dir,'queue.json');
+    const report=preflight(p,c,ROOT,fs.existsSync(stateFile)?read(stateFile):{});
+    save(path.join(dir,'preflight.json'),report);
+    if(command==='plan'){console.log(JSON.stringify(report,null,2));return report;}
+    if(!report.ok)throw Error('Preflight failed: '+report.missing.join('; '));
+  }
   if(command==='doctor'){
     let models=[];try{const r=await fetch(new URL('/api/tags',c.ollamaUrl),{signal:AbortSignal.timeout(5000)});models=(await r.json()).models.map(m=>m.name);}catch(e){console.log('Ollama unavailable:',e.message);}
     console.log(JSON.stringify({models,generatorExists:fs.existsSync(exe),modelBytes:fs.existsSync(model)?fs.statSync(model).size:0,expectedModelBytes:c.modelExpectedBytes},null,2));return;
@@ -72,7 +80,9 @@ export async function main(command='doctor',projectFile='costume.json'){
     const prompts=Object.fromEntries(p.accessories.map(a=>[a.id,makePrompt(a)]));
     save(path.join(dir,'prompts.json'),prompts);
     // Suggestions never replace the fixed accessory-only prompt or placements.
-    try{const r=await ollama(c,`Return JSON with key suggestions containing three short material or color variations for these accessory descriptions. Do not describe a wearer: ${p.accessories.map(a=>a.description).join('; ')}`);save(path.join(dir,'ollama-suggestions.json'),{model:c.ollamaModel,response:JSON.parse(r.response)});console.log('Local suggestions saved.');}catch(e){console.log('Suggestions skipped:',e.message);}
+    if(process.argv.includes('--suggestions')){
+      try{const r=await ollama(c,`Return JSON with key suggestions containing three short material or color variations for these accessory descriptions. Do not describe a wearer: ${p.accessories.map(a=>a.description).join('; ')}`);save(path.join(dir,'ollama-suggestions.json'),{model:c.ollamaModel,response:JSON.parse(r.response)});console.log('Local suggestions saved.');}catch(e){console.log('Suggestions skipped:',e.message);}
+    }
     console.log('Fixed prompts saved:',dir);return;
   }
   if(command==='run'){
@@ -118,6 +128,6 @@ export async function main(command='doctor',projectFile='costume.json'){
     compileBundle(bundle);save(path.join(out,'costume.bundle.json'),bundle);save(path.join(out,'upload-manifest.json'),{files:p.accessories.map((a,i)=>({asset:canonicalAssets[i].id+'@'+version,file:'assets/animations/'+p.id+'/'+a.id+'.png',sha256:canonicalAssets[i].sha256}))});
 console.log('Draft exported:',out);return;
   }
-  throw Error('Commands: doctor, prompts, run, export, ingest, batch');
+  throw Error('Commands: doctor, plan, prompts [--suggestions], run, export, ingest, batch');
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))main(process.argv[2],process.argv[3]).catch(e=>{console.error(e.message);process.exitCode=1;});

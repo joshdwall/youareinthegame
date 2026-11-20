@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "id": "agentsands",
+  "label": "Agent Sands",
+  "status": "authoring-brief",
+  "reference": "Operator supplied film still from Once Upon a Time in Mexico",
+  "items": [
+    {
+      "id": "jacket",
+      "operation": "derive",
+      "reference": {
+        "asset": "stormchaser-neck-shirt@1",
+        "src": "/api/assets/animations/costumes/8214dd9c9f1055d4597ba93ff750fec51cce95af8523bc23db0b453166cc629b.png",
+        "placement": {
+          "objectAnchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "scale": 0.62,
+          "rotation": 0,
+          "flipX": false,
+          "layer": "behind-character",
+          "order": 1,
+          "attachment": {
+            "rig": "mushroom-platypus@1",
+            "point": "mouth"
+          },
+          "offset": {
+            "x": 0.007573520992308125,
+            "y": -0.031245455587894266
+          },
+          "objectActions": []
+        }
+      },
+      "requirements": [
+        "Dark charcoal leather jacket front panels and lapels",
+        "Use the fitted shirt construction and its placement as the starting point",
+        "No human torso, sleeves, human armholes, back collar, or hidden straps",
+        "Transparent accessory-only art; review face clearance on the existing rig"
+      ]
+    },
+    {
+      "id": "left-boot",
+      "operation": "reuse",
+      "reference": {
+        "asset": "cannibalcorpse-left-boot@3",
+        "src": "/api/assets/animations/costumes/5c593443fce4e4d4b8adf9704f16be97419019be1a15b82fcbe1860f324dc70a.png",
+        "placement": {
+          "objectAnchor": {
+            "x": 0.53,
+            "y": 0.28
+          },
+          "scale": 0.36,
+          "rotation": 8,
+          "flipX": false,
+          "layer": "behind-character",
+          "order": 0,
+          "attachment": {
+            "rig": "mushroom-platypus@1",
+            "point": "handL"
+          },
+          "offset": {
+            "x": 0.2,
+            "y": 0.30000000000000004
+          }
+        }
+      }
+    },
+    {
+      "id": "right-boot",
+      "operation": "reuse",
+      "reference": {
+        "asset": "cannibalcorpse-right-boot@3",
+        "src": "/api/assets/animations/costumes/5c593443fce4e4d4b8adf9704f16be97419019be1a15b82fcbe1860f324dc70a.png",
+        "placement": {
+          "objectAnchor": {
+            "x": 0.53,
+            "y": 0.28
+          },
+          "scale": 0.36,
+          "rotation": -8,
+          "flipX": true,
+          "layer": "behind-character",
+          "order": 1,
+          "attachment": {
+            "rig": "mushroom-platypus@1",
+            "point": "handR"
+          },
+          "offset": {
+            "x": -0.19999999999999996,
+            "y": 0.30000000000000004
+          }
+        }
+      }
+    },
+    {
+      "id": "sunglasses",
+      "operation": "catalog-search-before-generation",
+      "requirements": [
+        "Black rectangular sunglasses",
+        "Fit eyes anchor without a human face"
+      ]
+    },
+    {
+      "id": "hair",
+      "operation": "catalog-search-before-generation",
+      "requirements": [
+        "Dark shoulder-length hair",
+        "Separate rear silhouette from any foreground strands to preserve face visibility"
+      ]
+    }
+  ],
+  "reviewDecisions": [
+    "Eye streaks and gloves need a rig-fit decision before adding pieces",
+    "Weapons and new choreography were not requested; retain existing supported animation defaults until specified"
+  ],
+  "publication": {
+    "live": false,
+    "needsVisualReview": true
+  },
+  "generationBudget": {
+    "bootImages": 0,
+    "jacketCandidates": 1,
+    "automaticVisualRetries": 0
+  }
+}
